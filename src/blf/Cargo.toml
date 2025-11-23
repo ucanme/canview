@@ -1,0 +1,11 @@
+[package]
+name = "blf"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+byteorder = "1.4"
+flate2 = "1.0"
+
+[dev-dependencies]
+tempfile = "3.3"
