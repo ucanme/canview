@@ -1,0 +1,12 @@
+[package]
+name = "view"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dioxus = { version = "0.5", features = ["desktop", "router"] }
+blf = { path = "../blf" }
+rfd = "0.15" # For file dialogs
+chrono = "0.4" # For timestamp formatting
+log = "0.4"
+env_logger = "0.11"
