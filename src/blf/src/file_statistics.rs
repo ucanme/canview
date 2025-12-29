@@ -48,20 +48,26 @@ impl SystemTime {
 pub struct FileStatistics {
     /// The size of this structure.
     pub statistics_size: u32,
+
+    pub api_number: u32,
+
     /// The application ID.
     pub application_id: u8,
+
+    pub compression_level : u8,
     /// The application's major version number.
     pub application_major: u8,
     /// The application's minor version number.
     pub application_minor: u8,
-    /// The application's build number.
-    pub application_build: u8,
     /// The total size of the file in bytes.
     pub file_size: u64,
+    /// The application's build number.
     /// The total uncompressed size of all objects.
     pub uncompressed_file_size: u64,
     /// The total count of objects in the file.
     pub object_count: u64,
+    /// The application's build number.
+    pub application_build: u8,
     /// The timestamp when the measurement started.
     pub measurement_start_time: SystemTime,
     /// The timestamp of the last object in the file.
@@ -72,11 +78,13 @@ impl FileStatistics {
     /// Reads a `FileStatistics` header from a byte stream.
     pub fn read(cursor: &mut Cursor<&[u8]>) -> BlfParseResult<Self> {
         let signature = cursor.read_u32::<LittleEndian>()?;
-        if signature != 0x474F4C42 {
+
+        if signature != 0x47474F4C {
+            println!("Signature: {:x}", signature);
             return Err(BlfParseError::InvalidFileMagic);
         }
         let header_size = cursor.read_u32::<LittleEndian>()?;
-        let _crc = cursor.read_u32::<LittleEndian>()?;
+        let _api_number = cursor.read_u32::<LittleEndian>()?;
         let application_id = cursor.read_u8()?;
         let _compression_level = cursor.read_u8()?;
         let application_major = cursor.read_u8()?;
@@ -85,7 +93,7 @@ impl FileStatistics {
         let uncompressed_file_size = cursor.read_u64::<LittleEndian>()?;
         let object_count = cursor.read_u64::<LittleEndian>()?;
         let application_build = cursor.read_u8()?;
-        cursor.set_position(cursor.position() + 3); // Skip padding
+        //cursor.set_position(cursor.position() + 3); // Skip padding
         let measurement_start_time = SystemTime::read(cursor)?;
         let last_object_time = SystemTime::read(cursor)?;
 
@@ -93,7 +101,7 @@ impl FileStatistics {
         // We can't use set_position with generic Read trait, so we'll read and discard
         let mut skip_buf = [0u8; 4];
         cursor.read_exact(&mut skip_buf)?; // apiNumber
-        
+
         let mut skip_buf = [0u8; 32];
         cursor.read_exact(&mut skip_buf)?; // reserved
         
@@ -110,7 +118,9 @@ impl FileStatistics {
 
         Ok(FileStatistics {
             statistics_size: header_size,
+            api_number: _api_number,
             application_id,
+            compression_level: _compression_level,
             application_major,
             application_minor,
             application_build,
@@ -132,7 +142,9 @@ mod tests {
     fn test_read_file_statistics_successfully() {
         let original_stats = FileStatistics {
             statistics_size: 208,
+            api_number: 0,
             application_id: 1,
+            compression_level: 0,
             application_major: 2,
             application_minor: 3,
             application_build: 4,

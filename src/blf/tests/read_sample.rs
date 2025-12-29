@@ -6,9 +6,9 @@ fn test_read_sample_blf() {
     // The test runs from the crate directory or workspace root.
     // We try to locate the file relative to where the test binary runs.
     let possible_paths = [
-        "sample.blf",
-        "../../sample.blf",
-        "../../../sample.blf",
+        "can.blf",
+        "../../can.blf",
+        "../../../can.blf",
     ];
 
     let mut path = Path::new("sample.blf");

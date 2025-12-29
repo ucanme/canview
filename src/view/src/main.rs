@@ -1,139 +1,185 @@
-#![allow(non_snake_case)]
-
-use dioxus::prelude::*;
+use anyhow::Result;
 use blf::{read_blf_from_file, LogObject};
+use gpui::*;
 
-
-use dioxus::desktop::{Config, WindowBuilder};
-
-fn main() {
-    let config = Config::new()
-        .with_window(WindowBuilder::new()
-            .with_title("CanView")
-            .with_resizable(true)
-        );
-    
-    dioxus::desktop::launch::launch(App, vec![], config);
+// Application state
+struct AppState {
+    messages: Vec<LogObject>,
+    status_msg: String,
 }
 
-#[component]
-fn App() -> Element {
-    let mut messages = use_signal(|| Vec::<LogObject>::new());
-    let mut status_msg = use_signal(|| "Ready".to_string());
+// Main view struct
+struct MainView {
+    messages: Vec<LogObject>,
+    status_msg: String,
+}
 
-    let handle_open_click = move |_| {
-        spawn(async move {
-            if let Some(path) = rfd::FileDialog::new().add_filter("BLF Files", &["blf", "bin"]).pick_file() {
-                status_msg.set(format!("Loading..."));
-                match read_blf_from_file(&path) {
-                    Ok(result) => {
-                        status_msg.set(format!("{} objects", result.objects.len()));
-                        messages.set(result.objects);
-                    }
-                    Err(e) => status_msg.set(format!("Error: {:?}", e)),
-                }
-            }
-        });
-    };
-
-    rsx! {
-        div {
-            style: "display: flex; flex-direction: column; height: 100vh; font-family: 'Segoe UI', sans-serif; overflow: hidden;",
-            
-            // Top Toolbar (Menu Bar)
-            div {
-                style: "height: 40px; background: #f0f0f0; border-bottom: 1px solid #ccc; display: flex; align-items: center; padding: 0 16px; gap: 16px; user-select: none;",
-                
-                button {
-                    onclick: handle_open_click,
-                    style: "background: #0078d4; color: white; border: none; font-size: 13px; cursor: pointer; padding: 6px 12px; border-radius: 4px; display: flex; align-items: center; gap: 8px; &:hover {{ background: #106ebe; }}",
-                    span { "📂" } 
-                    "Open BLF File"
-                }
-                
-                div {
-                    style: "width: 1px; height: 20px; background: #ccc;",
-                }
-
-                span {
-                    style: "font-size: 13px; color: #555;",
-                    "{status_msg}"
-                }
-            }
-
-            // Content
-            div {
-                style: "flex: 1; overflow: auto; background: #fff;",
-                table {
-                    style: "width: 100%; border-collapse: collapse; font-size: 13px;",
-                    thead {
-                        tr {
-                            style: "text-align: left; background: #fafafa; border-bottom: 2px solid #ddd; position: sticky; top: 0;",
-                            th { style: "padding: 8px; width: 120px;", "Time" }
-                            th { style: "padding: 8px; width: 80px;", "Type" }
-                            th { style: "padding: 8px; width: 80px;", "ID" }
-                            th { style: "padding: 8px; width: 60px;", "DLC" }
-                            th { style: "padding: 8px;", "Data" }
-                        }
-                    }
-                    tbody {
-                        for (i, msg) in messages.read().iter().enumerate().take(500) {
-                            MessageRow { key: "{i}", msg: msg.clone() }
-                        }
-                    }
-                }
-            }
+impl MainView {
+    fn new() -> Self {
+        Self {
+            messages: Vec::new(),
+            status_msg: "Ready".to_string(),
         }
     }
 }
 
-#[component]
-fn MessageRow(msg: LogObject) -> Element {
-    // Extract data based on type
-    let (timestamp, type_name, id, dlc, data_hex) = match &msg {
+impl Render for MainView {
+    fn render(&mut self, _cx: &mut ViewContext<Self>) -> impl IntoElement {
+        let status_msg = self.status_msg.clone();
+        let messages = self.messages.clone();
+        
+        // Create a scrollable container for the table
+        div()
+            .flex()
+            .flex_col()
+            .size_full()
+            .child(
+                // Toolbar
+                div()
+                    .h_10()
+                    .bg(rgb(0xf0f0f0))
+                    .border_b_1()
+                    .border_color(rgb(0xccc))
+                    .flex()
+                    .items_center()
+                    .px_4()
+                    .gap_4()
+                    .child(
+                        Button::new("open_btn", "Open BLF File")
+                            .on_click(|_event, cx| {
+                                cx.spawn(|view, mut cx| async move {
+                                    if let Some(path) = rfd::FileDialog::new()
+                                        .add_filter("BLF Files", &["blf", "bin"])
+                                        .pick_file() {
+                                        
+                                        // Update status
+                                        view.update(&mut cx, |main_view, cx| {
+                                            main_view.status_msg = "Loading...".to_string();
+                                            cx.notify();
+                                        }).ok();
+                                        
+                                        // Load the BLF file
+                                        match read_blf_from_file(&path) {
+                                            Ok(result) => {
+                                                view.update(&mut cx, |main_view, cx| {
+                                                    main_view.messages = result.objects;
+                                                    main_view.status_msg = 
+                                                        format!("{} objects", main_view.messages.len());
+                                                    cx.notify();
+                                                }).ok();
+                                            }
+                                            Err(e) => {
+                                                view.update(&mut cx, |main_view, cx| {
+                                                    main_view.status_msg = format!("Error: {:?}", e);
+                                                    cx.notify();
+                                                }).ok();
+                                            }
+                                        }
+                                    }
+                                })
+                                .detach();
+                            })
+                    )
+                    .child(div().w_px().h_5().bg(rgb(0xccc)))
+                    .child(div().text_sm().text_color(rgb(0x555)).child(status_msg))
+            )
+            .child(
+                // Messages table container
+                div()
+                    .flex_1()
+                    .overflow_scroll()
+                    .bg(rgb(0xffffff))
+                    .child(
+                        v_flex()
+                            .w_full()
+                            .child(
+                                // Table header
+                                h_flex()
+                                    .bg(rgb(0xfafafa))
+                                    .border_b_2()
+                                    .border_color(rgb(0xdddd))
+                                    .sticky()
+                                    .top_0()
+                                    .child(div().w_32().p_2().text_sm().child("Time"))
+                                    .child(div().w_20().p_2().text_sm().child("Type"))
+                                    .child(div().w_20().p_2().text_sm().child("ID"))
+                                    .child(div().w_16().p_2().text_sm().child("DLC"))
+                                    .child(div().flex_1().p_2().text_sm().child("Data"))
+                            )
+                            .children(
+                                // Render first 500 messages
+                                messages.into_iter()
+                                    .take(500)
+                                    .enumerate()
+                                    .map(|(i, msg)| render_message_row(i, msg))
+                                    .collect::<Vec<_>>()
+                            )
+                    )
+            )
+    }
+}
+
+// Helper function to render a message row
+fn render_message_row(_index: usize, msg: LogObject) -> Div {
+    let (timestamp, type_name, id, dlc, data_hex) = match msg {
         LogObject::CanMessage(m) => (
             m.header.object_time_stamp,
-            "CAN",
+            "CAN".to_string(),
             format!("0x{:X}", m.id),
-            m.dlc,
-            // Format data as hex string
-            m.data.iter().take(m.dlc as usize).map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(" ")
+            m.dlc.to_string(),
+            m.data.iter().take(m.dlc as usize)
+                .map(|b| format!("{:02X}", b))
+                .collect::<Vec<_>>()
+                .join(" ")
         ),
         LogObject::CanFdMessage(m) => (
-             m.header.object_time_stamp,
-            "CAN FD",
+            m.header.object_time_stamp,
+            "CAN FD".to_string(),
             format!("0x{:X}", m.id),
-            m.valid_payload_length,
-             m.data.iter().take(m.valid_payload_length as usize).map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(" ")
+            m.valid_payload_length.to_string(),
+            m.data.iter().take(m.valid_payload_length as usize)
+                .map(|b| format!("{:02X}", b))
+                .collect::<Vec<_>>()
+                .join(" ")
         ),
         LogObject::CanErrorFrame(m) => (
             m.header.object_time_stamp,
-            "CAN Error",
+            "CAN Error".to_string(),
             "-".to_string(),
-            0,
+            "0".to_string(),
             format!("Length: {}", m.length)
         ),
         LogObject::CanDriverError(m) => (
             m.header.object_time_stamp,
-            "CAN Driver Error",
+            "CAN Driver Error".to_string(),
             "-".to_string(),
-            0,
+            "0".to_string(),
             format!("Code: {}, TX: {}, RX: {}", m.error_code, m.tx_errors, m.rx_errors)
         ),
         _ => {
-            // For now, skip other types or show generic
-            return rsx! {};
+            // For other types, return empty values
+            (0, "Other".to_string(), "-".to_string(), "0".to_string(), "-".to_string())
         }
     };
 
-    rsx! {
-        tr {
-            style: "border-bottom: 1px solid #eee; &:hover {{ background: #f9f9f9; }}",
-            td { style: "padding: 6px 8px; font-family: monospace;", "{timestamp}" }
-            td { style: "padding: 6px 8px;", "{type_name}" }
-            td { style: "padding: 6px 8px; font-family: monospace; color: #0078d4;", "{id}" }
-            td { style: "padding: 6px 8px;", "{dlc}" }
-            td { style: "padding: 6px 8px; font-family: monospace;", "{data_hex}" }
-        }
-    }
+    h_flex()
+        .border_b_1()
+        .border_color(rgb(0xeeee))
+        .hover(|style| style.bg(rgb(0xf9f9f9)))
+        .child(div().w_32().p_1_5().text_sm().font_family("monospace").child(timestamp.to_string()))
+        .child(div().w_20().p_1_5().text_sm().child(type_name))
+        .child(div().w_20().p_1_5().text_sm().font_family("monospace").text_color(rgb(0x0078d4)).child(id))
+        .child(div().w_16().p_1_5().text_sm().child(dlc))
+        .child(div().flex_1().p_1_5().text_sm().font_family("monospace").child(data_hex))
+}
+
+fn main() {
+    App::new().run(|cx| {
+        // Set up the main window
+        cx.open_window(WindowOptions::default(), |cx| {
+            // Create the main view
+            cx.new_view(|_cx| MainView::new())
+        })
+        .unwrap();
+    });
 }

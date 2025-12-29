@@ -40,6 +40,8 @@ pub fn read_blf_from_file<P: AsRef<Path>>(path: P) -> BlfParseResult<BlfResult> 
     // 1. Parse the file statistics header. This will advance the cursor.
     let file_stats = FileStatistics::read(&mut cursor)?;
 
+
+    println!("File Statistics: {:?}", file_stats);
     // 2. Parse the log objects from the rest of the data slice.
     let parser = BlfParser::new();
     let remaining_data = &data[cursor.position() as usize..];
@@ -146,5 +148,11 @@ mod tests {
         } else {
             panic!("Expected a CanMessage but found something else.");
         }
+    }
+
+    #[test]
+    fn test_read_blf_from_file_failure() {
+        let result = read_blf_from_file("can5.blf");
+        println!("{:?}", result);
     }
 }
