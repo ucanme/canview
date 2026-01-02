@@ -1,0 +1,230 @@
+warning: `C:\Users\Administrator\.cargo\config` is deprecated in favor of `config.toml`
+note: if you need to support cargo 1.38 or earlier, you can symlink `config` to `config.toml`
+warning: C:\Users\Administrator\RustroverProjects\canview\Cargo.toml: unused manifest key: workspace.edition
+warning: C:\Users\Administrator\RustroverProjects\canview\Cargo.toml: unused manifest key: workspace.name
+warning: C:\Users\Administrator\RustroverProjects\canview\Cargo.toml: unused manifest key: workspace.version
+src\parser\src\dbc.rs:57:13: warning: variable does not need to be mutable
+warning: `parser` (lib) generated 1 warning (run `cargo fix --lib -p parser` to apply 1 suggestion)
+warning: unused imports: `Compression`, `read::ZlibDecoder`, and `write::ZlibEncoder`
+ --> src\blf\src\blf_core.rs:4:14
+  |
+4 | use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
+  |              ^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `Read`
+ --> src\blf\src\blf_core.rs:5:29
+  |
+5 | use std::io::{self, Cursor, Read, Write};
+  |                             ^^^^
+
+warning: unused import: `ObjectHeader`
+ --> src\blf\src\file.rs:6:74
+  |
+6 |     BlfParser, BlfParseError, BlfParseResult, FileStatistics, LogObject, ObjectHeader,
+  |                                                                          ^^^^^^^^^^^^
+
+warning: unused import: `WriteBytesExt`
+ --> src\blf\src\objects\log_container.rs:3:45
+  |
+3 | use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+  |                                             ^^^^^^^^^^^^^
+
+warning: unused imports: `Write` and `self`
+ --> src\blf\src\objects\log_container.rs:5:15
+  |
+5 | use std::io::{self, Cursor, Read, Write};
+  |               ^^^^                ^^^^^
+
+warning: ambiguous glob re-exports
+  --> src\blf\src\objects\mod.rs:12:9
+   |
+12 | pub use can::*;
+   |         ^^^^^^ the name `messages` in the type namespace is first re-exported here
+13 | pub use lin::*;
+   |         ------ but the name `messages` in the type namespace is also re-exported here
+   |
+   = note: `#[warn(ambiguous_glob_reexports)]` on by default
+
+warning: unused import: `env_vars::*`
+  --> src\blf\src\objects\mod.rs:17:9
+   |
+17 | pub use env_vars::*;
+   |         ^^^^^^^^^^^
+
+warning: method `write` is never used
+  --> src\blf\src\objects\flexray\message.rs:53:19
+   |
+28 | impl FlexRayData {
+   | ---------------- method in this implementation
+...
+53 |     pub(crate) fn write<W: Write>(&self, _writer: &mut W) -> BlfParseResult<()> {
+   |                   ^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: method `write` is never used
+   --> src\blf\src\objects\flexray\message.rs:108:19
+    |
+77  | impl FlexRayV6Message {
+    | --------------------- method in this implementation
+...
+108 |     pub(crate) fn write<W: Write>(&self, _writer: &mut W) -> BlfParseResult<()> {
+    |                   ^^^^^
+
+warning: method `write` is never used
+   --> src\blf\src\objects\flexray\message.rs:201:19
+    |
+154 | impl FlexRayVFrReceiveMsg {
+    | ------------------------- method in this implementation
+...
+201 |     pub(crate) fn write<W: Write>(&self, _writer: &mut W) -> BlfParseResult<()> {
+    |                   ^^^^^
+
+warning: method `write` is never used
+   --> src\blf\src\objects\flexray\message.rs:320:19
+    |
+257 | impl FlexRayVFrReceiveMsgEx {
+    | --------------------------- method in this implementation
+...
+320 |     pub(crate) fn write<W: Write>(&self, _writer: &mut W) -> BlfParseResult<()> {
+    |                   ^^^^^
+
+warning: method `write` is never used
+  --> src\blf\src\objects\flexray\status_events.rs:57:19
+   |
+30 | impl FlexRaySync {
+   | ---------------- method in this implementation
+...
+57 |     pub(crate) fn write<W: Write>(&self, _writer: &mut W) -> BlfParseResult<()> {
+   |                   ^^^^^
+
+warning: method `write` is never used
+  --> src\blf\src\objects\flexray\status_events.rs:99:19
+   |
+77 | impl FlexRayV6StartCycleEvent {
+   | ----------------------------- method in this implementation
+...
+99 |     pub(crate) fn write<W: Write>(&self, _writer: &mut W) -> BlfParseResult<()> {
+   |                   ^^^^^
+
+warning: method `write` is never used
+   --> src\blf\src\objects\flexray\status_events.rs:145:19
+    |
+123 | impl FlexRayStatusEvent {
+    | ----------------------- method in this implementation
+...
+145 |     pub(crate) fn write<W: Write>(&self, _writer: &mut W) -> BlfParseResult<()> {
+    |                   ^^^^^
+
+warning: method `write` is never used
+   --> src\blf\src\objects\flexray\status_events.rs:202:19
+    |
+173 | impl FlexRayVFrError {
+    | -------------------- method in this implementation
+...
+202 |     pub(crate) fn write<W: Write>(&self, _writer: &mut W) -> BlfParseResult<()> {
+    |                   ^^^^^
+
+warning: method `write` is never used
+   --> src\blf\src\objects\flexray\status_events.rs:268:19
+    |
+234 | impl FlexRayVFrStatus {
+    | --------------------- method in this implementation
+...
+268 |     pub(crate) fn write<W: Write>(&self, _writer: &mut W) -> BlfParseResult<()> {
+    |                   ^^^^^
+
+warning: method `write` is never used
+   --> src\blf\src\objects\flexray\status_events.rs:338:19
+    |
+302 | impl FlexRayVFrStartCycle {
+    | ------------------------- method in this implementation
+...
+338 |     pub(crate) fn write<W: Write>(&self, _writer: &mut W) -> BlfParseResult<()> {
+    |                   ^^^^^
+
+warning: method `write` is never used
+  --> src\blf\src\objects\ethernet\frame.rs:63:19
+   |
+32 | impl EthernetFrame {
+   | ------------------ method in this implementation
+...
+63 |     pub(crate) fn write<W: Write>(&self, _writer: &mut W) -> BlfParseResult<()> {
+   |                   ^^^^^
+
+warning: method `write` is never used
+  --> src\blf\src\objects\app_events\trigger.rs:37:19
+   |
+22 | impl AppTrigger {
+   | --------------- method in this implementation
+...
+37 |     pub(crate) fn write<W: Write>(&self, _writer: &mut W) -> BlfParseResult<()> {
+   |                   ^^^^^
+
+warning: method `write` is never used
+  --> src\blf\src\objects\app_events\comment_marker.rs:33:19
+   |
+18 | impl EventComment {
+   | ----------------- method in this implementation
+...
+33 |     pub(crate) fn write<W: Write>(&self, _writer: &mut W) -> BlfParseResult<()> {
+   |                   ^^^^^
+
+warning: method `write` is never used
+  --> src\blf\src\objects\app_events\comment_marker.rs:97:19
+   |
+59 | impl GlobalMarker {
+   | ----------------- method in this implementation
+...
+97 |     pub(crate) fn write<W: Write>(&self, _writer: &mut W) -> BlfParseResult<()> {
+   |                   ^^^^^
+
+warning: `blf` (lib) generated 21 warnings (run `cargo fix --lib -p blf` to apply 6 suggestions)
+    Checking view v0.1.0 (C:\Users\Administrator\RustroverProjects\canview\src\view)
+error[E0596]: cannot borrow `app_config` as mutable, as it is not declared as mutable
+   --> src\view\src\main.rs:109:29
+    |
+109 | ...                   app_config.set(config);
+    |                       ^^^^^^^^^^ cannot borrow as mutable
+    |
+help: consider changing this to be mutable
+    |
+85  |     let mut app_config = use_signal(|| AppConfig::default()); // Kept immutable to avoid E0503
+    |         +++
+
+warning: variable does not need to be mutable
+  --> src\view\src\main.rs:78:9
+   |
+78 |     let mut dbc_channels = use_signal(|| HashMap::<u16, DbcDatabase>::new());
+   |         ----^^^^^^^^^^^^
+   |         |
+   |         help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` on by default
+
+warning: variable does not need to be mutable
+  --> src\view\src\main.rs:79:9
+   |
+79 |     let mut ldf_channels = use_signal(|| HashMap::<u16, LdfDatabase>::new());
+   |         ----^^^^^^^^^^^^
+   |         |
+   |         help: remove this `mut`
+
+error[E0503]: cannot use `app_config` because it was mutably borrowed
+   --> src\view\src\main.rs:465:78
+    |
+452 | ...                       let mut config = app_config.write();
+    |                                            ---------- `app_config` is borrowed here
+...
+465 | ...                           let config = app_config.read();
+    |                                            ^^^^^^^^^^ use of borrowed `app_config`
+...
+498 | ...                   },
+    |                       - borrow might be used here, when `config` is dropped and runs the destructor for type `dioxus::prelude::Write<'_, AppConfig>`
+
+Some errors have detailed explanations: E0503, E0596.
+For more information about an error, try `rustc --explain E0503`.
+warning: `view` (bin "view") generated 2 warnings
+error: could not compile `view` (bin "view") due to 2 previous errors; 2 warnings emitted

@@ -1,8 +1,7 @@
 //! Core BLF structures and error handling.
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
-use std::io::{self, Cursor, Read, Write};
+use std::io::{self, Cursor, Write};
 use std::fmt;
 use std::error::Error;
 
@@ -275,9 +274,9 @@ impl ObjectHeader {
     /// Calculates the size of the header based on its version.
     pub fn calculate_header_size(&self) -> u16 {
         if self.header_version == 1 {
-            24 // signature (4) + header_size (2) + header_version (2) + object_size (4) + object_type (4) + object_flags (4) + client_index (2) + object_version (2) + object_time_stamp (8)
+            32 // signature (4) + header_size (2) + header_version (2) + object_size (4) + object_type (4) + object_flags (4) + object_version (2) + client_index (2) + object_time_stamp (8)
         } else if self.header_version == 2 {
-            32 // signature (4) + header_size (2) + header_version (2) + object_size (4) + object_type (4) + object_flags (4) + time_stamp_status (1) + reserved (1) + object_version (2) + object_time_stamp (8) + original_time_stamp (8)
+            40 // signature (4) + header_size (2) + header_version (2) + object_size (4) + object_type (4) + object_flags (4) + time_stamp_status (1) + reserved (1) + object_version (2) + object_time_stamp (8) + original_time_stamp (8)
         } else {
             0 // Should not happen with proper validation
         }

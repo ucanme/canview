@@ -20,7 +20,7 @@ pub fn write_system_time(time: &SystemTime, writer: &mut impl Write) {
 /// Helper to serialize a FileStatistics struct into bytes.
 pub fn serialize_file_statistics(stats: &FileStatistics) -> Vec<u8> {
     let mut writer = Vec::new();
-    writer.write_u32::<LittleEndian>(0x474F4C42).unwrap(); // Signature "LOGG"
+    writer.write_u32::<LittleEndian>(0x47474F4C).unwrap(); // Signature "LOGG"
     writer.write_u32::<LittleEndian>(stats.statistics_size).unwrap();
     writer.write_u32::<LittleEndian>(0).unwrap(); // CRC
     writer.write_u8(stats.application_id).unwrap();

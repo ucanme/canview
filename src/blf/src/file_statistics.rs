@@ -72,7 +72,7 @@ impl FileStatistics {
     /// Reads a `FileStatistics` header from a byte stream.
     pub fn read(cursor: &mut Cursor<&[u8]>) -> BlfParseResult<Self> {
         let signature = cursor.read_u32::<LittleEndian>()?;
-        if signature != 0x474F4C42 {
+        if signature != FILE_SIGNATURE {
             return Err(BlfParseError::InvalidFileMagic);
         }
         let header_size = cursor.read_u32::<LittleEndian>()?;

@@ -1,8 +1,8 @@
 //! Log container object definition.
 
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::ZlibDecoder;
-use std::io::{self, Cursor, Read, Write};
+use std::io::{self, Cursor, Read};
 use crate::{BlfParseError, BlfParseResult, ObjectHeader};
 
 /// Represents a container for other log objects, which may be compressed (`LOG_CONTAINER`).

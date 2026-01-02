@@ -38,7 +38,7 @@ fn test_read_sample_blf() {
     // The sizes might be slightly different due to padding but let's check basic counts.
     
     let object_count = result.objects.len();
-    assert_eq!(object_count, 10, "Expected 10 objects, found {}", object_count);
+    assert_eq!(object_count, 12, "Expected 12 objects, found {}", object_count);
 
     // Verify first object
     if let LogObject::CanMessage(msg) = &result.objects[0] {

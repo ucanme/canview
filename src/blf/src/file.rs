@@ -3,7 +3,7 @@
 //! Handles the top-level reading and parsing of BLF files.
 
 use crate::{
-    BlfParser, BlfParseError, BlfParseResult, FileStatistics, LogObject, ObjectHeader,
+    BlfParser, BlfParseError, BlfParseResult, FileStatistics, LogObject,
 };
 use std::fs;
 use std::io::Cursor;
@@ -60,9 +60,9 @@ mod tests {
         // 1. --- Define the objects we want to serialize ---
         let can_msg_header = ObjectHeader {
             signature: 0x4A424F4C, // "LOBJ"
-            header_size: 24,
+            header_size: 32,
             header_version: 1,
-            object_size: 40, // header + can_msg_fields + data
+            object_size: 48, // header + can_msg_fields + data
             object_type: ObjectType::CanMessage,
             object_flags: 0,
             object_time_stamp: 1000,

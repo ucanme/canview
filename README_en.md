@@ -1,58 +1,82 @@
-# BLF Parser Library (Binary Logging Format)
+# CanView: BLF Parser & Desktop Viewer
+
+[中文文档 (Chinese Version)](README_zh.md)
 
 ## Introduction
 
-This is a high-performance BLF (Binary Logging Format) parser library written in Rust for parsing Vector Informatik's BLF file format. BLF is a binary log file format widely used in the automotive industry to store bus communication data such as CAN, LIN, FlexRay, and Ethernet.
+CanView is a high-performance toolset for processing and visualizing BLF (Binary Logging Format) files, widely used in the automotive industry for CAN, LIN, FlexRay, and Ethernet bus logging.
 
-This project is a direct translation from a C++ implementation, maintaining the same functionality and performance characteristics as the original.
+The project is organized into three main components:
+1.  **`blf`**: A high-performance Rust library for parsing BLF files.
+2.  **`parser`**: A library for parsing network description files like DBC (CAN) and LDF (LIN).
+3.  **`view`**: A modern desktop application built with Dioxus/Tao/Wry for visualizing logs and decoding signals.
 
 ## Features
 
-- **Complete BLF Format Support**: Supports parsing various types of log objects, including CAN, LIN, FlexRay, Ethernet bus messages
-- **High Performance**: Uses Rust's zero-cost abstractions and memory safety features for high-performance parsing
-- **Easy to Use**: Provides a clean API interface for easy integration into other projects
-- **Memory Safe**: Leverages Rust's ownership and borrowing mechanisms to avoid memory leaks and buffer overflows
-- **Extensible**: Modular design makes it easy to add support for new message types
+### 📚 BLF Parser Library (`blf`)
+- **Comprehensive Support**: Parses various log objects including CAN, CAN FD, LIN, FlexRay, and Ethernet.
+- **High Performance**: Built with Rust for zero-cost abstractions and memory safety.
+- **Easy Integration**: Clean API for use in other Rust projects.
 
-## Supported Message Types
+### 🗂️ Database Parser (`parser`)
+- **DBC Support**: Parses Vector DBC files for CAN signal definitions, including comments.
+- **LDF Support**: Parses LIN Description Files (LDF) for LIN signal definitions.
+- **Comment Parsing**: Extracts comments and descriptions from database files for better context.
 
-- CAN messages (CanMessage, CanMessage2, CanFdMessage, CanFdMessage64)
-- LIN messages (LinMessage, LinMessage2, etc.)
-- FlexRay messages and events
-- Ethernet frames
-- MOST messages and events
-- System variables and environment variables
-- Application triggers and event comments
+### 🖥️ Desktop Viewer (`view`)
+- **Modern UI**: Built with Dioxus for a sleek, responsive interface.
+- **Log Visualization**: Clear list view of messages with timestamps, channels, IDs, and payloads.
+- **Multi-Channel Decoding**: 
+    - Map different channels (CAN/LIN) to specific DBC or LDF files.
+    - Support for multiple databases active simultaneously on different channels.
+- **Signal Decoding**: Real-time decoding of CAN and LIN signals based on loaded databases.
+- **Configuration Management**: 
+    - **Signal Libraries**: Organize your DBC/LDF files into libraries with version control.
+    - **Active Version**: Switch between different decoding configurations instantly.
+    - **JSON Config**: Save and load your channel mappings and library configurations.
+- **Files**: Open `.blf` or `.bin` log files.
 
-## Installation
+## Quick Start
 
-Add the dependency to your `Cargo.toml` file:
+### Running the Viewer
+
+Ensure you have Rust installed.
+
+```bash
+# Run the desktop application
+cargo run -p view
+```
+
+### Using the Libraries
+
+Add the dependencies to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-blf = { path = "path/to/blf/crate" }
+blf = { path = "src/blf" }
+parser = { path = "src/parser" }
 ```
 
-## Usage Example
+### Library Usage Example
 
 ```rust
-use blf::{read_blf_from_file, BlfResult};
+use blf::{read_blf_from_file, LogObject};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Read BLF file
-    let result: BlfResult = read_blf_from_file("example.blf")?;
+    let result = read_blf_from_file("example.blf")?;
     
-    // Access file statistics
-    println!("File statistics: {:?}", result.file_stats);
-    
-    // Iterate through parsed objects
+    // Iterate through objects
     for object in result.objects {
         match object {
             LogObject::CanMessage(msg) => {
                 println!("CAN Message: ID={:x}, DLC={}, Data={:?}", 
                          msg.id, msg.dlc, msg.data);
             }
-            // Handle other object types...
+            LogObject::LinMessage(msg) => {
+                 println!("LIN Message: ID={:x}, DLC={}, Data={:?}", 
+                         msg.id, msg.dlc, msg.data);
+            }
             _ => {}
         }
     }
@@ -64,30 +88,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ## Project Structure
 
 ```
-src/
-├── blf_core.rs        # Core structures and error handling
-├── file.rs            # File reading and parsing
-├── file_statistics.rs # File statistics processing
-├── parser.rs          # Main parser implementation
-├── object_header.rs   # Object header processing
-├── object_type.rs     # Object type definitions
-├── objects/           # Implementation of various object types
-│   ├── can/
-│   ├── lin/
-│   ├── flexray/
-│   ├── ethernet/
-│   └── ...
-└── test_utils.rs      # Test utility functions
+canview/
+├── src/
+│   ├── blf/           # BLF Parser Library
+│   │   ├── src/objects/      # BLF Object implementations
+│   │   └── ...
+│   │
+│   ├── parser/        # Database Parser Library
+│   │   ├── src/dbc/          # DBC parsing logic
+│   │   ├── src/ldf/          # LDF parsing logic
+│   │   └── ...
+│   │
+│   └── view/          # Desktop Application
+│       ├── src/main.rs       # UI logic and State Management
+│       └── ...
+│
+├── Cargo.toml         # Workspace configuration
+└── README.md          # Project Documentation
 ```
 
-## Testing
+## Supported Message Types
 
-Run the test suite:
-
-```bash
-cargo test
-```
+-   **CAN**: CanMessage, CanMessage2, CanFdMessage, CanFdMessage64
+-   **LIN**: LinMessage, LinMessage2, etc.
+-   **FlexRay**: Messages, Status, Cycles
+-   **Ethernet**: Ethernet Frames
+-   **System**: AppTrigger, Comments
+-   **Statistics**: CAN Error, CAN Driver Error
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License.

@@ -254,9 +254,9 @@ mod tests {
         let original_msg = CanMessage {
             header: ObjectHeader {
                 signature: 0x4A424F4C, // "LOBJ"
-                header_size: 24,
+                header_size: 32,
                 header_version: 1,
-                object_size: 40, // 24 (header) + 16 (body)
+                object_size: 48, // 32 (header) + 16 (body)
                 object_type: ObjectType::CanMessage,
                 object_flags: 0,
                 object_time_stamp: 1000,
@@ -286,9 +286,9 @@ mod tests {
         let original_msg = CanMessage2 {
             header: ObjectHeader {
                 signature: 0x4A424F4C, // "LOBJ"
-                header_size: 24,
+                header_size: 32,
                 header_version: 1,
-                object_size: 48, // 24 (header) + 24 (body)
+                object_size: 56, // 32 (header) + 24 (body)
                 object_type: ObjectType::CanMessage2,
                 object_flags: 0,
                 object_time_stamp: 1000,
@@ -321,9 +321,9 @@ mod tests {
         let original_msg = CanFdMessage {
             header: ObjectHeader {
                 signature: 0x4A424F4C, // "LOBJ"
-                header_size: 24,
+                header_size: 32,
                 header_version: 1,
-                object_size: 124, // header + body
+                object_size: 132, // header + body
                 object_type: ObjectType::CanFdMessage,
                 object_flags: 0,
                 object_time_stamp: 1000,
@@ -360,9 +360,9 @@ mod tests {
         let original_msg = CanFdMessage64 {
             header: ObjectHeader {
                 signature: 0x4A424F4C, // "LOBJ"
-                header_size: 24,
+                header_size: 32,
                 header_version: 1,
-                object_size: 124, // header + body
+                object_size: 132, // header + body
                 object_type: ObjectType::CanFdMessage64,
                 object_flags: 0,
                 object_time_stamp: 1000,
@@ -399,9 +399,9 @@ mod tests {
         let original_msg = CanFdMessage64 {
             header: ObjectHeader {
                 signature: 0x4A424F4C, // "LOBJ"
-                header_size: 24,
+                header_size: 32,
                 header_version: 1,
-                object_size: 124, // header + body
+                object_size: 132, // header + body
                 object_type: ObjectType::CanFdMessage64,
                 object_flags: 0,
                 object_time_stamp: 1000,

@@ -11,6 +11,23 @@ pub struct LdfSignal {
     pub comment: Option<String>,
 }
 
+impl LdfSignal {
+    pub fn decode(&self, frame_data: &[u8], offset: u32) -> u32 {
+        let mut raw_value: u32 = 0;
+        for i in 0..self.size {
+            let bit_pos = offset + i;
+            let byte_idx = (bit_pos / 8) as usize;
+            let bit_in_byte = bit_pos % 8;
+            
+            if byte_idx < frame_data.len() {
+                let bit = (frame_data[byte_idx] >> bit_in_byte) & 1;
+                raw_value |= (bit as u32) << i;
+            }
+        }
+        raw_value
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct LdfSignalMapping {
     pub offset: u32,

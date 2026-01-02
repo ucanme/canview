@@ -6,7 +6,13 @@ edition = "2021"
 [dependencies]
 dioxus = { version = "0.5", features = ["desktop", "router"] }
 blf = { path = "../blf" }
+parser = { path = "../parser" }
 rfd = "0.15" # For file dialogs
 chrono = "0.4" # For timestamp formatting
 log = "0.4"
 env_logger = "0.11"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+plotters = "0.3"
+base64 = "0.22"
+

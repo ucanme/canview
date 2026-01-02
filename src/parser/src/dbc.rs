@@ -16,6 +16,62 @@ pub struct Signal {
     pub comment: Option<String>,
 }
 
+impl Signal {
+    pub fn decode(&self, data: &[u8]) -> f64 {
+        let mut raw_value: u64 = 0;
+        
+        if self.byte_order == 1 { // Intel / Little Endian
+            for i in 0..self.signal_size {
+                let bit_pos = self.start_bit + i;
+                let byte_idx = (bit_pos / 8) as usize;
+                let bit_in_byte = bit_pos % 8;
+                
+                if byte_idx < data.len() {
+                    let bit = (data[byte_idx] >> bit_in_byte) & 1;
+                    raw_value |= (bit as u64) << i;
+                }
+            }
+        } else { // Motorola / Big Endian
+             // In Vector DBC, Motorola start_bit is the MSB of the signal.
+             // We need to decode backwards.
+             let mut current_bit = self.start_bit as i32;
+             for i in 0..self.signal_size {
+                 let byte_idx = (current_bit / 8) as usize;
+                 let bit_in_byte = current_bit % 8;
+                 
+                 if byte_idx < data.len() {
+                     let bit = (data[byte_idx] >> bit_in_byte) & 1;
+                     raw_value |= (bit as u64) << (self.signal_size - 1 - i);
+                 }
+                 
+                 // Move to next bit in Motorola order
+                 if current_bit % 8 == 0 {
+                     current_bit += 15;
+                 } else {
+                     current_bit -= 1;
+                 }
+             }
+        }
+        
+        // Handle signed
+        let value = if self.value_type == '-' {
+            let sign_bit = 1u64 << (self.signal_size - 1);
+            if (raw_value & sign_bit) != 0 {
+                // Sign extend
+                let mask = (1u64 << self.signal_size) - 1;
+                let extended = raw_value | !mask;
+                extended as i64 as f64
+            } else {
+                raw_value as f64
+            }
+        } else {
+            raw_value as f64
+        };
+        
+        value * self.factor + self.offset
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Message {
     pub id: u32,

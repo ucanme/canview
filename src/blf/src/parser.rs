@@ -275,9 +275,9 @@ mod tests {
         let can_message = CanMessage {
             header: ObjectHeader {
                 signature: 0x4A424F4C, // "LOBJ"
-                header_size: 24,
+                header_size: 32,
                 header_version: 1,
-                object_size: 40, // header + can_msg_fields + data
+                object_size: 48, // header + can_msg_fields + data
                 object_type: ObjectType::CanMessage,
                 object_flags: 0,
                 object_time_stamp: 1000,
@@ -310,9 +310,9 @@ mod tests {
         let can_message1 = CanMessage {
             header: ObjectHeader {
                 signature: 0x4A424F4C, // "LOBJ"
-                header_size: 24,
+                header_size: 32,
                 header_version: 1,
-                object_size: 40,
+                object_size: 48,
                 object_type: ObjectType::CanMessage,
                 object_flags: 0,
                 object_time_stamp: 1000,
@@ -328,9 +328,9 @@ mod tests {
         let can_message2 = CanMessage {
             header: ObjectHeader {
                 signature: 0x4A424F4C, // "LOBJ"
-                header_size: 24,
+                header_size: 32,
                 header_version: 1,
-                object_size: 40,
+                object_size: 48,
                 object_type: ObjectType::CanMessage,
                 object_flags: 0,
                 object_time_stamp: 1000,
@@ -375,9 +375,9 @@ mod tests {
         // Create a LogContainer to wrap the unknown object
         let unknown_header = ObjectHeader {
             signature: 0x4A424F4C, // "LOBJ"
-            header_size: 24,
+            header_size: 32,
             header_version: 1,
-            object_size: 30, // Does not need to be a multiple of 4
+            object_size: 38, // Does not need to be a multiple of 4
             object_type: ObjectType::Unknown,
             object_flags: 0,
             object_time_stamp: 1000,
