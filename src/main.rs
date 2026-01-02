@@ -72,6 +72,10 @@ struct CanViewApp {
     start_time: Option<chrono::NaiveDateTime>,
     config_dir: Option<PathBuf>,
     config_file_path: Option<PathBuf>,
+    // Tracks whether the window is currently maximized (used for UI state)
+    is_maximized: bool,
+    // Whether the app is in streaming mode (used in the status area)
+    is_streaming_mode: bool,
 }
 
 impl CanViewApp {
@@ -87,6 +91,9 @@ impl CanViewApp {
             start_time: None,
             config_dir: None,
             config_file_path: None,
+            // Default window/app states
+            is_maximized: false,
+            is_streaming_mode: false,
         };
 
         // 启动时加载配置
@@ -553,7 +560,7 @@ impl Render for CanViewApp {
                                                     style
                                                 }
                                             })
-                                            .child("Charts"),
+                                            .child("Analytics"),
                                     ),
                             ),
                     )
@@ -583,7 +590,7 @@ impl Render for CanViewApp {
                             ),
                     )
                     .child(
-                        // Right: Action buttons
+                        // Right: Action buttons and window controls
                         div()
                             .flex()
                             .items_center()
@@ -628,6 +635,73 @@ impl Render for CanViewApp {
                                         style.bg(rgb(0x4b5563)).text_color(rgb(0xd1d5db))
                                     })
                                     .child("💾 Export"),
+                            )
+                            .child(
+                                // Window controls separator
+                                div().w(px(16.)),
+                            )
+                            .child(
+                                // Minimize button
+                                div()
+                                    .w(px(32.))
+                                    .h(px(32.))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(rgb(0x374151)))
+                                    .child(div().w(px(12.)).h(px(1.)).bg(rgb(0x9ca3af)))
+                                    .on_mouse_down(
+                                        gpui::MouseButton::Left,
+                                        |_event, window, _app| {
+                                            window.minimize_window();
+                                        },
+                                    ),
+                            )
+                            .child(
+                                // Maximize/Restore button
+                                div()
+                                    .w(px(32.))
+                                    .h(px(32.))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(rgb(0x374151)))
+                                    .child(
+                                        div()
+                                            .w(px(10.))
+                                            .h(px(10.))
+                                            .border_1()
+                                            .border_color(rgb(0x9ca3af)),
+                                    )
+                                    .on_mouse_down(
+                                        gpui::MouseButton::Left,
+                                        |_event, window, _app| {
+                                            // Toggle maximize/restore on the window. If your Window API
+                                            // has `is_maximized()` / `restore()` methods you can use them
+                                            // to implement a proper toggle. Here we call `zoom_window()` as requested.
+                                            window.zoom_window();
+                                        },
+                                    ),
+                            )
+                            .child(
+                                // Close button
+                                div()
+                                    .w(px(32.))
+                                    .h(px(32.))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(rgb(0xdc2626)))
+                                    .child(div().text_sm().text_color(rgb(0x9ca3af)).child("×"))
+                                    .on_mouse_down(
+                                        gpui::MouseButton::Left,
+                                        |_event, window, _app| {
+                                            window.remove_window();
+                                        },
+                                    ),
                             ),
                     ),
             )
@@ -642,6 +716,45 @@ impl Render for CanViewApp {
                         AppView::ConfigView => self.render_config_view().into_any_element(),
                         AppView::ChartView => self.render_chart_view().into_any_element(),
                     }),
+            )
+            .child(
+                // Zed-style status bar at bottom
+                div()
+                    .h(px(24.))
+                    .bg(rgb(0x1e1e1e))
+                    .border_t_1()
+                    .border_color(rgb(0x2a2a2a))
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .px_3()
+                    .text_xs()
+                    .text_color(rgb(0x9ca3af))
+                    .child(
+                        // Left: File info
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_3()
+                            .child(div().child(format!("{} messages", self.messages.len())))
+                            .child(div().child(format!("{} DBC channels", self.dbc_channels.len())))
+                            .child(
+                                div().child(format!("{} LIN channels", self.ldf_channels.len())),
+                            ),
+                    )
+                    .child(
+                        // Right: Status
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_3()
+                            .child(div().child(if self.is_streaming_mode {
+                                "Streaming Mode"
+                            } else {
+                                "Normal Mode"
+                            }))
+                            .child(div().child(self.status_msg.clone())),
+                    ),
             )
     }
 }
@@ -799,11 +912,7 @@ fn main() {
                         height: px(1000.0),
                     },
                 })),
-                titlebar: Some(TitlebarOptions {
-                    title: None,
-                    appears_transparent: true,
-                    traffic_light_position: Some(Point::new(px(12.0), px(12.0))),
-                }),
+                titlebar: None,
 
                 ..Default::default()
             };

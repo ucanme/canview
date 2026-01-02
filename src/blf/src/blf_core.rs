@@ -1,9 +1,9 @@
 //! Core BLF structures and error handling.
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use std::io::{self, Cursor, Write};
-use std::fmt;
 use std::error::Error;
+use std::fmt;
+use std::io::{self, Cursor, Write};
 
 /// Represents a parsing error that can occur while processing a BLF file.
 #[derive(Debug)]
@@ -26,11 +26,33 @@ impl fmt::Display for BlfParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             BlfParseError::IoError(e) => write!(f, "I/O error: {}", e),
-            BlfParseError::InvalidFileMagic => write!(f, "Invalid BLF file magic string"),
-            BlfParseError::InvalidContainerMagic => write!(f, "Invalid LOBJ container magic string"),
-            BlfParseError::UnexpectedEof => write!(f, "Unexpected end of file"),
-            BlfParseError::UnsupportedCompression(c) => write!(f, "Unsupported compression method: {}", c),
-            BlfParseError::UnknownHeaderVersion(v) => write!(f, "Unknown object header version: {}", v),
+            BlfParseError::InvalidFileMagic => {
+                write!(
+                    f,
+                    "Invalid BLF file magic string (expected 'LOGG' signature)"
+                )
+            }
+            BlfParseError::InvalidContainerMagic => {
+                write!(
+                    f,
+                    "Invalid LOBJ container magic string (expected 0x4A424F4C)"
+                )
+            }
+            BlfParseError::UnexpectedEof => write!(f, "Unexpected end of file while parsing"),
+            BlfParseError::UnsupportedCompression(c) => {
+                write!(
+                    f,
+                    "Unsupported compression method: {} (only uncompressed and zlib supported)",
+                    c
+                )
+            }
+            BlfParseError::UnknownHeaderVersion(v) => {
+                write!(
+                    f,
+                    "Unknown object header version: {} (only versions 1 and 2 supported)",
+                    v
+                )
+            }
         }
     }
 }
@@ -109,12 +131,12 @@ pub enum ObjectType {
     CanFdMessage = 100,
     CanFdMessage64 = 101,
     FlexRayV6StartCycleEvent = 40, // Added
-    FlexRayStatusEvent = 45, // Added
-    FlexRayVFrError = 47, // Added
-    FlexRayVFrStatus = 48, // Added
-    FlexRayVFrStartCycle = 49, // Added
-    FlexRayVFrReceiveMsg = 50, // Added
-    FlexRayVFrReceiveMsgEx = 66, // Added
+    FlexRayStatusEvent = 45,       // Added
+    FlexRayVFrError = 47,          // Added
+    FlexRayVFrStatus = 48,         // Added
+    FlexRayVFrStartCycle = 49,     // Added
+    FlexRayVFrReceiveMsg = 50,     // Added
+    FlexRayVFrReceiveMsgEx = 66,   // Added
 }
 
 impl From<u32> for ObjectType {
@@ -200,17 +222,87 @@ pub struct ObjectHeader {
 }
 
 impl ObjectHeader {
-    /// Reads an `ObjectHeader` (V1 or V2) from a byte stream.
+    /// Reads an `ObjectHeader` (V1 or V2) from a byte stream with error recovery.
     pub fn read(cursor: &mut Cursor<&[u8]>) -> BlfParseResult<Self> {
+        let start_pos = cursor.position();
         let signature = cursor.read_u32::<LittleEndian>()?;
-        println!("signature: {:x}", signature);
+
+        // Better signature validation with recovery attempt
         if signature != 0x4A424F4C {
-            return Err(BlfParseError::InvalidContainerMagic);
+            println!(
+                "WARN: Invalid signature 0x{:08X} at position {}, expected 0x4A424F4C",
+                signature, start_pos
+            );
+
+            // Try to find the next valid signature by scanning forward
+            let mut found = false;
+            let data_len = cursor.get_ref().len() as u64;
+            let mut scan_pos = start_pos + 1;
+
+            while scan_pos + 4 <= data_len {
+                cursor.set_position(scan_pos);
+                if let Ok(test_sig) = cursor.read_u32::<LittleEndian>() {
+                    if test_sig == 0x4A424F4C {
+                        println!("INFO: Found valid signature at position {}", scan_pos);
+                        cursor.set_position(scan_pos);
+                        found = true;
+                        break;
+                    }
+                }
+                scan_pos += 1;
+            }
+
+            if !found {
+                cursor.set_position(start_pos);
+                return Err(BlfParseError::InvalidContainerMagic);
+            }
+
+            // Re-read the signature from the corrected position
+            let signature = cursor.read_u32::<LittleEndian>()?;
+            if signature != 0x4A424F4C {
+                return Err(BlfParseError::InvalidContainerMagic);
+            }
         }
         let header_size = cursor.read_u16::<LittleEndian>()?;
         let header_version = cursor.read_u16::<LittleEndian>()?;
         let object_size = cursor.read_u32::<LittleEndian>()?;
-        let object_type = ObjectType::from(cursor.read_u32::<LittleEndian>()?);
+        let object_type_raw = cursor.read_u32::<LittleEndian>()?;
+        let object_type = ObjectType::from(object_type_raw);
+
+        // Log object type for debugging
+        println!(
+            "DEBUG: Reading object: type={:?} (raw={}), header_size={}, object_size={}",
+            object_type, object_type_raw, header_size, object_size
+        );
+
+        // Validate header size and object size with detailed error reporting
+        if header_size < 24 {
+            println!(
+                "ERROR: Invalid header size {} at position {}, minimum is 24 bytes",
+                header_size,
+                cursor.position() - 12
+            );
+            return Err(BlfParseError::InvalidContainerMagic);
+        }
+
+        if object_size < header_size as u32 {
+            println!(
+                "ERROR: Invalid object size {} < header size {} at position {}",
+                object_size,
+                header_size,
+                cursor.position() - 8
+            );
+            return Err(BlfParseError::InvalidContainerMagic);
+        }
+
+        // Sanity check: object size shouldn't be ridiculously large (>100MB)
+        if object_size > 100 * 1024 * 1024 {
+            println!(
+                "WARN: Unusually large object size {} at position {}, this might indicate corruption",
+                object_size,
+                cursor.position() - 8
+            );
+        }
 
         let object_flags;
         let object_time_stamp;
@@ -218,11 +310,17 @@ impl ObjectHeader {
         let mut time_stamp_status = None;
 
         if header_version == 1 {
+            if header_size < 32 {
+                return Err(BlfParseError::UnknownHeaderVersion(header_version));
+            }
             object_flags = cursor.read_u32::<LittleEndian>()?;
             let _object_version = cursor.read_u16::<LittleEndian>()?;
             let _client_index = cursor.read_u16::<LittleEndian>()?;
             object_time_stamp = cursor.read_u64::<LittleEndian>()?;
         } else if header_version == 2 {
+            if header_size < 40 {
+                return Err(BlfParseError::UnknownHeaderVersion(header_version));
+            }
             object_flags = cursor.read_u32::<LittleEndian>()?;
             time_stamp_status = Some(cursor.read_u8()?);
             let _reserved = cursor.read_u8()?;
@@ -231,6 +329,24 @@ impl ObjectHeader {
             original_time_stamp = Some(cursor.read_u64::<LittleEndian>()?);
         } else {
             return Err(BlfParseError::UnknownHeaderVersion(header_version));
+        }
+
+        // Skip any extra header bytes for future compatibility
+        let current_pos = cursor.position();
+        let header_start_pos = current_pos - (if header_version == 1 { 24 } else { 32 }); // Adjust for what we've read
+        let expected_pos = header_start_pos + header_size as u64;
+
+        if current_pos < expected_pos {
+            println!(
+                "DEBUG: Skipping {} extra header bytes for future compatibility",
+                expected_pos - current_pos
+            );
+            cursor.set_position(expected_pos);
+        } else if current_pos > expected_pos {
+            println!(
+                "WARN: Read {} bytes past expected header end, possible parsing error",
+                current_pos - expected_pos
+            );
         }
 
         Ok(ObjectHeader {
@@ -278,8 +394,61 @@ impl ObjectHeader {
         } else if self.header_version == 2 {
             40 // signature (4) + header_size (2) + header_version (2) + object_size (4) + object_type (4) + object_flags (4) + time_stamp_status (1) + reserved (1) + object_version (2) + object_time_stamp (8) + original_time_stamp (8)
         } else {
-            0 // Should not happen with proper validation
+            self.header_size // Use the actual header size for unknown versions
         }
     }
-}
 
+    /// Validates the header consistency with detailed logging
+    pub fn validate(&self) -> BlfParseResult<()> {
+        if self.signature != 0x4A424F4C {
+            println!("ERROR: Invalid object signature: 0x{:08X}", self.signature);
+            return Err(BlfParseError::InvalidContainerMagic);
+        }
+
+        if self.object_size < self.header_size as u32 {
+            println!(
+                "ERROR: Object size ({}) is smaller than header size ({})",
+                self.object_size, self.header_size
+            );
+            return Err(BlfParseError::InvalidContainerMagic);
+        }
+
+        if self.header_version != 1 && self.header_version != 2 {
+            println!(
+                "ERROR: Unsupported header version: {} (supported: 1, 2)",
+                self.header_version
+            );
+            return Err(BlfParseError::UnknownHeaderVersion(self.header_version));
+        }
+
+        // Additional consistency checks
+        let expected_header_size = if self.header_version == 1 { 32 } else { 40 };
+        if self.header_size != expected_header_size {
+            println!(
+                "WARN: Header size {} differs from expected {} for version {}",
+                self.header_size, expected_header_size, self.header_version
+            );
+        }
+
+        println!(
+            "DEBUG: Header validation passed for object type {:?}",
+            self.object_type
+        );
+        Ok(())
+    }
+
+    /// Returns a detailed debug string for troubleshooting
+    pub fn debug_info(&self) -> String {
+        format!(
+            "ObjectHeader {{ sig: 0x{:08X}, hdr_size: {}, hdr_ver: {}, obj_size: {}, obj_type: {:?} ({}), flags: 0x{:08X}, timestamp: {} }}",
+            self.signature,
+            self.header_size,
+            self.header_version,
+            self.object_size,
+            self.object_type,
+            self.object_type as u32,
+            self.object_flags,
+            self.object_time_stamp
+        )
+    }
+}
