@@ -74,7 +74,6 @@ struct CanViewApp {
     config_file_path: Option<PathBuf>,
     // Tracks whether the window is currently maximized (used for UI state)
     is_maximized: bool,
-    is_title_dragging: bool,
     // Whether the app is in streaming mode (used in the status area)
     is_streaming_mode: bool,
 }
@@ -94,7 +93,6 @@ impl CanViewApp {
             config_file_path: None,
             // Default window/app states
             is_maximized: false,
-            is_title_dragging: false,
             is_streaming_mode: false,
         };
 
@@ -438,10 +436,8 @@ impl CanViewApp {
 }
 
 // 实现视图
-
 impl Render for CanViewApp {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let view = cx.entity().clone();
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .size_full()
             .flex()
@@ -449,7 +445,7 @@ impl Render for CanViewApp {
             .child(
                 // Unified top bar with all options
                 div()
-                    .h(px(56.))
+                    .h(px(48.))
                     .bg(rgb(0x181818))
                     .flex()
                     .items_center()
@@ -457,24 +453,12 @@ impl Render for CanViewApp {
                     .px_4()
                     .border_b_1()
                     .border_color(rgb(0x2a2a2a))
-                    .window_control_area(WindowControlArea::Drag)
-                    .on_mouse_down(gpui::MouseButton::Left, |_event, window, _cx| {
-                        window.start_window_move();
-                    })
                     .child(
-                        // Left: App branding and navigation tabs (draggable area)
+                        // Left: App branding and navigation tabs
                         div()
                             .flex()
                             .items_center()
-                            .h_full()
                             .gap_6()
-                            .on_mouse_down(gpui::MouseButton::Left, |_event, window, _cx| {
-                                window.start_window_move();
-                            })
-                            .bg(rgb(0x151515))
-                            .rounded(px(6.))
-                            .px_2()
-                            .py_1()
                             .child(
                                 div()
                                     .text_color(rgb(0xffffff))
@@ -514,12 +498,6 @@ impl Render for CanViewApp {
                                                     style
                                                 }
                                             })
-                                            .on_mouse_down(gpui::MouseButton::Left, {
-                                                let view = view.clone();
-                                                move |_, _, cx| {
-                                                    view.update(cx, |view, _| view.current_view = AppView::LogView);
-                                                }
-                                            })
                                             .child("Logs"),
                                     )
                                     .child(
@@ -549,12 +527,6 @@ impl Render for CanViewApp {
                                                         .text_color(rgb(0xd1d5db))
                                                 } else {
                                                     style
-                                                }
-                                            })
-                                            .on_mouse_down(gpui::MouseButton::Left, {
-                                                let view = view.clone();
-                                                move |_, _, cx| {
-                                                    view.update(cx, |view, _| view.current_view = AppView::ConfigView);
                                                 }
                                             })
                                             .child("Config"),
@@ -588,12 +560,6 @@ impl Render for CanViewApp {
                                                     style
                                                 }
                                             })
-                                            .on_mouse_down(gpui::MouseButton::Left, {
-                                                let view = view.clone();
-                                                move |_, _, cx| {
-                                                    view.update(cx, |view, _| view.current_view = AppView::ChartView);
-                                                }
-                                            })
                                             .child("Analytics"),
                                     ),
                             ),
@@ -603,11 +569,7 @@ impl Render for CanViewApp {
                         div()
                             .flex()
                             .items_center()
-                            .h_full()
                             .gap_4()
-                            .on_mouse_down(gpui::MouseButton::Left, |_event, window, _cx| {
-                                window.start_window_move();
-                            })
                             .child(
                                 div()
                                     .text_xs()
@@ -632,11 +594,7 @@ impl Render for CanViewApp {
                         div()
                             .flex()
                             .items_center()
-                            .h_full()
                             .gap_2()
-                            .on_mouse_down(gpui::MouseButton::Left, |_event, window, _cx| {
-                                window.start_window_move();
-                            })
                             .child(
                                 div()
                                     .px_3()
@@ -648,12 +606,6 @@ impl Render for CanViewApp {
                                     .rounded(px(4.))
                                     .cursor_pointer()
                                     .hover(|style| style.bg(rgb(0x047857)))
-                                    .on_mouse_down(gpui::MouseButton::Left, {
-                                        let view = view.clone();
-                                        move |_, _, cx| {
-                                            view.update(cx, |view, cx| view.open_blf_file(cx));
-                                        }
-                                    })
                                     .child("📂 Open BLF"),
                             )
                             .child(
@@ -667,12 +619,6 @@ impl Render for CanViewApp {
                                     .rounded(px(4.))
                                     .cursor_pointer()
                                     .hover(|style| style.bg(rgb(0xb45309)))
-                                    .on_mouse_down(gpui::MouseButton::Left, {
-                                        let view = view.clone();
-                                        move |_, _, cx| {
-                                            view.update(cx, |view, cx| view.load_config(cx));
-                                        }
-                                    })
                                     .child("⚙️ Load Config"),
                             )
                             .child(

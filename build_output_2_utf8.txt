@@ -1,0 +1,322 @@
+﻿cargo : warning: `C:\Users\A
+dministrator\.cargo\config` 
+is deprecated in favor of `c
+onfig.toml`
+所在位置 行:1 字符: 1
++ cargo check --message-form
+at=short > build_output_2.tx
+t 2>&1; Get-Con ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~
+    + CategoryInfo          
+    : NotSpecified: (warni  
+  ng: `C:\Us...f `config.   
+ toml`:String) [], Remot    
+eException
+    + FullyQualifiedErrorId 
+    : NativeCommandError
+ 
+note: if you need to support
+ cargo 1.38 or earlier, you 
+can symlink `config` to `con
+fig.toml`
+warning: unused import: `sel
+f`
+ --> src\blf\src\objects\log
+_container.rs:5:15
+  |
+5 | use std::io::{self, Curs
+or, Read};
+  |               ^^^^
+  |
+  = note: `#[warn(unused_imp
+orts)]` on by default
+
+warning: ambiguous glob re-e
+xports
+  --> src\blf\src\objects\mo
+d.rs:12:9
+   |
+12 | pub use can::*;
+   |         ^^^^^^ the name
+ `messages` in the type name
+space is first re-exported h
+ere
+13 | pub use lin::*;
+   |         ------ but the 
+name `messages` in the type 
+namespace is also re-exporte
+d here
+   |
+   = note: `#[warn(ambiguous
+_glob_reexports)]` on by def
+ault
+
+warning: unused import: `env
+_vars::*`
+  --> src\blf\src\objects\mo
+d.rs:17:9
+   |
+17 | pub use env_vars::*;
+   |         ^^^^^^^^^^^
+
+warning: method `write` is n
+ever used
+  --> src\blf\src\objects\fl
+exray\message.rs:53:19
+   |
+28 | impl FlexRayData {
+   | ---------------- method
+ in this implementation
+...
+53 |     pub(crate) fn write
+<W: Write>(&self, _writer: &
+mut W) -> BlfParseResult<()>
+ {
+   |                   ^^^^^
+   |
+   = note: `#[warn(dead_code
+)]` on by default
+
+warning: method `write` is n
+ever used
+   --> src\blf\src\objects\f
+lexray\message.rs:108:19
+    |
+77  | impl FlexRayV6Message 
+{
+    | --------------------- 
+method in this implementatio
+n
+...
+108 |     pub(crate) fn writ
+e<W: Write>(&self, _writer: 
+&mut W) -> BlfParseResult<()
+> {
+    |                   ^^^^
+^
+
+warning: method `write` is n
+ever used
+   --> src\blf\src\objects\f
+lexray\message.rs:201:19
+    |
+154 | impl FlexRayVFrReceive
+Msg {
+    | ----------------------
+--- method in this implement
+ation
+...
+201 |     pub(crate) fn writ
+e<W: Write>(&self, _writer: 
+&mut W) -> BlfParseResult<()
+> {
+    |                   ^^^^
+^
+
+warning: method `write` is n
+ever used
+   --> src\blf\src\objects\f
+lexray\message.rs:320:19
+    |
+257 | impl FlexRayVFrReceive
+MsgEx {
+    | ----------------------
+----- method in this impleme
+ntation
+...
+320 |     pub(crate) fn writ
+e<W: Write>(&self, _writer: 
+&mut W) -> BlfParseResult<()
+> {
+    |                   ^^^^
+^
+
+warning: method `write` is n
+ever used
+  --> src\blf\src\objects\fl
+exray\status_events.rs:57:19
+   |
+30 | impl FlexRaySync {
+   | ---------------- method
+ in this implementation
+...
+57 |     pub(crate) fn write
+<W: Write>(&self, _writer: &
+mut W) -> BlfParseResult<()>
+ {
+   |                   ^^^^^
+
+warning: method `write` is n
+ever used
+  --> src\blf\src\objects\fl
+exray\status_events.rs:99:19
+   |
+77 | impl FlexRayV6StartCycl
+eEvent {
+   | -----------------------
+------ method in this implem
+entation
+...
+99 |     pub(crate) fn write
+<W: Write>(&self, _writer: &
+mut W) -> BlfParseResult<()>
+ {
+   |                   ^^^^^
+
+warning: method `write` is n
+ever used
+   --> src\blf\src\objects\f
+lexray\status_events.rs:145:
+19
+    |
+123 | impl FlexRayStatusEven
+t {
+    | ----------------------
+- method in this implementat
+ion
+...
+145 |     pub(crate) fn writ
+e<W: Write>(&self, _writer: 
+&mut W) -> BlfParseResult<()
+> {
+    |                   ^^^^
+^
+
+warning: method `write` is n
+ever used
+   --> src\blf\src\objects\f
+lexray\status_events.rs:202:
+19
+    |
+173 | impl FlexRayVFrError {
+    | -------------------- m
+ethod in this implementation
+...
+202 |     pub(crate) fn writ
+e<W: Write>(&self, _writer: 
+&mut W) -> BlfParseResult<()
+> {
+    |                   ^^^^
+^
+
+warning: method `write` is n
+ever used
+   --> src\blf\src\objects\f
+lexray\status_events.rs:268:
+19
+    |
+234 | impl FlexRayVFrStatus 
+{
+    | --------------------- 
+method in this implementatio
+n
+...
+268 |     pub(crate) fn writ
+e<W: Write>(&self, _writer: 
+&mut W) -> BlfParseResult<()
+> {
+    |                   ^^^^
+^
+
+warning: method `write` is n
+ever used
+   --> src\blf\src\objects\f
+lexray\status_events.rs:338:
+19
+    |
+302 | impl FlexRayVFrStartCy
+cle {
+    | ----------------------
+--- method in this implement
+ation
+...
+338 |     pub(crate) fn writ
+e<W: Write>(&self, _writer: 
+&mut W) -> BlfParseResult<()
+> {
+    |                   ^^^^
+^
+
+warning: method `write` is n
+ever used
+  --> src\blf\src\objects\et
+hernet\frame.rs:63:19
+   |
+32 | impl EthernetFrame {
+   | ------------------ meth
+od in this implementation
+...
+63 |     pub(crate) fn write
+<W: Write>(&self, _writer: &
+mut W) -> BlfParseResult<()>
+ {
+   |                   ^^^^^
+
+warning: method `write` is n
+ever used
+  --> src\blf\src\objects\ap
+p_events\trigger.rs:37:19
+   |
+22 | impl AppTrigger {
+   | --------------- method 
+in this implementation
+...
+37 |     pub(crate) fn write
+<W: Write>(&self, _writer: &
+mut W) -> BlfParseResult<()>
+ {
+   |                   ^^^^^
+
+warning: method `write` is n
+ever used
+  --> src\blf\src\objects\ap
+p_events\comment_marker.rs:3
+3:19
+   |
+18 | impl EventComment {
+   | ----------------- metho
+d in this implementation
+...
+33 |     pub(crate) fn write
+<W: Write>(&self, _writer: &
+mut W) -> BlfParseResult<()>
+ {
+   |                   ^^^^^
+
+warning: method `write` is n
+ever used
+  --> src\blf\src\objects\ap
+p_events\comment_marker.rs:9
+7:19
+   |
+59 | impl GlobalMarker {
+   | ----------------- metho
+d in this implementation
+...
+97 |     pub(crate) fn write
+<W: Write>(&self, _writer: &
+mut W) -> BlfParseResult<()>
+ {
+   |                   ^^^^^
+
+warning: `blf` (lib) generat
+ed 17 warnings (run `cargo f
+ix --lib -p blf` to apply 2 
+suggestions)
+    Checking canview v0.1.0 
+(C:\Users\Administrator\Rust
+roverProjects\canview)
+src\main.rs:470:36: error[E0
+624]: method `update` is pri
+vate: private method
+src\main.rs:473:36: error[E0
+624]: method `update` is pri
+vate: private method
+src\main.rs:476:39: error[E0
+624]: method `update` is pri
+vate: private method
+error: could not compile `ca
+nview` (bin "canview") due t
+o 3 previous errors
