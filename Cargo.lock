@@ -246,6 +246,7 @@ dependencies = [
  "raw-window-handle 0.6.2",
  "serde",
  "serde_repr",
+ "tokio",
  "url",
  "wayland-backend",
  "wayland-client",
@@ -8071,6 +8072,7 @@ dependencies = [
  "signal-hook-registry",
  "socket2",
  "tokio-macros",
+ "tracing",
  "windows-sys 0.61.2",
 ]
 
@@ -10042,6 +10044,7 @@ dependencies = [
  "ordered-stream",
  "serde",
  "serde_repr",
+ "tokio",
  "tracing",
  "uds_windows",
  "uuid",

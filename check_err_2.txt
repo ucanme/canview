@@ -1,0 +1,19 @@
+warning: `C:\Users\Administrator\.cargo\config` is deprecated in favor of `config.toml`
+note: if you need to support cargo 1.38 or earlier, you can symlink `config` to `config.toml`
+    Checking canview v0.1.0 (C:\Users\Administrator\RustroverProjects\canview)
+error[E0282]: type annotations needed
+   --> src\main.rs:648:55
+    |
+648 | ...                   cx.spawn(|mut cx| async move {
+    |                                 ^^^^^^
+...
+665 | ...                           let result = cx
+    |                                            -- type must be known at this point
+    |
+help: consider giving this closure parameter an explicit type
+    |
+648 |                                             cx.spawn(|mut cx: /* Type */| async move {
+    |                                                             ++++++++++++
+
+For more information about this error, try `rustc --explain E0282`.
+error: could not compile `canview` (bin "canview") due to 1 previous error

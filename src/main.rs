@@ -1,4 +1,5 @@
-use blf::{read_blf_from_file, LogObject};
+use blf::{read_blf_from_file, BlfResult, LogObject};
+use anyhow;
 use gpui::{prelude::*, *};
 use parser::dbc::{DbcDatabase, DbcParser};
 use parser::ldf::{LdfDatabase, LdfParser};
@@ -219,43 +220,36 @@ impl CanViewApp {
         }
     }
 
-    fn open_blf_file(&mut self, _cx: &mut Context<Self>) {
-        // Use synchronous file dialog for simplicity
-        if let Some(path) = rfd::FileDialog::new()
-            .add_filter("BLF Files", &["blf", "bin"])
-            .pick_file()
-        {
-            self.status_msg = "Loading BLF...".into();
-            match read_blf_from_file(&path) {
-                Ok(result) => {
-                    self.status_msg =
-                        format!("Loaded BLF: {} objects", result.objects.len()).into();
+    fn apply_blf_result(&mut self, result: anyhow::Result<BlfResult>) {
+        match result {
+            Ok(result) => {
+                self.status_msg =
+                    format!("Loaded BLF: {} objects", result.objects.len()).into();
 
-                    // Parse start time
-                    let st = result.file_stats.measurement_start_time.clone();
-                    let date_opt = chrono::NaiveDate::from_ymd_opt(
-                        st.year as i32,
-                        st.month as u32,
-                        st.day as u32,
-                    );
-                    let time_opt = chrono::NaiveTime::from_hms_milli_opt(
-                        st.hour as u32,
-                        st.minute as u32,
-                        st.second as u32,
-                        st.milliseconds as u32,
-                    );
+                // Parse start time
+                let st = result.file_stats.measurement_start_time.clone();
+                let date_opt = chrono::NaiveDate::from_ymd_opt(
+                    st.year as i32,
+                    st.month as u32,
+                    st.day as u32,
+                );
+                let time_opt = chrono::NaiveTime::from_hms_milli_opt(
+                    st.hour as u32,
+                    st.minute as u32,
+                    st.second as u32,
+                    st.milliseconds as u32,
+                );
 
-                    if let (Some(date), Some(time)) = (date_opt, time_opt) {
-                        self.start_time = Some(chrono::NaiveDateTime::new(date, time));
-                    } else {
-                        self.start_time = None;
-                    }
-
-                    self.messages = result.objects;
+                if let (Some(date), Some(time)) = (date_opt, time_opt) {
+                    self.start_time = Some(chrono::NaiveDateTime::new(date, time));
+                } else {
+                    self.start_time = None;
                 }
-                Err(e) => {
-                    self.status_msg = format!("Error: {:?}", e).into();
-                }
+
+                self.messages = result.objects;
+            }
+            Err(e) => {
+                self.status_msg = format!("Error: {:?}", e).into();
             }
         }
     }
@@ -650,8 +644,36 @@ impl Render for CanViewApp {
                                     .hover(|style| style.bg(rgb(0x047857)))
                                     .on_mouse_down(gpui::MouseButton::Left, {
                                         let view = view.clone();
-                                        move |_, _, cx| {
-                                            view.update(cx, |view, cx| view.open_blf_file(cx));
+                                        move |_, _, app| {
+                                            let view = view.clone();
+                                            app.spawn(async move |mut cx| {
+                                                if let Some(file) = rfd::AsyncFileDialog::new()
+                                                    .add_filter("BLF Files", &["blf", "bin"])
+                                                    .pick_file()
+                                                    .await
+                                                {
+                                                    let path = file.path().to_owned();
+
+                                                    let _ = cx.update(|cx| {
+                                                        let _ = view.update(cx, |view, _| {
+                                                            view.status_msg = "Loading BLF...".into();
+                                                        });
+                                                    });
+
+                                                    let result = cx
+                                                        .background_executor()
+                                                        .spawn(async move {
+                                                            read_blf_from_file(&path).map_err(|e| anyhow::Error::msg(format!("{:?}", e)))
+                                                        })
+                                                        .await;
+
+                                                    let _ = cx.update(|cx| {
+                                                        let _ = view.update(cx, |view, _| view.apply_blf_result(result));
+                                                    });
+                                                }
+                                                Ok::<(), anyhow::Error>(())
+                                            })
+                                            .detach();
                                         }
                                     })
                                     .child("📂 Open BLF"),

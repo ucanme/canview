@@ -1,0 +1,31 @@
+warning: `C:\Users\Administrator\.cargo\config` is deprecated in favor of `config.toml`
+note: if you need to support cargo 1.38 or earlier, you can symlink `config` to `config.toml`
+    Checking canview v0.1.0 (C:\Users\Administrator\RustroverProjects\canview)
+warning: variable does not need to be mutable
+   --> src\main.rs:649:67
+    |
+649 | ...                   app.spawn(async move |mut cx| {
+    |                                             ----^^
+    |                                             |
+    |                                             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` on by default
+
+warning: fields `selected_signals`, `is_maximized`, and `is_title_dragging` are never read
+  --> src\main.rs:72:5
+   |
+65 | struct CanViewApp {
+   |        ---------- fields in this struct
+...
+72 |     selected_signals: Vec<String>,
+   |     ^^^^^^^^^^^^^^^^
+...
+77 |     is_maximized: bool,
+   |     ^^^^^^^^^^^^
+78 |     is_title_dragging: bool,
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: `canview` (bin "canview") generated 2 warnings (run `cargo fix --bin "canview"` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.75s
