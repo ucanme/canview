@@ -306,9 +306,9 @@ impl CanViewApp {
                         message
                             .signals
                             .iter()
-                            .map(|(name, _signal)| {
-                                // Simplified signal extraction for now
-                                format!("{}=?", name)
+                            .map(|(name, signal)| {
+                                let val = signal.decode(&can_msg.data);
+                                format!("{}={:.2}", name, val)
                             })
                             .collect::<Vec<_>>()
                             .join(", ")
@@ -340,6 +340,28 @@ impl CanViewApp {
                     .collect::<Vec<_>>()
                     .join(" ");
 
+                let signals = if let Some(db) = self.ldf_channels.get(&lin_msg.channel) {
+                    // Search for the frame with the matching ID
+                    if let Some(frame) = db.frames.values().find(|f| f.id == lin_msg.id as u32) {
+                        frame
+                            .signals
+                            .iter()
+                            .filter_map(|mapping| {
+                                db.signals.get(&mapping.signal_name).map(|sig| (mapping, sig))
+                            })
+                            .map(|(mapping, signal)| {
+                                let val = signal.decode(&lin_msg.data, mapping.offset);
+                                format!("{}={}", signal.name, val)
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    } else {
+                        String::new()
+                    }
+                } else {
+                    String::new()
+                };
+
                 (
                     time_str,
                     lin_msg.channel,
@@ -347,7 +369,7 @@ impl CanViewApp {
                     format!("0x{:02X}", lin_msg.id),
                     lin_msg.dlc.to_string(),
                     data_hex,
-                    String::new(), // LIN signals parsing not implemented yet
+                    signals,
                 )
             }
             _ => (
@@ -646,7 +668,7 @@ impl Render for CanViewApp {
                                         let view = view.clone();
                                         move |_, _, app| {
                                             let view = view.clone();
-                                            app.spawn(async move |mut cx| {
+                                            app.spawn(async move |cx| {
                                                 if let Some(file) = rfd::AsyncFileDialog::new()
                                                     .add_filter("BLF Files", &["blf", "bin"])
                                                     .pick_file()
