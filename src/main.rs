@@ -1,5 +1,5 @@
-use blf::{read_blf_from_file, BlfResult, LogObject};
 use anyhow;
+use blf::{read_blf_from_file, BlfResult, LogObject};
 use gpui::{prelude::*, *};
 use parser::dbc::{DbcDatabase, DbcParser};
 use parser::ldf::{LdfDatabase, LdfParser};
@@ -54,7 +54,7 @@ struct AppConfig {
     active_version_name: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum AppView {
     LogView,
     ConfigView,
@@ -78,6 +78,9 @@ struct CanViewApp {
     is_title_dragging: bool,
     // Whether the app is in streaming mode (used in the status area)
     is_streaming_mode: bool,
+    // Window state for manual maximize/restore
+    saved_window_bounds: Option<Bounds<Pixels>>,
+    display_bounds: Option<Bounds<Pixels>>,
 }
 
 impl CanViewApp {
@@ -97,6 +100,8 @@ impl CanViewApp {
             is_maximized: false,
             is_title_dragging: false,
             is_streaming_mode: false,
+            saved_window_bounds: None,
+            display_bounds: None,
         };
 
         // 启动时加载配置
@@ -223,16 +228,12 @@ impl CanViewApp {
     fn apply_blf_result(&mut self, result: anyhow::Result<BlfResult>) {
         match result {
             Ok(result) => {
-                self.status_msg =
-                    format!("Loaded BLF: {} objects", result.objects.len()).into();
+                self.status_msg = format!("Loaded BLF: {} objects", result.objects.len()).into();
 
                 // Parse start time
                 let st = result.file_stats.measurement_start_time.clone();
-                let date_opt = chrono::NaiveDate::from_ymd_opt(
-                    st.year as i32,
-                    st.month as u32,
-                    st.day as u32,
-                );
+                let date_opt =
+                    chrono::NaiveDate::from_ymd_opt(st.year as i32, st.month as u32, st.day as u32);
                 let time_opt = chrono::NaiveTime::from_hms_milli_opt(
                     st.hour as u32,
                     st.minute as u32,
@@ -347,7 +348,9 @@ impl CanViewApp {
                             .signals
                             .iter()
                             .filter_map(|mapping| {
-                                db.signals.get(&mapping.signal_name).map(|sig| (mapping, sig))
+                                db.signals
+                                    .get(&mapping.signal_name)
+                                    .map(|sig| (mapping, sig))
                             })
                             .map(|(mapping, signal)| {
                                 let val = signal.decode(&lin_msg.data, mapping.offset);
@@ -458,6 +461,7 @@ impl CanViewApp {
 impl Render for CanViewApp {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let view = cx.entity().clone();
+
         div()
             .size_full()
             .flex()
@@ -533,7 +537,9 @@ impl Render for CanViewApp {
                                             .on_mouse_down(gpui::MouseButton::Left, {
                                                 let view = view.clone();
                                                 move |_, _, cx| {
-                                                    view.update(cx, |view, _| view.current_view = AppView::LogView);
+                                                    view.update(cx, |view, _| {
+                                                        view.current_view = AppView::LogView
+                                                    });
                                                 }
                                             })
                                             .child("Logs"),
@@ -570,7 +576,9 @@ impl Render for CanViewApp {
                                             .on_mouse_down(gpui::MouseButton::Left, {
                                                 let view = view.clone();
                                                 move |_, _, cx| {
-                                                    view.update(cx, |view, _| view.current_view = AppView::ConfigView);
+                                                    view.update(cx, |view, _| {
+                                                        view.current_view = AppView::ConfigView
+                                                    });
                                                 }
                                             })
                                             .child("Config"),
@@ -607,7 +615,9 @@ impl Render for CanViewApp {
                                             .on_mouse_down(gpui::MouseButton::Left, {
                                                 let view = view.clone();
                                                 move |_, _, cx| {
-                                                    view.update(cx, |view, _| view.current_view = AppView::ChartView);
+                                                    view.update(cx, |view, _| {
+                                                        view.current_view = AppView::ChartView
+                                                    });
                                                 }
                                             })
                                             .child("Analytics"),
@@ -678,19 +688,27 @@ impl Render for CanViewApp {
 
                                                     let _ = cx.update(|cx| {
                                                         let _ = view.update(cx, |view, _| {
-                                                            view.status_msg = "Loading BLF...".into();
+                                                            view.status_msg =
+                                                                "Loading BLF...".into();
                                                         });
                                                     });
 
                                                     let result = cx
                                                         .background_executor()
                                                         .spawn(async move {
-                                                            read_blf_from_file(&path).map_err(|e| anyhow::Error::msg(format!("{:?}", e)))
+                                                            read_blf_from_file(&path).map_err(|e| {
+                                                                anyhow::Error::msg(format!(
+                                                                    "{:?}",
+                                                                    e
+                                                                ))
+                                                            })
                                                         })
                                                         .await;
 
                                                     let _ = cx.update(|cx| {
-                                                        let _ = view.update(cx, |view, _| view.apply_blf_result(result));
+                                                        let _ = view.update(cx, |view, _| {
+                                                            view.apply_blf_result(result)
+                                                        });
                                                     });
                                                 }
                                                 Ok::<(), anyhow::Error>(())
@@ -775,11 +793,12 @@ impl Render for CanViewApp {
                                     )
                                     .on_mouse_down(
                                         gpui::MouseButton::Left,
-                                        |_event, window, _app| {
-                                            // Toggle maximize/restore on the window. If your Window API
-                                            // has `is_maximized()` / `restore()` methods you can use them
-                                            // to implement a proper toggle. Here we call `zoom_window()` as requested.
-                                            window.zoom_window();
+                                        move |_event, window, cx| {
+                                            // Use our custom toggle that properly manages state
+                                            let view = view.clone();
+                                            view.update(cx, |view, cx| {
+                                                view.toggle_maximize(window, cx);
+                                            });
                                         },
                                     ),
                             )
@@ -841,7 +860,7 @@ impl Render for CanViewApp {
                             ),
                     )
                     .child(
-                        // Right: Status
+                        // Right: Status with resize handle
                         div()
                             .flex()
                             .items_center()
@@ -851,13 +870,197 @@ impl Render for CanViewApp {
                             } else {
                                 "Normal Mode"
                             }))
-                            .child(div().child(self.status_msg.clone())),
+                            .child(div().child(self.status_msg.clone()))
+                            .child(
+                                // Resize handle in bottom-right corner
+                                div()
+                                    .ml_2()
+                                    .w(px(16.))
+                                    .h(px(16.))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .child(
+                                        div()
+                                            .w(px(10.))
+                                            .h(px(10.))
+                                            .border_r_2()
+                                            .border_b_2()
+                                            .border_color(rgb(0x6b7280))
+                                            .opacity(0.5),
+                                    )
+                                    .hover(|style| style.opacity(1.0)),
+                            ),
                     ),
             )
     }
 }
 
 impl CanViewApp {
+    fn toggle_maximize(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        // Initialize display bounds on first use
+        if self.display_bounds.is_none() {
+            let displays = cx.displays();
+            if let Some(display) = displays.first() {
+                let display_bounds = display.bounds();
+                // Leave a small margin for the task bar and dock
+                let margin = px(4.0);
+                self.display_bounds = Some(Bounds {
+                    origin: Point::new(margin, margin),
+                    size: Size {
+                        width: display_bounds.size.width - margin * 2.0,
+                        height: display_bounds.size.height - margin * 2.0,
+                    },
+                });
+            }
+        }
+
+        if self.is_maximized {
+            // Restore to normal size - create new window with saved bounds
+            if let Some(saved_bounds) = self.saved_window_bounds {
+                // Clone all necessary state
+                let current_view = self.current_view;
+                let messages = self.messages.clone();
+                let status_msg = self.status_msg.clone();
+                let dbc_channels = self.dbc_channels.clone();
+                let ldf_channels = self.ldf_channels.clone();
+                let app_config = self.app_config.clone();
+                let selected_signals = self.selected_signals.clone();
+                let start_time = self.start_time;
+                let config_dir = self.config_dir.clone();
+                let config_file_path = self.config_file_path.clone();
+                let display_bounds = self.display_bounds;
+
+                // Open new window with saved bounds
+                cx.open_window(
+                    WindowOptions {
+                        window_bounds: Some(WindowBounds::Windowed(saved_bounds)),
+                        titlebar: None,
+                        kind: gpui::WindowKind::PopUp,
+                        ..Default::default()
+                    },
+                    |_window, cx| {
+                        cx.new(|_| {
+                            Self::new_with_state(
+                                current_view,
+                                messages,
+                                status_msg,
+                                dbc_channels,
+                                ldf_channels,
+                                app_config,
+                                selected_signals,
+                                start_time,
+                                config_dir,
+                                config_file_path,
+                                false, // is_maximized = false
+                                None,  // saved_window_bounds = None
+                                display_bounds,
+                            )
+                        })
+                    },
+                )
+                .ok();
+
+                // Close current window
+                window.remove_window();
+            }
+        } else {
+            // Save current bounds before maximizing
+            let current_bounds = window.bounds();
+            self.saved_window_bounds = Some(current_bounds);
+
+            // Clone all necessary state
+            let current_view = self.current_view;
+            let messages = self.messages.clone();
+            let status_msg = self.status_msg.clone();
+            let dbc_channels = self.dbc_channels.clone();
+            let ldf_channels = self.ldf_channels.clone();
+            let app_config = self.app_config.clone();
+            let selected_signals = self.selected_signals.clone();
+            let start_time = self.start_time;
+            let config_dir = self.config_dir.clone();
+            let config_file_path = self.config_file_path.clone();
+            let display_bounds = self.display_bounds;
+
+            // Open new maximized window
+            if let Some(maximized_bounds) = self.display_bounds {
+                cx.open_window(
+                    WindowOptions {
+                        window_bounds: Some(WindowBounds::Windowed(maximized_bounds)),
+                        titlebar: None,
+                        kind: gpui::WindowKind::PopUp,
+                        ..Default::default()
+                    },
+                    |_window, cx| {
+                        cx.new(|_| {
+                            Self::new_with_state(
+                                current_view,
+                                messages,
+                                status_msg,
+                                dbc_channels,
+                                ldf_channels,
+                                app_config,
+                                selected_signals,
+                                start_time,
+                                config_dir,
+                                config_file_path,
+                                true,                 // is_maximized = true
+                                Some(current_bounds), // saved_window_bounds
+                                display_bounds,
+                            )
+                        })
+                    },
+                )
+                .ok();
+
+                // Close current window
+                window.remove_window();
+            }
+        }
+    }
+
+    fn new_with_state(
+        current_view: AppView,
+        messages: Vec<LogObject>,
+        status_msg: SharedString,
+        dbc_channels: HashMap<u16, DbcDatabase>,
+        ldf_channels: HashMap<u16, LdfDatabase>,
+        app_config: AppConfig,
+        selected_signals: Vec<String>,
+        start_time: Option<chrono::NaiveDateTime>,
+        config_dir: Option<PathBuf>,
+        config_file_path: Option<PathBuf>,
+        is_maximized: bool,
+        saved_window_bounds: Option<Bounds<Pixels>>,
+        display_bounds: Option<Bounds<Pixels>>,
+    ) -> Self {
+        let mut app = Self {
+            current_view,
+            messages,
+            status_msg,
+            dbc_channels,
+            ldf_channels,
+            app_config,
+            selected_signals,
+            start_time,
+            config_dir,
+            config_file_path,
+            is_maximized,
+            is_title_dragging: false,
+            is_streaming_mode: false,
+            saved_window_bounds,
+            display_bounds,
+        };
+
+        // Load startup config (this will reset some state, so do it carefully)
+        // We skip loading config if we're restoring state
+        if !is_maximized {
+            app.load_startup_config();
+        }
+
+        app
+    }
+
     fn render_log_view(&self) -> impl IntoElement {
         div()
             .size_full()
@@ -1011,7 +1214,7 @@ fn main() {
                     },
                 })),
                 titlebar: None,
-
+                kind: gpui::WindowKind::PopUp,
                 ..Default::default()
             };
             cx.open_window(options, |_window, cx| cx.new(|_cx| CanViewApp::new()))?;
