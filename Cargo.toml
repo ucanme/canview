@@ -6,8 +6,8 @@ edition = "2021"
 [dependencies]
 blf = { path = "src/blf" }
 parser = { path = "src/parser" }
-gpui = { git = "https://github.com/zed-industries/zed", rev = "v0.217.4" }
-gpui-component = { git = "https://github.com/zed-industries/zed", rev = "v0.217.4", package = "gpui-component" }
+gpui = { git = "https://github.com/zed-industries/zed", branch = "main" }
+smallvec = { version = "2.0.0-alpha.12" }
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

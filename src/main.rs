@@ -75,7 +75,6 @@ struct CanViewApp {
     config_file_path: Option<PathBuf>,
     // Tracks whether the window is currently maximized (used for UI state)
     is_maximized: bool,
-    is_title_dragging: bool,
     // Whether the app is in streaming mode (used in the status area)
     is_streaming_mode: bool,
     // Window state for manual maximize/restore
@@ -98,7 +97,6 @@ impl CanViewApp {
             config_file_path: None,
             // Default window/app states
             is_maximized: false,
-            is_title_dragging: false,
             is_streaming_mode: false,
             saved_window_bounds: None,
             display_bounds: None,
@@ -478,9 +476,6 @@ impl Render for CanViewApp {
                     .border_b_1()
                     .border_color(rgb(0x2a2a2a))
                     .window_control_area(WindowControlArea::Drag)
-                    .on_mouse_down(gpui::MouseButton::Left, |_event, window, _cx| {
-                        window.start_window_move();
-                    })
                     .child(
                         // Left: App branding and navigation tabs (draggable area)
                         div()
@@ -488,9 +483,7 @@ impl Render for CanViewApp {
                             .items_center()
                             .h_full()
                             .gap_6()
-                            .on_mouse_down(gpui::MouseButton::Left, |_event, window, _cx| {
-                                window.start_window_move();
-                            })
+                            .window_control_area(WindowControlArea::Drag)
                             .bg(rgb(0x151515))
                             .rounded(px(6.))
                             .px_2()
@@ -631,9 +624,7 @@ impl Render for CanViewApp {
                             .items_center()
                             .h_full()
                             .gap_4()
-                            .on_mouse_down(gpui::MouseButton::Left, |_event, window, _cx| {
-                                window.start_window_move();
-                            })
+                            .window_control_area(WindowControlArea::Drag)
                             .child(
                                 div()
                                     .text_xs()
@@ -660,9 +651,7 @@ impl Render for CanViewApp {
                             .items_center()
                             .h_full()
                             .gap_2()
-                            .on_mouse_down(gpui::MouseButton::Left, |_event, window, _cx| {
-                                window.start_window_move();
-                            })
+                            .window_control_area(WindowControlArea::Drag)
                             .child(
                                 div()
                                     .px_3()
@@ -935,8 +924,12 @@ impl CanViewApp {
                 cx.open_window(
                     WindowOptions {
                         window_bounds: Some(WindowBounds::Windowed(saved_bounds)),
-                        titlebar: None,
-                        kind: gpui::WindowKind::PopUp,
+                        titlebar: Some(TitlebarOptions {
+                            title: Some("CanView".into()),
+                            appears_transparent: true,
+                            traffic_light_position: None,
+                        }),
+                        kind: gpui::WindowKind::Normal,
                         ..Default::default()
                     },
                     |_window, cx| {
@@ -987,8 +980,12 @@ impl CanViewApp {
                 cx.open_window(
                     WindowOptions {
                         window_bounds: Some(WindowBounds::Windowed(maximized_bounds)),
-                        titlebar: None,
-                        kind: gpui::WindowKind::PopUp,
+                        titlebar: Some(TitlebarOptions {
+                            title: Some("CanView".into()),
+                            appears_transparent: true,
+                            traffic_light_position: None,
+                        }),
+                        kind: gpui::WindowKind::Normal,
                         ..Default::default()
                     },
                     |_window, cx| {
@@ -1046,7 +1043,6 @@ impl CanViewApp {
             config_dir,
             config_file_path,
             is_maximized,
-            is_title_dragging: false,
             is_streaming_mode: false,
             saved_window_bounds,
             display_bounds,
@@ -1213,8 +1209,12 @@ fn main() {
                         height: px(1000.0),
                     },
                 })),
-                titlebar: None,
-                kind: gpui::WindowKind::PopUp,
+                titlebar: Some(TitlebarOptions {
+                    title: Some("CanView".into()),
+                    appears_transparent: true,
+                    traffic_light_position: None,
+                }),
+                kind: gpui::WindowKind::Normal,
                 ..Default::default()
             };
             cx.open_window(options, |_window, cx| cx.new(|_cx| CanViewApp::new()))?;
