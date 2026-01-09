@@ -1,0 +1,235 @@
+# 补丁: 更新 blf_core.rs 中的 ObjectHeader 以与 C++ 对齐
+# 文件: src/blf/src/blf_core.rs
+
+## 步骤 1: 更新 ObjectHeader 结构体定义 (约 L208-220)
+
+--- a/src/blf/src/blf_core.rs
++++ b/src/blf/src/blf_core.rs
+@@ -208,12 +208,16 @@ pub struct ObjectHeader {
+     /// Object signature, should be "LOBJ" (0x4A424F4C).
+     pub signature: u32,
+     /// Size of this header in bytes.
+     pub header_size: u16,
+     /// Version of the object header (1 or 2).
+     pub header_version: u16,
+     /// Total size of the object in bytes (header + data).
+     pub object_size: u32,
+     /// Type of the object.
+     pub object_type: ObjectType,
+-    /// Object-specific flags.
++    /// Object-specific flags (e.g., timestamp precision).
+     pub object_flags: u32,
++    /// Client index of sending node (V1 only).
++    pub client_index: u16,
++    /// Object-specific version number.
++    pub object_version: u16,
+     /// Timestamp of the object.
+     pub object_time_stamp: u64,
+     /// Original timestamp (only in V2 headers).
+     pub original_time_stamp: Option<u64>,
+     /// Timestamp status (only in V2 headers).
+     pub time_stamp_status: Option<u8>,
+ }
+ 
++/// Object header flags
++impl ObjectHeader {
++    /// 10 microsecond timestamp precision
++    pub const FLAG_TIME_TEN_MICS: u32 = 0x00000001;
++    
++    /// 1 nanosecond timestamp precision
++    pub const FLAG_TIME_ONE_NANS: u32 = 0x00000002;
++}
+ 
+## 步骤 2: 更新 ObjectHeader::read() 方法 (约 L310-330)
+
+找到这一段代码:
+```rust
+        if header_version == 1 {
+            // V1 headers can be 16, 24, or 32 bytes
+            if header_size >= 32 {
+                object_flags = cursor.read_u32::<LittleEndian>()?;
+                let _object_version = cursor.read_u16::<LittleEndian>()?;
+                let _client_index = cursor.read_u16::<LittleEndian>()?;
+                object_time_stamp = cursor.read_u64::<LittleEndian>()?;
+            } else if header_size >= 24 {
+                object_flags = cursor.read_u32::<LittleEndian>()?;
+                object_time_stamp = 0;
+            } else {
+                object_flags = 0;
+                object_time_stamp = 0;
+            }
+        } else if header_version == 2 {
+```
+
+替换为:
+```rust
+        let client_index;
+        let object_version;
+        
+        if header_version == 1 {
+            // V1 header (32 bytes standard): flags + clientIndex + objectVersion + timestamp
+            if header_size < 32 {
+                return Err(BlfParseError::UnknownHeaderVersion(header_version));
+            }
+            object_flags = cursor.read_u32::<LittleEndian>()?;
+            client_index = cursor.read_u16::<LittleEndian>()?;
+            object_version = cursor.read_u16::<LittleEndian>()?;
+            object_time_stamp = cursor.read_u64::<LittleEndian>()?;
+        } else if header_version == 2 {
+            // V2 header (48 bytes standard): flags + status + reserved + objectVersion + timestamp + original
+            if header_size < 48 {
+                return Err(BlfParseError::UnknownHeaderVersion(header_version));
+            }
+            object_flags = cursor.read_u32::<LittleEndian>()?;
+            time_stamp_status = Some(cursor.read_u8()?);
+            let _reserved = cursor.read_u8()?;
+            object_version = cursor.read_u16::<LittleEndian>()?;
+            object_time_stamp = cursor.read_u64::<LittleEndian>()?;
+            original_time_stamp = Some(cursor.read_u64::<LittleEndian>()?);
+            client_index = 0; // Not used in V2
+```
+
+## 步骤 3: 更新 ObjectHeader 构造 (约 L365-380)
+
+找到:
+```rust
+        Ok(ObjectHeader {
+            signature,
+            header_size,
+            header_version,
+            object_size,
+            object_type,
+            object_flags,
+            object_time_stamp,
+            original_time_stamp,
+            time_stamp_status,
+        })
+```
+
+替换为:
+```rust
+        Ok(ObjectHeader {
+            signature,
+            header_size,
+            header_version,
+            object_size,
+            object_type,
+            object_flags,
+            client_index,
+            object_version,
+            object_time_stamp,
+            original_time_stamp,
+            time_stamp_status,
+        })
+```
+
+## 步骤 4: 更新 ObjectHeader::write() 方法 (约 L385-410)
+
+找到 write 方法开头:
+```rust
+    pub fn write<W: Write>(&self, writer: &mut W) -> BlfParseResult<()> {
+        writer.write_u32::<LittleEndian>(self.signature)?;
+        writer.write_u16::<LittleEndian>(self.header_size)?;
+        writer.write_u16::<LittleEndian>(self.header_version)?;
+        writer.write_u32::<LittleEndian>(self.object_size)?;
+        writer.write_u32::<LittleEndian>(self.object_type as u32)?;
+        writer.write_u32::<LittleEndian>(self.object_flags)?;
+```
+
+替换为:
+```rust
+    pub fn write<W: Write>(&self, writer: &mut W) -> BlfParseResult<()> {
+        writer.write_u32::<LittleEndian>(self.signature)?;
+        writer.write_u16::<LittleEndian>(self.header_size)?;
+        writer.write_u16::<LittleEndian>(self.header_version)?;
+        writer.write_u32::<LittleEndian>(self.object_size)?;
+        writer.write_u32::<LittleEndian>(self.object_type as u32)?;
+        
+        if self.header_version == 1 {
+            // V1: flags + clientIndex + objectVersion + timestamp
+            writer.write_u32::<LittleEndian>(self.object_flags)?;
+            writer.write_u16::<LittleEndian>(self.client_index)?;
+            writer.write_u16::<LittleEndian>(self.object_version)?;
+            writer.write_u64::<LittleEndian>(self.object_time_stamp)?;
+        } else if self.header_version == 2 {
+            // V2: flags + status + reserved + objectVersion + timestamp + original
+            writer.write_u32::<LittleEndian>(self.object_flags)?;
+            writer.write_u8(self.time_stamp_status.unwrap_or(0))?;
+            writer.write_u8(0)?; // reserved
+            writer.write_u16::<LittleEndian>(self.object_version)?;
+            writer.write_u64::<LittleEndian>(self.object_time_stamp)?;
+            writer.write_u64::<LittleEndian>(self.original_time_stamp.unwrap_or(0))?;
+        } else {
+            return Err(BlfParseError::UnknownHeaderVersion(self.header_version));
+        }
+        Ok(())
+    }
+```
+
+## 额外需要更新的文件
+
+### test_utils.rs
+
+更新 `serialize_object_header()` 函数签名和实现:
+
+```rust
+pub fn serialize_object_header(
+    header: &ObjectHeader, 
+    writer: &mut impl Write
+) {
+    use byteorder::{LittleEndian, WriteBytesExt};
+    
+    writer.write_u32::<LittleEndian>(header.signature).unwrap();
+    writer.write_u16::<LittleEndian>(header.header_size).unwrap();
+    writer.write_u16::<LittleEndian>(header.header_version).unwrap();
+    writer.write_u32::<LittleEndian>(header.object_size).unwrap();
+    writer.write_u32::<LittleEndian>(header.object_type as u32).unwrap();
+    
+    if header.header_version == 1 {
+        writer.write_u32::<LittleEndian>(header.object_flags).unwrap();
+        writer.write_u16::<LittleEndian>(header.client_index).unwrap();
+        writer.write_u16::<LittleEndian>(header.object_version).unwrap();
+        writer.write_u64::<LittleEndian>(header.object_time_stamp).unwrap();
+    } else if header.header_version == 2 {
+        writer.write_u32::<LittleEndian>(header.object_flags).unwrap();
+        writer.write_u8(header.time_stamp_status.unwrap_or(0)).unwrap();
+        writer.write_u8(0).unwrap(); // reserved
+        writer.write_u16::<LittleEndian>(header.object_version).unwrap();
+        writer.write_u64::<LittleEndian>(header.object_time_stamp).unwrap();
+        writer.write_u64::<LittleEndian>(header.original_time_stamp.unwrap_or(0)).unwrap();
+    }
+}
+```
+
+### 测试文件更新
+
+所有创建 ObjectHeader 的测试都需要添加新字段:
+
+```rust
+ObjectHeader {
+    signature: 0x4A424F4C,
+    header_size: 32,
+    header_version: 1,
+    object_size: ...,
+    object_type: ...,
+    object_flags: 0x02,  // FLAG_TIME_ONE_NANS
+    client_index: 0,
+    object_version: 0,
+    object_time_stamp: ...,
+    original_time_stamp: None,
+    time_stamp_status: None,
+}
+```
+
+## 验证步骤
+
+1. 编译: `cargo build --package blf`
+2. 测试: `cargo test --package blf`
+3. 实际文件: `cargo run --package blf --bin read_blf -- sample.blf`
+
+## 预期结果
+
+- 所有 ObjectHeader 实例现在包含 client_index 和 object_version
+- V1 headers 正确读取 32 字节
+- V2 headers 正确读取 48 字节
+- 与 C++ 实现完全对齐

@@ -2,7 +2,8 @@
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Cursor, Read, Write};
-use crate::{BlfParseResult, ObjectHeader};
+use crate::{BlfParseResult};
+use crate::objects::object_header::ObjectHeader;
 
 /// Represents an Ethernet frame (`ETHERNET_FRAME`).
 #[derive(Debug, Clone, PartialEq)]
@@ -42,7 +43,7 @@ impl EthernetFrame {
         let tci = cursor.read_u16::<LittleEndian>()?;
         let payload_length = cursor.read_u16::<LittleEndian>()?;
         let _reserved = cursor.read_u64::<LittleEndian>()?;
-        
+
         let mut payload = vec![0; payload_length as usize];
         cursor.read_exact(&mut payload)?;
 

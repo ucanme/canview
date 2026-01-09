@@ -1,6 +1,7 @@
 //! LIN event object definitions.
 
-use crate::{BlfParseResult, ObjectHeader};
+use crate::{BlfParseResult};
+use crate::objects::object_header::ObjectHeader;
 use std::io::Cursor;
 
 // --- Stubs for LIN event objects ---

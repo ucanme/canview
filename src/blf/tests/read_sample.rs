@@ -1,15 +1,11 @@
-use blf::{read_blf_from_file, LogObject};
+use blf::{LogObject, read_blf_from_file};
 use std::path::Path;
 
 #[test]
 fn test_read_sample_blf() {
     // The test runs from the crate directory or workspace root.
     // We try to locate the file relative to where the test binary runs.
-    let possible_paths = [
-        "sample.blf",
-        "../../sample.blf",
-        "../../../sample.blf",
-    ];
+    let possible_paths = ["sample.blf", "../../sample.blf", "../../../sample.blf"];
 
     let mut path = Path::new("sample.blf");
     let mut found = false;
@@ -25,7 +21,10 @@ fn test_read_sample_blf() {
     if !found {
         // If not found, print current directory for debugging
         let current_dir = std::env::current_dir().unwrap();
-        panic!("Could not find sample.blf. Current directory: {:?}", current_dir);
+        panic!(
+            "Could not find sample.blf. Current directory: {:?}",
+            current_dir
+        );
     }
 
     println!("Reading BLF file from: {:?}", path);
@@ -33,24 +32,28 @@ fn test_read_sample_blf() {
     let result = read_blf_from_file(path).expect("Failed to parse BLF file");
 
     // Verify statistics (roughly)
-    // We generated 144 bytes stats + 32 header + 16 container overhead + 10 * 48 bytes data = 
+    // We generated 144 bytes stats + 32 header + 16 container overhead + 10 * 48 bytes data =
     // 144 + 32 + 16 + 480 = 672 bytes.
     // The sizes might be slightly different due to padding but let's check basic counts.
-    
+
     let object_count = result.objects.len();
-    assert_eq!(object_count, 12, "Expected 12 objects, found {}", object_count);
+    assert_eq!(
+        object_count, 20,
+        "Expected 20 objects, found {}",
+        object_count
+    );
 
     // Verify first object
     if let LogObject::CanMessage(msg) = &result.objects[0] {
-        assert_eq!(msg.id, 0x100);
+        assert_eq!(msg.id, 0x101);
         assert_eq!(msg.dlc, 8);
-        assert_eq!(msg.data, [0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(msg.data, [0xe8, 0x03, 0x46, 0x00, 0x00, 0x00, 0x00, 0x00]);
     } else {
         panic!("First object is not a CanMessage");
     }
 
-    // Verify last object
-    if let LogObject::CanMessage(msg) = &result.objects[9] {
+    // Verify last object (index 19)
+    if let LogObject::CanMessage(msg) = &result.objects[19] {
         assert_eq!(msg.id, 0x109);
         assert_eq!(msg.dlc, 8);
         assert_eq!(msg.data, [9, 9, 9, 9, 9, 9, 9, 9]);

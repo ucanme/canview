@@ -2,7 +2,8 @@
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Cursor, Read, Write};
-use crate::{BlfParseResult, ObjectHeader};
+use crate::{BlfParseResult};
+use crate::objects::object_header::ObjectHeader;
 
 /// Represents a FlexRay data frame (`FLEXRAY_DATA`, deprecated).
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -8,12 +8,14 @@ pub mod app_events;
 pub mod env_vars;
 pub mod most;
 pub mod log_container; // New
+pub mod object_header; // Add object_header module
 
 pub use can::*;
 pub use lin::*;
 pub use flexray::*;
 pub use ethernet::*;
 pub use app_events::*;
-pub use env_vars::*;
+// pub use env_vars::*; // Not used - commented out to avoid warning
 pub use most::*;
 pub use log_container::*; // New
+pub use object_header::*; // Re-export ObjectHeader and related types

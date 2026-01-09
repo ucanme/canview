@@ -213,15 +213,20 @@ mod tests {
     fn test_read_blf_from_file_successfully() {
         // 1. --- Define the objects we want to serialize ---
         let can_msg_header = ObjectHeader {
-            signature: 0x4A424F4C, // "LOBJ"
-            header_size: 32,
-            header_version: 1,
-            object_size: 48, // header + can_msg_fields + data
-            object_type: ObjectType::CanMessage,
+            base: crate::objects::object_header::ObjectHeaderBase {
+                signature: 0x4A424F4C, // "LOBJ"
+                header_size: 32,
+                header_version: 1,
+                object_size: 48, // header + can_msg_fields + data
+                object_type: ObjectType::CanMessage,
+            },
             object_flags: 0,
+            client_index: 0,
+            object_version: 0,
             object_time_stamp: 1000,
             original_time_stamp: None,
             time_stamp_status: None,
+            reserved: 0,
         };
         let can_message = CanMessage {
             header: can_msg_header,
@@ -238,21 +243,22 @@ mod tests {
 
         // 3. --- Create and serialize the LogContainer ---
         let container_header = ObjectHeader {
-            signature: 0x4A424F4C, // "LOBJ"
-            header_size: 32,       // 修正header_size为实际大小
-            header_version: 1,
-            object_size: 0, // Will be calculated later
-            object_type: ObjectType::LogContainer,
+            base: crate::objects::object_header::ObjectHeaderBase {
+                signature: 0x4A424F4C, // "LOBJ"
+                header_size: 32,       // 修正header_size为实际大小
+                header_version: 1,
+                object_size: 0, // Will be calculated later
+                object_type: ObjectType::LogContainer,
+            },
             object_flags: 0,
+            client_index: 0,
+            object_version: 0,
             object_time_stamp: 0,
             original_time_stamp: None,
             time_stamp_status: None,
         };
         let mut log_container = LogContainer {
-            header: ObjectHeader {
-                signature: 0x4A424F4C, // "LOBJ"
-                ..container_header.clone()
-            },
+            header: container_header.clone(),
             compression_method: 0, // No compression
             uncompressed_data: inner_object_bytes.clone(),
         };
@@ -268,13 +274,15 @@ mod tests {
         // 4. --- Create and serialize the FileStatistics header ---
         let file_stats = FileStatistics {
             statistics_size: 208,
+            api_number: 0,
             application_id: 1,
+            compression_level: 0,
             application_major: 1,
             application_minor: 0,
-            application_build: 0,
             file_size: (208 + container_bytes.len()) as u64,
             uncompressed_file_size: (208 + inner_object_bytes.len()) as u64,
             object_count: 1,
+            application_build: 0,
             measurement_start_time: SystemTime {
                 year: 2025,
                 month: 11,
@@ -330,6 +338,8 @@ mod tests {
             object_size: 48,
             object_type: ObjectType::CanMessage,
             object_flags: 0,
+            client_index: 0,
+            object_version: 0,
             object_time_stamp: 1000,
             original_time_stamp: None,
             time_stamp_status: None,
@@ -354,6 +364,8 @@ mod tests {
             object_size: 0,
             object_type: ObjectType::LogContainer,
             object_flags: 0,
+            client_index: 0,
+            object_version: 0,
             object_time_stamp: 0,
             original_time_stamp: None,
             time_stamp_status: None,
@@ -372,13 +384,15 @@ mod tests {
 
         let file_stats = FileStatistics {
             statistics_size: 208,
+            api_number: 0,
             application_id: 1,
+            compression_level: 0,
             application_major: 1,
             application_minor: 0,
-            application_build: 0,
             file_size: (208 + container_bytes.len()) as u64,
             uncompressed_file_size: (208 + inner_object_bytes.len()) as u64,
             object_count: 1,
+            application_build: 0,
             measurement_start_time: SystemTime {
                 year: 2025,
                 month: 11,

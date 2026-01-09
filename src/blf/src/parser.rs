@@ -2,7 +2,7 @@
 //! BLF parser module for parsing log objects from BLF files.
 
 use crate::objects::*;
-use crate::{BlfParseError, BlfParseResult, LogContainer, ObjectHeader, ObjectType};
+use crate::{BlfParseError, BlfParseResult, LogContainer, ObjectType};
 
 use std::io::Cursor;
 
@@ -125,7 +125,7 @@ impl LogObject {
             LogObject::CanMessage(msg) => Some(msg.channel),
             LogObject::CanMessage2(msg) => Some(msg.channel),
             LogObject::CanFdMessage(msg) => Some(msg.channel),
-            LogObject::CanFdMessage64(msg) => Some(msg.channel),
+            LogObject::CanFdMessage64(msg) => Some(msg.channel as u16),
             LogObject::LinMessage(msg) => Some(msg.channel),
             LogObject::LinMessage2(_msg) => None, // LinMessage2 doesn't have a direct channel field
             _ => None,
@@ -177,7 +177,7 @@ impl BlfParser {
                 break;
             }
 
-            let header_result = ObjectHeader::read(&mut cursor);
+            let header_result = ObjectHeaderBase::read(&mut cursor);
             let header = match header_result {
                 Ok(h) => h,
                 Err(e) => {
@@ -195,8 +195,8 @@ impl BlfParser {
 
             if self.debug {
                 println!(
-                    "Read object header: type={:?}, size={}, timestamp={}",
-                    header.object_type, header.object_size, header.object_time_stamp
+                    "Read object header: type={:?}, size={}",
+                    header.object_type, header.object_size,
                 );
             }
 
@@ -220,6 +220,7 @@ impl BlfParser {
                     );
                 }
             } else {
+                println!("Parsing container {}", header.object_size);
                 match LogContainer::read(&mut cursor, header.clone()) {
                     Ok(container) => {
                         let mut container_cursor = Cursor::new(&container.uncompressed_data[..]);
@@ -455,11 +456,9 @@ impl BlfParser {
     fn parse_inner_objects(&self, cursor: &mut Cursor<&[u8]>) -> BlfParseResult<Vec<LogObject>> {
         let mut all_objects = Vec::new();
         let data_len = cursor.get_ref().len();
-        println!("Parsing inner objects, data_len: {}", data_len);
 
         while (cursor.position() as usize) < data_len {
             let start_pos = cursor.position();
-            println!("Reading object at position: {}", start_pos);
 
             // Check if we have enough bytes to read the signature
             if (data_len as u64 - start_pos) < 4 {
@@ -477,15 +476,10 @@ impl BlfParser {
                 Err(e) => return Err(e),
             };
 
-            println!(
-                "Parsing object {:?} with size {}",
-                header.object_type, header.object_size
-            );
             // LogContainers should not be nested. If they are, we skip them to avoid infinite recursion.
             if header.object_type != ObjectType::LogContainer {
                 let object_body_size = (header.object_size as usize)
                     .saturating_sub(header.calculate_header_size() as usize);
-                println!("Object body size: {}", object_body_size);
                 if let Some(object) = self.parse_can_object(cursor, &header, object_body_size)? {
                     all_objects.push(object);
                 }
@@ -497,11 +491,6 @@ impl BlfParser {
             // 在LogContainer内部，对象已经通过add_padding进行了4字节对齐
             // 所以我们直接使用对象大小，而不是进行额外的对齐
             let next_pos = start_pos + header.object_size as u64;
-            println!(
-                "Advancing to next position: {} (current: {})",
-                next_pos, start_pos
-            );
-
             // Make sure we advance the cursor position to avoid infinite loops
             if next_pos <= start_pos {
                 // If object_size is 0 or invalid, advance by 1 byte to avoid infinite loop
@@ -562,15 +551,20 @@ mod tests {
         let parser = BlfParser::new();
         let can_message = CanMessage {
             header: ObjectHeader {
-                signature: 0x4A424F4C, // "LOBJ"
-                header_size: 32,
-                header_version: 1,
-                object_size: 48, // header + can_msg_fields + data
-                object_type: ObjectType::CanMessage,
+                base: crate::objects::object_header::ObjectHeaderBase {
+                    signature: 0x4A424F4C, // "LOBJ"
+                    header_size: 32,
+                    header_version: 1,
+                    object_size: 48, // header + can_msg_fields + data
+                    object_type: ObjectType::CanMessage,
+                },
                 object_flags: 0,
+                client_index: 0,
+                object_version: 0,
                 object_time_stamp: 1000,
                 original_time_stamp: None,
                 time_stamp_status: None,
+                reserved: 0,
             },
             channel: 1,
             flags: 0,
@@ -597,15 +591,20 @@ mod tests {
         let parser = BlfParser::new();
         let can_message1 = CanMessage {
             header: ObjectHeader {
-                signature: 0x4A424F4C, // "LOBJ"
-                header_size: 32,
-                header_version: 1,
-                object_size: 48,
-                object_type: ObjectType::CanMessage,
+                base: crate::objects::object_header::ObjectHeaderBase {
+                    signature: 0x4A424F4C, // "LOBJ"
+                    header_size: 32,
+                    header_version: 1,
+                    object_size: 48,
+                    object_type: ObjectType::CanMessage,
+                },
                 object_flags: 0,
+                client_index: 0,
+                object_version: 0,
                 object_time_stamp: 1000,
                 original_time_stamp: None,
                 time_stamp_status: None,
+                reserved: 0,
             },
             channel: 1,
             flags: 0,
@@ -615,21 +614,26 @@ mod tests {
         };
         let can_message2 = CanMessage {
             header: ObjectHeader {
-                signature: 0x4A424F4C, // "LOBJ"
-                header_size: 32,
-                header_version: 1,
-                object_size: 48,
-                object_type: ObjectType::CanMessage,
+                base: crate::objects::object_header::ObjectHeaderBase {
+                    signature: 0x4A424F4C, // "LOBJ"
+                    header_size: 32,
+                    header_version: 1,
+                    object_size: 48,
+                    object_type: ObjectType::CanMessage,
+                },
                 object_flags: 0,
-                object_time_stamp: 1000,
+                client_index: 0,
+                object_version: 0,
+                object_time_stamp: 2000,
                 original_time_stamp: None,
                 time_stamp_status: None,
+                reserved: 0,
             },
-            channel: 1,
+            channel: 2,
             flags: 0,
             dlc: 8,
             id: 0x222,
-            data: [0; 8],
+            data: [1; 8],
         };
 
         // Create a LogContainer to wrap the CAN messages
@@ -662,15 +666,20 @@ mod tests {
 
         // Create a LogContainer to wrap the unknown object
         let unknown_header = ObjectHeader {
-            signature: 0x4A424F4C, // "LOBJ"
-            header_size: 32,
-            header_version: 1,
-            object_size: 38, // Does not need to be a multiple of 4
-            object_type: ObjectType::Unknown,
+            base: crate::objects::object_header::ObjectHeaderBase {
+                signature: 0x4A424F4C, // "LOBJ"
+                header_size: 32,
+                header_version: 1,
+                object_size: 38, // Does not need to be a multiple of 4
+                object_type: ObjectType::Unknown,
+            },
             object_flags: 0,
+            client_index: 0,
+            object_version: 0,
             object_time_stamp: 1000,
             original_time_stamp: None,
             time_stamp_status: None,
+            reserved: 0,
         };
 
         let mut unknown_object_bytes = Vec::new();
