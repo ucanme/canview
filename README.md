@@ -65,7 +65,8 @@
 
 ## 📸 Screenshots
 
-> *Note: Add your application screenshots here*
+### BLF Logs Viewer
+![BLF Logs Viewer](assets/blf_logs_screenshot.png)
 
 ---
 
