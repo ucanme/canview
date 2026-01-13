@@ -1,5 +1,7 @@
 //! This module contains definitions for all supported BLF log objects.
 
+#![allow(ambiguous_glob_reexports)] // Allow glob imports from multiple modules
+
 pub mod can;
 pub mod lin;
 pub mod flexray;

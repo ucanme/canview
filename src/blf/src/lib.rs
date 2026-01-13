@@ -5,6 +5,8 @@
 
 //#![deny(missing_docs)]
 
+#![allow(dead_code)] // Allow unused methods (e.g., write methods for future functionality)
+
 mod blf_core;
 mod file;
 mod file_statistics;

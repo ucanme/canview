@@ -539,6 +539,7 @@ impl BlfParser {
         cursor.set_position(next_pos);
     }
 
+    #[allow(dead_code)]
     fn parse_unhandled_object(&self) -> Option<LogObject> {
         // The `parse_objects` loop handles advancing the cursor to the next object.
         // For unhandled or deprecated object types, we simply do nothing and return `None`.

@@ -155,8 +155,8 @@ impl CanFdMessage64 {
         // Debug: Show the raw body data (first 64 bytes)
         let current_pos = cursor.position();
         let remaining = cursor.get_ref().len() - current_pos as usize;
-        let dump_len = remaining.min(64);
-        let data_slice = &cursor.get_ref()[current_pos as usize..];
+        let _dump_len = remaining.min(64);
+        let _data_slice = &cursor.get_ref()[current_pos as usize..];
         // For 16-byte compact headers, there's an 8-byte timestamp before the actual data
         // This timestamp should be stored in the header, but the header was already read.
         // For 16-byte compact headers, skip 8-byte timestamp in body
