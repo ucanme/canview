@@ -4,7 +4,7 @@
 use crate::objects::*;
 use crate::{BlfParseError, BlfParseResult, LogContainer, ObjectType};
 
-use std::io::Cursor;
+use std::io::{Cursor, Read};
 
 // Log object enum for all supported BLF objects
 #[derive(Debug, Clone, PartialEq)]
@@ -418,7 +418,7 @@ impl BlfParser {
         &self,
         cursor: &mut Cursor<&[u8]>,
         header: ObjectHeader,
-        _object_data_size: usize,
+        object_data_size: usize,
     ) -> BlfParseResult<Option<LogObject>> {
         match header.object_type {
             // Temporarily comment out EnvString since it's not yet implemented
@@ -448,7 +448,16 @@ impl BlfParser {
             ObjectType::MostTrigger => Ok(Some(LogObject::MostTrigger(MostTrigger::read(
                 cursor, &header,
             )?))),
-            _ => Ok(self.parse_unhandled_object()),
+            _ => {
+                // Create an Unhandled object for unknown types
+                let mut data = vec![0u8; object_data_size];
+                cursor.read_exact(&mut data)?;
+                Ok(Some(LogObject::Unhandled {
+                    object_type: header.object_type as u32,
+                    timestamp: header.object_time_stamp,
+                    data,
+                }))
+            }
         }
     }
 

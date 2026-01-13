@@ -80,6 +80,45 @@ struct CanViewApp {
     // Window state for manual maximize/restore
     saved_window_bounds: Option<Bounds<Pixels>>,
     display_bounds: Option<Bounds<Pixels>>,
+    // Scroll handle for uniform_list
+    list_scroll_handle: gpui::UniformListScrollHandle,
+    // Scrollbar drag state
+    scrollbar_drag_state: Option<ScrollbarDragState>,
+    // Scroll offset for manual scrolling
+    scroll_offset: gpui::Pixels,
+    // Cached list container height for scrollbar calculations
+    list_container_height: f32,
+    // ID display mode: true for decimal, false for hexadecimal
+    id_display_decimal: bool,
+    // ID filter: Some(id_value) to filter messages, None to show all
+    id_filter: Option<u32>,
+    // ID filter input text
+    id_filter_text: SharedString,
+    // Show ID filter input dialog
+    show_id_filter_input: bool,
+    // Filter dropdown scroll offset
+    filter_scroll_offset: gpui::Pixels,
+    // Filter dropdown scroll handle - must persist across renders
+    filter_scroll_handle: gpui::UniformListScrollHandle,
+    // Track if mouse is hovering over filter dropdown
+    mouse_over_filter_dropdown: bool,
+    // Channel filter: Some(channel_value) to filter messages, None to show all
+    channel_filter: Option<u16>,
+    // Channel filter input text
+    channel_filter_text: SharedString,
+    // Show channel filter input dialog
+    show_channel_filter_input: bool,
+    // Channel filter dropdown scroll offset
+    channel_filter_scroll_offset: gpui::Pixels,
+    // Channel filter dropdown scroll handle
+    channel_filter_scroll_handle: gpui::UniformListScrollHandle,
+}
+
+// State for tracking scrollbar drag operation
+#[derive(Clone)]
+struct ScrollbarDragState {
+    start_y: Pixels,
+    start_scroll_offset: f32,
 }
 
 impl CanViewApp {
@@ -100,10 +139,36 @@ impl CanViewApp {
             is_streaming_mode: false,
             saved_window_bounds: None,
             display_bounds: None,
+            // Initialize uniform list scroll handle
+            list_scroll_handle: gpui::UniformListScrollHandle::new(),
+            // Initialize scrollbar drag state
+            scrollbar_drag_state: None,
+            // Initialize scroll offset
+            scroll_offset: px(0.0),
+            // Initialize list container height (will be updated dynamically)
+            list_container_height: 850.0,
+            // Default to decimal ID display
+            id_display_decimal: true,
+            // ID filter: None means show all messages
+            id_filter: None,
+            id_filter_text: "".into(),
+            // Hide ID filter input dialog by default
+            show_id_filter_input: false,
+            // Initialize filter scroll offset
+            filter_scroll_offset: px(0.0),
+            // Initialize filter scroll handle
+            filter_scroll_handle: gpui::UniformListScrollHandle::new(),
+            // Initialize mouse tracking
+            mouse_over_filter_dropdown: false,
+            // Channel filter
+            channel_filter: None,
+            channel_filter_text: "".into(),
+            show_channel_filter_input: false,
+            channel_filter_scroll_offset: px(0.0),
+            channel_filter_scroll_handle: gpui::UniformListScrollHandle::new(),
         };
 
-        // 启动时加载配置
-        app.load_startup_config();
+        // 启动时加载配�?        app.load_startup_config();
         app
     }
 
@@ -282,9 +347,11 @@ impl CanViewApp {
     fn get_timestamp_string(&self, timestamp: u64) -> String {
         if let Some(start) = &self.start_time {
             let msg_time = *start + chrono::Duration::nanoseconds(timestamp as i64);
-            msg_time.format("%H:%M:%S%.3f").to_string()
+            // Format: YYYY-MM-DD HH:MM:SS.mmmmmm (microseconds)
+            msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
         } else {
-            format!("{:.3}", timestamp as f64 / 1000000.0)
+            // If no start time, show nanoseconds as seconds with microsecond precision
+            format!("{:.6}", timestamp as f64 / 1_000_000_000.0)
         }
     }
 
@@ -457,13 +524,77 @@ impl CanViewApp {
 // 实现视图
 
 impl Render for CanViewApp {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // Update container height based on current window size
+        self.update_container_height(window);
+
         let view = cx.entity().clone();
 
         div()
             .size_full()
             .flex()
             .flex_col()
+            .on_key_down({
+                let view = view.clone();
+                move |event, _window, cx| {
+                    eprintln!("=== ROOT LEVEL on_key_down ===");
+                    eprintln!("keystroke: {}", event.keystroke);
+                    eprintln!("show_id_filter_input: {}", view.read(cx).show_id_filter_input);
+
+                    // Only handle when filter is active
+                    let show_filter = view.read(cx).show_id_filter_input;
+                    if show_filter {
+                        let keystroke_str = format!("{}", event.keystroke);
+                        match keystroke_str.as_str() {
+                            "backspace" => {
+                                view.update(cx, |app, cx| {
+                                    let mut text = app.id_filter_text.to_string();
+                                    if !text.is_empty() {
+                                        text.pop();
+                                        app.id_filter_text = text.into();
+                                        eprintln!("Filter text (backspace): {}", app.id_filter_text);
+                                        cx.notify();
+                                    }
+                                });
+                            }
+                            "escape" => {
+                                view.update(cx, |app, cx| {
+                                    app.show_id_filter_input = false;
+                                    eprintln!("Filter closed (escape)");
+                                    cx.notify();
+                                });
+                            }
+                            "enter" => {
+                                view.update(cx, |app, cx| {
+                                    if let Ok(parsed_id) = u32::from_str_radix(&app.id_filter_text.to_string(), 10) {
+                                        if !app.id_filter_text.is_empty() {
+                                            app.id_filter = Some(parsed_id);
+                                        }
+                                    }
+                                    app.show_id_filter_input = false;
+                                    eprintln!("Filter applied (enter): id={:?}", app.id_filter);
+                                    cx.notify();
+                                });
+                            }
+                            _ => {
+                                if keystroke_str.len() == 1 {
+                                    if let Some(ch) = keystroke_str.chars().next() {
+                                        if ch.is_ascii_digit() {
+                                            view.update(cx, |app, cx| {
+                                                let mut text = app.id_filter_text.to_string();
+                                                text.push(ch);
+                                                app.id_filter_text = text.into();
+                                                eprintln!("Filter text: {}", app.id_filter_text);
+                                                cx.notify();
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            })
             .child(
                 // Unified top bar with all options
                 div()
@@ -490,10 +621,63 @@ impl Render for CanViewApp {
                             .py_1()
                             .child(
                                 div()
-                                    .text_color(rgb(0xffffff))
-                                    .font_weight(FontWeight::BOLD)
-                                    .text_base()
-                                    .child("CanView"),
+                                    .flex()
+                                    .items_center()
+                                    .gap_2()
+                                    .child(
+                                        // App logo icon - simplified CAN bus waveform
+                                        div()
+                                            .w(px(24.))
+                                            .h(px(24.))
+                                            .rounded(px(6.))
+                                            .bg(rgb(0x1e293b))
+                                            .flex()
+                                            .items_center()
+                                            .justify_center()
+                                            .gap(px(2.))
+                                            .child(
+                                                div()
+                                                    .w(px(3.))
+                                                    .h(px(3.))
+                                                    .rounded(px(1.5))
+                                                    .bg(rgb(0x34d399))
+                                            )
+                                            .child(
+                                                div()
+                                                    .w(px(3.))
+                                                    .h(px(3.))
+                                                    .rounded(px(1.5))
+                                                    .bg(rgb(0x60a5fa))
+                                            )
+                                            .child(
+                                                div()
+                                                    .w(px(4.))
+                                                    .h(px(4.))
+                                                    .rounded(px(2.))
+                                                    .bg(rgb(0x818cf8))
+                                            )
+                                            .child(
+                                                div()
+                                                    .w(px(3.))
+                                                    .h(px(3.))
+                                                    .rounded(px(1.5))
+                                                    .bg(rgb(0x60a5fa))
+                                            )
+                                            .child(
+                                                div()
+                                                    .w(px(3.))
+                                                    .h(px(3.))
+                                                    .rounded(px(1.5))
+                                                    .bg(rgb(0x34d399))
+                                            ),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_color(rgb(0xffffff))
+                                            .font_weight(FontWeight::BOLD)
+                                            .text_base()
+                                            .child("CANVIEW"),
+                                    ),
                             )
                             .child(
                                 div()
@@ -695,8 +879,9 @@ impl Render for CanViewApp {
                                                         .await;
 
                                                     let _ = cx.update(|cx| {
-                                                        let _ = view.update(cx, |view, _| {
-                                                            view.apply_blf_result(result)
+                                                        let _ = view.update(cx, |view, cx| {
+                                                            view.apply_blf_result(result);
+                                                            cx.notify(); // Notify that the window needs to be re-rendered
                                                         });
                                                     });
                                                 }
@@ -782,12 +967,14 @@ impl Render for CanViewApp {
                                     )
                                     .on_mouse_down(
                                         gpui::MouseButton::Left,
-                                        move |_event, window, cx| {
-                                            // Use our custom toggle that properly manages state
+                                        {
                                             let view = view.clone();
-                                            view.update(cx, |view, cx| {
-                                                view.toggle_maximize(window, cx);
-                                            });
+                                            move |_event, window, cx| {
+                                                // Use our custom toggle that properly manages state
+                                                view.update(cx, |view, cx| {
+                                                    view.toggle_maximize(window, cx);
+                                                });
+                                            }
                                         },
                                     ),
                             )
@@ -818,7 +1005,7 @@ impl Render for CanViewApp {
                     .bg(rgb(0x181818))
                     .overflow_hidden()
                     .child(match self.current_view {
-                        AppView::LogView => self.render_log_view().into_any_element(),
+                        AppView::LogView => self.render_log_view(cx.entity().clone()).into_any_element(),
                         AppView::ConfigView => self.render_config_view().into_any_element(),
                         AppView::ChartView => self.render_chart_view().into_any_element(),
                     }),
@@ -925,7 +1112,7 @@ impl CanViewApp {
                     WindowOptions {
                         window_bounds: Some(WindowBounds::Windowed(saved_bounds)),
                         titlebar: Some(TitlebarOptions {
-                            title: Some("CanView".into()),
+                            title: Some("CANVIEW - Bus Data Analyzer".into()),
                             appears_transparent: true,
                             traffic_light_position: None,
                         }),
@@ -981,7 +1168,7 @@ impl CanViewApp {
                     WindowOptions {
                         window_bounds: Some(WindowBounds::Windowed(maximized_bounds)),
                         titlebar: Some(TitlebarOptions {
-                            title: Some("CanView".into()),
+                            title: Some("CANVIEW - Bus Data Analyzer".into()),
                             appears_transparent: true,
                             traffic_light_position: None,
                         }),
@@ -1046,6 +1233,23 @@ impl CanViewApp {
             is_streaming_mode: false,
             saved_window_bounds,
             display_bounds,
+            list_scroll_handle: gpui::UniformListScrollHandle::new(),
+            scrollbar_drag_state: None,
+            scroll_offset: px(0.0),
+            list_container_height: 850.0,
+            id_display_decimal: true,  // Default to decimal
+            id_filter: None,
+            id_filter_text: "".into(),
+            show_id_filter_input: false,
+            filter_scroll_offset: px(0.0),
+            filter_scroll_handle: gpui::UniformListScrollHandle::new(),
+            mouse_over_filter_dropdown: false,
+            // Channel filter
+            channel_filter: None,
+            channel_filter_text: "".into(),
+            show_channel_filter_input: false,
+            channel_filter_scroll_offset: px(0.0),
+            channel_filter_scroll_handle: gpui::UniformListScrollHandle::new(),
         };
 
         // Load startup config (this will reset some state, so do it carefully)
@@ -1057,13 +1261,297 @@ impl CanViewApp {
         app
     }
 
-    fn render_log_view(&self) -> impl IntoElement {
+    fn update_container_height(&mut self, window: &mut Window) {
+        // Get window bounds
+        let window_size = window.bounds();
+        let window_height = f32::from(window_size.size.height);
+
+        // Calculate actual list container height
+        // Window height - top bar (56px) - status bar (24px) - log header (28px)
+        let container_height = window_height - 56.0 - 24.0 - 28.0;
+
+        // Only update if it changed significantly (more than 10px difference)
+        if (container_height - self.list_container_height).abs() > 10.0 {
+            self.list_container_height = container_height;
+        }
+    }
+
+    fn render_log_view(&self, view: Entity<CanViewApp>) -> impl IntoElement {
+        // Clone view for use in multiple closures
+        let view_clone1 = view.clone();
+        let view_clone2 = view.clone();
+
+        // Apply filters (both ID and Channel)
+        let filtered_messages: Vec<LogObject> = match (self.id_filter, self.channel_filter) {
+            (None, None) => self.messages.clone(),
+            (Some(filter_id), None) => {
+                // Only ID filter
+                self.messages.iter().filter(|msg| {
+                    match msg {
+                        LogObject::CanMessage(can_msg) => can_msg.id == filter_id,
+                        LogObject::CanMessage2(can_msg) => can_msg.id == filter_id,
+                        LogObject::CanFdMessage(fd_msg) => fd_msg.id == filter_id,
+                        LogObject::CanFdMessage64(fd_msg) => fd_msg.id == filter_id,
+                        LogObject::LinMessage(lin_msg) => lin_msg.id as u32 == filter_id,
+                        LogObject::LinMessage2(_) => false,
+                        _ => false,
+                    }
+                }).cloned().collect()
+            }
+            (None, Some(filter_ch)) => {
+                // Only Channel filter
+                self.messages.iter().filter(|msg| {
+                    match msg {
+                        LogObject::CanMessage(can_msg) => can_msg.channel == filter_ch,
+                        LogObject::CanMessage2(can_msg) => can_msg.channel == filter_ch,
+                        LogObject::CanFdMessage(fd_msg) => fd_msg.channel == filter_ch,
+                        LogObject::CanFdMessage64(fd_msg) => fd_msg.channel as u16 == filter_ch,
+                        LogObject::LinMessage(lin_msg) => lin_msg.channel == filter_ch,
+                        LogObject::LinMessage2(_) => false,
+                        _ => false,
+                    }
+                }).cloned().collect()
+            }
+            (Some(filter_id), Some(filter_ch)) => {
+                // Both filters
+                self.messages.iter().filter(|msg| {
+                    match msg {
+                        LogObject::CanMessage(can_msg) => can_msg.id == filter_id && can_msg.channel == filter_ch,
+                        LogObject::CanMessage2(can_msg) => can_msg.id == filter_id && can_msg.channel == filter_ch,
+                        LogObject::CanFdMessage(fd_msg) => fd_msg.id == filter_id && fd_msg.channel == filter_ch,
+                        LogObject::CanFdMessage64(fd_msg) => fd_msg.id == filter_id && fd_msg.channel as u16 == filter_ch,
+                        LogObject::LinMessage(lin_msg) => lin_msg.id as u32 == filter_id && lin_msg.channel == filter_ch,
+                        LogObject::LinMessage2(_) => false,
+                        _ => false,
+                    }
+                }).cloned().collect()
+            }
+        };
+
+        let dbc_channels = self.dbc_channels.clone();
+        let ldf_channels = self.ldf_channels.clone();
+        let start_time = self.start_time;
+        let scroll_handle = self.list_scroll_handle.clone();
+        let total_messages = self.messages.len();
+        let id_display_decimal = self.id_display_decimal;
+        let id_filter = self.id_filter;
+        let id_filter_text = self.id_filter_text.clone();
+
+        // Calculate column widths based on ALL messages (not filtered), to keep layout consistent
+        let (time_width, ch_width, type_width, id_width, dlc_width) =
+            Self::calculate_column_widths(&self.messages, &dbc_channels, &ldf_channels, start_time);
+
+        // Clone view for use in event handlers
+        let view_for_mouse_move = view.clone();
+        let view_for_mouse_up = view.clone();
+        let view_for_scrollbar = view.clone();
+        let view_for_keyboard = view.clone();
+
+        // Clone for dialog display
+        let id_filter_text_for_dialog = id_filter_text.clone();
+
         div()
             .size_full()
             .flex()
             .flex_col()
+            .relative()  // Add relative positioning for absolute children
+            // Handle keyboard input for ID filter
+            .on_key_down(move |event, _window, cx| {
+                eprintln!("Global on_key_down: keystroke={}", event.keystroke);
+                // Check if filter box is active
+                let show_filter = view_for_keyboard.read(cx).show_id_filter_input;
+                eprintln!("  show_filter={}", show_filter);
+
+                // If filter box is active, handle input for it
+                if show_filter {
+                    eprintln!("  Filter box active, handling input");
+                    let keystroke_str = format!("{}", event.keystroke);
+                    match keystroke_str.as_str() {
+                        "backspace" => {
+                            view_for_keyboard.update(cx, |app, cx| {
+                                let mut text = app.id_filter_text.to_string();
+                                if !text.is_empty() {
+                                    text.pop();
+                                    app.id_filter_text = text.into();
+                                    eprintln!("  Filter text (backspace): {}", app.id_filter_text);
+                                    cx.notify();
+                                }
+                            });
+                            return;  // Don't continue to default handler
+                        }
+                        "escape" => {
+                            view_for_keyboard.update(cx, |app, cx| {
+                                app.show_id_filter_input = false;
+                                eprintln!("  Filter box closed (escape)");
+                                cx.notify();
+                            });
+                            return;
+                        }
+                        "enter" => {
+                            view_for_keyboard.update(cx, |app, cx| {
+                                // Apply filter and close
+                                if let Ok(parsed_id) = u32::from_str_radix(&app.id_filter_text.to_string(), 10) {
+                                    if !app.id_filter_text.is_empty() {
+                                        app.id_filter = Some(parsed_id);
+                                    }
+                                }
+                                app.show_id_filter_input = false;
+                                eprintln!("  Filter applied (enter): id={:?}", app.id_filter);
+                                cx.notify();
+                            });
+                            return;
+                        }
+                        _ => {
+                            // Handle digit input
+                            if keystroke_str.len() == 1 {
+                                if let Some(ch) = keystroke_str.chars().next() {
+                                    if ch.is_ascii_digit() {
+                                        view_for_keyboard.update(cx, |app, cx| {
+                                            let mut text = app.id_filter_text.to_string();
+                                            text.push(ch);
+                                            app.id_filter_text = text.into();
+                                            eprintln!("  Filter text: {}", app.id_filter_text);
+                                            cx.notify();
+                                        });
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // For non-digit keys when filter is active, still don't pass through
+                    return;
+                }
+
+                // Convert Keystroke to string for matching
+                let keystroke_str = format!("{}", event.keystroke);
+                match keystroke_str.as_str() {
+                    // Backspace to delete
+                    "backspace" => {
+                        view_for_keyboard.update(cx, |app, cx| {
+                            let mut text = app.id_filter_text.to_string();
+                            if !text.is_empty() {
+                                text.pop();
+                                let new_text = text.clone();
+                                app.id_filter_text = text.into();
+
+                                if new_text.is_empty() {
+                                    app.id_filter = None;
+                                } else if let Ok(parsed_id) = u32::from_str_radix(&new_text, 10) {
+                                    app.id_filter = Some(parsed_id);
+                                } else {
+                                    app.id_filter = None;
+                                }
+                                cx.notify();
+                            }
+                        });
+                    }
+                    // Escape to clear filter
+                    "escape" => {
+                        view_for_keyboard.update(cx, |app, cx| {
+                            app.id_filter = None;
+                            app.id_filter_text = "".into();
+                            cx.notify();
+                        });
+                    }
+                    _ => {
+                        // Check if it's a single digit (0-9)
+                        if keystroke_str.len() == 1 {
+                            let ch = keystroke_str.chars().next().unwrap();
+                            if ch.is_ascii_digit() {
+                                view_for_keyboard.update(cx, |app, cx| {
+                                    let mut text = app.id_filter_text.to_string();
+                                    text.push(ch);
+                                    let new_text = text.clone();
+                                    app.id_filter_text = text.into();
+
+                                    // Try to parse the ID
+                                    if let Ok(parsed_id) = u32::from_str_radix(&new_text, 10) {
+                                        app.id_filter = Some(parsed_id);
+                                    }
+                                    cx.notify();
+                                });
+                            }
+                        }
+                    }
+                }
+            })
+            // Global mouse move handler for scrollbar dragging
+            .on_mouse_move(move |event, _window, cx| {
+                let drag_state = view_for_mouse_move.read(cx).scrollbar_drag_state.as_ref();
+                let Some(drag) = drag_state else {
+                    return;
+                };
+
+                // Check if left mouse button is still pressed
+                // If not, clear the drag state to prevent ghost dragging
+                if event.pressed_button != Some(MouseButton::Left) {
+                    let _ = view_for_mouse_move.update(cx, |app, _cx| {
+                        app.scrollbar_drag_state = None;
+                    });
+                    return;
+                }
+
+                let current_y = event.position.y;
+                let container_h = view_for_mouse_move.read(cx).list_container_height;
+                let row_h = 22.0;
+                let total_messages = view_for_mouse_move.read(cx).messages.len();
+                let total_content_height = total_messages as f32 * row_h;
+                let max_scroll_offset = (total_content_height - container_h).max(0.0);
+
+                if max_scroll_offset <= 0.0 {
+                    return;
+                }
+
+                // Calculate thumb dimensions
+                let thumb_ratio = (container_h / total_content_height).min(1.0);
+                let thumb_h = (thumb_ratio * container_h).max(20.0);
+                let track_h = (container_h - thumb_h).max(0.0);
+
+                // Calculate thumb position based on mouse Y
+                // Convert start_scroll_offset to thumb position at drag start
+                let start_thumb_top = if max_scroll_offset > 0.0 {
+                    (drag.start_scroll_offset / max_scroll_offset) * track_h
+                } else {
+                    0.0
+                };
+
+                // Calculate new thumb top based on mouse movement
+                let delta_y = f32::from(current_y - drag.start_y);
+                let new_thumb_top = (start_thumb_top + delta_y).clamp(0.0, track_h);
+
+                // Convert thumb position back to scroll offset
+                let scroll_progress = new_thumb_top / track_h;
+                let new_scroll_offset = (scroll_progress * max_scroll_offset).clamp(0.0, max_scroll_offset);
+
+                // Convert to item index
+                let visible_items = (container_h / row_h).ceil() as usize;
+                let max_start_index = total_messages.saturating_sub(visible_items);
+
+                // Calculate target index based on scroll offset
+                let target_index = ((new_scroll_offset / row_h).round() as usize).clamp(0, max_start_index);
+
+                // Use Bottom strategy only when we're at the very end
+                // This ensures the last row is visible at the bottom
+                if target_index >= max_start_index.saturating_sub(1) {
+                    view_for_mouse_move.read(cx).list_scroll_handle.scroll_to_item_strict(
+                        total_messages.saturating_sub(1),
+                        gpui::ScrollStrategy::Bottom
+                    );
+                } else {
+                    view_for_mouse_move.read(cx).list_scroll_handle.scroll_to_item_strict(target_index, gpui::ScrollStrategy::Top);
+                }
+                cx.notify(view_for_mouse_move.entity_id());
+            })
+            // Global mouse up handler - this will catch mouse up anywhere
+            .on_mouse_up(MouseButton::Left, move |_event, _window, cx| {
+                // Always clear drag state on mouse up, anywhere in the window
+                let _ = view_for_mouse_up.update(cx, |app, _cx| {
+                    app.scrollbar_drag_state = None;
+                });
+            })
             .child(
-                // Zed-style header
+                // Zed-style header with calculated column widths and proper alignment
                 div()
                     .w_full()
                     .h(px(28.))
@@ -1075,26 +1563,1627 @@ impl CanViewApp {
                     .text_xs()
                     .font_weight(FontWeight::MEDIUM)
                     .text_color(rgb(0x9ca3af))
-                    .child(div().w(px(100.)).px_3().child("TIME"))
-                    .child(div().w(px(40.)).px_2().child("CH"))
-                    .child(div().w(px(50.)).px_2().child("TYPE"))
-                    .child(div().w(px(70.)).px_2().child("ID"))
-                    .child(div().w(px(40.)).px_2().child("DLC"))
-                    .child(div().w(px(150.)).px_2().child("DATA"))
-                    .child(div().flex_1().px_2().child("SIGNALS")),
+                    .child(
+                        div()
+                            .w(px(60.))
+                            .px_3()
+                            .py_1()
+                            .flex()
+                            .items_center()
+                            .flex_shrink_0()
+                            .whitespace_nowrap()
+                            .overflow_hidden()
+                            .child("#")
+                    )
+                    .child(
+                        div()
+                            .w(time_width)
+                            .px_3()
+                            .py_1()
+                            .flex()
+                            .items_center()
+                            .flex_shrink_0()
+                            .whitespace_nowrap()
+                            .overflow_hidden()
+                            .child("TIME")
+                    )
+                    .child(
+                        {
+                            let view_for_ch_filter = view.clone();
+                            div()
+                                .w(ch_width)
+                                .px_2()
+                                .py_1()
+                                .flex()
+                                .items_center()
+                                .justify_between()
+                                .flex_shrink_0()
+                                .whitespace_nowrap()
+                                .overflow_hidden()
+                                .child("CH")
+                                .when(self.channel_filter.is_some(), |this| {
+                                    this.child(
+                                        gpui::div()
+                                            .text_color(rgb(0x3b82f6))
+                                            .child("✓")
+                                    )
+                                })
+                                .child(
+                                    div()
+                                        .cursor_pointer()
+                                        .on_mouse_down(gpui::MouseButton::Left, {
+                                            let view = view.clone();
+                                            move |_event, _window, cx| {
+                                                view.update(cx, |app, cx| {
+                                                    app.show_channel_filter_input = !app.show_channel_filter_input;
+                                                    cx.notify();
+                                                });
+                                            }
+                                        })
+                                        .child("⚙")
+                                )
+                        }
+                    )
+                    .child(
+                        div()
+                            .w(type_width)
+                            .px_2()
+                            .py_1()
+                            .flex()
+                            .items_center()
+                            .flex_shrink_0()
+                            .whitespace_nowrap()
+                            .overflow_hidden()
+                            .child("TYPE")
+                    )
+                    .child(
+                        div()
+                            .w(id_width)
+                            .pl_2()  // Only left padding
+                            .pr_0()  // No right padding
+                            .py_1()
+                            .flex()
+                            .items_center()
+                            .flex_shrink_0()
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .child(
+                                        div()
+                                            .cursor_pointer()
+                                            .rounded(px(2.))
+                                            .pl_1()  // Left padding only
+                                            .pr_0()  // No right padding
+                                            .py_0p5()
+                                            .hover(|style| style.bg(rgb(0x374151)))
+                                            .on_mouse_down(gpui::MouseButton::Left, {
+                                                let view = view.clone();
+                                                move |_, _, cx| {
+                                                    view.update(cx, |app, cx| {
+                                                        app.id_display_decimal = !app.id_display_decimal;
+                                                        cx.notify();
+                                                    });
+                                                }
+                                            })
+                                            .child(
+                                                div()
+                                                    .flex()
+                                                    .items_center()
+                                                    .gap_0p5()
+                                                    .child("ID")
+                                                    .child(
+                                                        div()
+                                                            .text_xs()
+                                                            .text_color(rgb(0x6b7280))
+                                                            .child(if id_display_decimal { "10" } else { "16" })
+                                                    )
+                                            )
+                                    )
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .cursor_pointer()
+                                            .text_color(if id_filter.is_some() {
+                                                rgb(0x60a5fa)
+                                            } else {
+                                                rgb(0x4b5563)
+                                            })
+                                            .hover(|style| style.bg(rgb(0x374151)))
+                                            .rounded(px(2.))
+                                            .pl_1()  // Left padding only
+                                            .pr_0()  // No right padding
+                                            .py_0p5()
+                                            .on_mouse_down(gpui::MouseButton::Left, {
+                                                let view = view.clone();
+                                                move |event, _, cx| {
+                                                    eprintln!("Gear clicked! Position: {:?}", event.position);
+                                                    view.update(cx, |app, cx| {
+                                                        // If filter is active, clicking clears it
+                                                        // If filter is not active, clicking shows dropdown
+                                                        if app.id_filter.is_some() {
+                                                            eprintln!("Clearing filter");
+                                                            app.id_filter = None;
+                                                            app.id_filter_text = "".into();
+                                                            app.show_id_filter_input = false;
+                                                        } else {
+                                                            eprintln!("Before: show_id_filter_input={}", app.show_id_filter_input);
+                                                            app.show_id_filter_input = !app.show_id_filter_input;
+                                                            eprintln!("After: show_id_filter_input={}", app.show_id_filter_input);
+                                                        }
+                                                        cx.notify();
+                                                    });
+                                                }
+                                            })
+                                            .child(if id_filter.is_some() { "✓" } else { "⚙" })
+                                    )
+                            )
+                    )
+                    .child(
+                        div()
+                            .w(dlc_width)
+                            .px_2()
+                            .py_1()
+                            .flex()
+                            .items_center()
+                            .flex_shrink_0()
+                            .whitespace_nowrap()
+                            .overflow_hidden()
+                            .child("DLC")
+                    )
+                    .child(
+                        div()
+                            .flex_1()  // DATA列使用flex_1()占据剩余空间
+                            .px_2()
+                            .py_1()
+                            .flex()
+                            .items_center()
+                            .whitespace_nowrap()
+                            .child("DATA")
+                    ),
             )
             .child(
-                // Message list
-                div().flex_1().overflow_y_hidden().child(
-                    div().w_full().flex().flex_col().children(
-                        self.messages
-                            .iter()
-                            .take(500)
-                            .enumerate()
-                            .map(|(i, msg)| self.render_message_row(msg, i)),
-                    ),
-                ),
+                // Content area with simple list
+                div()
+                    .flex_1()
+                    .flex()
+                    .flex_col()
+                    .relative()
+                    .when(self.messages.is_empty(), |parent| {
+                        // Show placeholder when no messages
+                        parent.child(
+                            div()
+                                .flex_1()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .child(
+                                    div()
+                                        .text_lg()
+                                        .text_color(rgb(0x6b7280))
+                                        .child("No messages loaded. Click '📂 Open BLF' to load a file.")
+                                )
+                        )
+                    })
+                    .when(!filtered_messages.is_empty(), |parent| {
+                        // Show all messages with uniform_list - it should support scrolling
+                        let display_count = filtered_messages.len();
+                        let view_entity = view.clone();
+
+                        parent.child(
+                            gpui::uniform_list(
+                                "message-list",
+                                display_count,
+                                move |range: std::ops::Range<usize>, _window: &mut gpui::Window, cx: &mut gpui::App| {
+                                    // Track scroll position by observing the visible range
+                                    let first_visible = range.start;
+                                    let _ = view_entity.update(cx, |v, _cx| {
+                                        v.scroll_offset = px(first_visible as f32 * 22.0);
+                                    });
+
+                                    range
+                                        .map(|index| {
+                                            if let Some(msg) = filtered_messages.get(index) {
+                                                Self::render_message_row_static_with_widths(
+                                                    msg,
+                                                    index,
+                                                    time_width,
+                                                    ch_width,
+                                                    type_width,
+                                                    id_width,
+                                                    dlc_width,
+                                                    &dbc_channels,
+                                                    &ldf_channels,
+                                                    start_time,
+                                                    id_display_decimal,
+                                                    view_entity.read(cx).show_id_filter_input,  // Disable hover when filter dropdown is open
+                                                )
+                                            } else {
+                                                div().into_any_element()
+                                            }
+                                        })
+                                        .collect::<Vec<_>>()
+                                }
+                            )
+                            .track_scroll(&scroll_handle)
+                            .flex_1()
+                        )
+                    })
+                    .child({
+                        // Calculate scrollbar dimensions based on actual content
+                        let row_height = 22.0;
+                        let total_height = total_messages as f32 * row_height;
+                        let container_height = self.list_container_height;
+
+                        let max_scroll = (total_height - container_height).max(0.0);
+
+                        // Calculate thumb height with minimum visibility
+                        let thumb_height_ratio = if total_height > 0.0 {
+                            (container_height / total_height).min(1.0)
+                        } else {
+                            1.0
+                        };
+                        let thumb_height = (thumb_height_ratio * container_height).max(20.0);  // Minimum 20px
+                        let thumb_height_px = px(thumb_height);
+
+                        // Calculate scrollable track height (container minus thumb)
+                        let track_height = (container_height - thumb_height).max(0.0);
+
+                        // Calculate thumb position based on current scroll offset
+                        let current_scroll_offset = f32::from(self.scroll_offset);
+                        let thumb_top = if max_scroll > 0.0 && track_height > 0.0 {
+                            // For very large datasets, scroll_offset may not reach max_scroll
+                            // when using ScrollStrategy::Bottom. So we clamp the ratio.
+                            let scroll_progress = (current_scroll_offset / max_scroll).min(1.0).max(0.0);
+
+                            // Check if we're at the actual bottom
+                            let container_h = self.list_container_height;
+                            let row_h = 22.0_f32;
+                            let visible_items = (container_h / row_h).ceil() as usize;
+                            let max_start_index = total_messages.saturating_sub(visible_items);
+                            let current_start_index = (current_scroll_offset / row_h).round() as usize;
+
+                            // If we're at the last page, force thumb to bottom
+                            // This ensures the thumb visually reaches the end
+                            if current_start_index >= max_start_index.saturating_sub(5) {
+                                track_height
+                            } else {
+                                scroll_progress * track_height
+                            }
+                        } else {
+                            0.0
+                        };
+                        let thumb_top_px = px(thumb_top);
+
+                        let scroll_handle_clone = scroll_handle.clone();
+                        let view_for_scrollbar_inner = view_for_scrollbar.clone();
+                        let view_for_scroll_track = view_for_scrollbar.clone();
+
+                        // Scrollbar container
+                        div()
+                            .absolute()
+                            .right_0()
+                            .top_0()
+                            .bottom_0()  // Match the actual list container height
+                            .w(px(12.))
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .bg(rgb(0x1a1a1a))
+                            .child(
+                                // Scrollbar track (clickable area)
+                                div()
+                                    .size_full()
+                                    .relative()
+                                    .on_mouse_down(gpui::MouseButton::Left, move |event, _window, cx| {
+                                        let raw_click_y = f32::from(event.position.y);
+                                        let offset_to_list = 84.0;
+                                        let container_h = view_for_scroll_track.read(cx).list_container_height;
+                                        let row_h = row_height;
+
+                                        if total_messages == 0 {
+                                            return;
+                                        }
+
+                                        // Calculate thumb dimensions
+                                        let total_content_height = total_messages as f32 * row_h;
+                                        let thumb_ratio = (container_h / total_content_height).min(1.0);
+                                        let thumb_h = (thumb_ratio * container_h).max(20.0);
+                                        let track_h = (container_h - thumb_h).max(0.0);
+
+                                        // Adjust click position to be relative to container
+                                        let click_y = (raw_click_y - offset_to_list).clamp(0.0, container_h);
+
+                                        if track_h <= 0.0 {
+                                            return;
+                                        }
+
+                                        // Calculate where thumb top should be based on click position
+                                        // The click_y is in range [0, container_h], but thumb top can only be in [0, track_h]
+                                        // When click_y is at bottom (container_h), thumb_top should be at track_h
+                                        let scroll_ratio = click_y / container_h;
+                                        let desired_thumb_top = (scroll_ratio * track_h).clamp(0.0, track_h);
+
+                                        // Calculate target index
+                                        let visible_items = (container_h / row_h).ceil() as usize;
+                                        let max_start_index = total_messages.saturating_sub(visible_items);
+
+                                        let target_index = if max_start_index > 0 {
+                                            (scroll_ratio * max_start_index as f32).round() as usize
+                                        } else {
+                                            0
+                                        }.clamp(0, max_start_index);
+
+                                        // Use Bottom strategy only when we're at the very end
+                                        // This ensures the last row is visible at the bottom
+                                        if target_index >= max_start_index.saturating_sub(1) {
+                                            scroll_handle_clone.scroll_to_item_strict(
+                                                total_messages.saturating_sub(1),
+                                                gpui::ScrollStrategy::Bottom
+                                            );
+                                        } else {
+                                            scroll_handle_clone.scroll_to_item_strict(target_index, gpui::ScrollStrategy::Top);
+                                        }
+                                        cx.notify(view_for_scroll_track.entity_id());
+                                        cx.stop_propagation();
+                                    })
+                                    .child(
+                                        // Thumb with drag functionality
+                                        div()
+                                            .w(px(8.))
+                                            .h(thumb_height_px)
+                                            .top(thumb_top_px)
+                                            .absolute()
+                                            .bg(rgb(0x6a6a6a))
+                                            .rounded(px(4.))
+                                            .hover(|style| style.bg(rgb(0x7a7a7a)))
+                                            .cursor_grab()
+                                            .on_mouse_down(gpui::MouseButton::Left, {
+                                                let view_for_thumb = view_for_scrollbar_inner.clone();
+                                                move |event, _window, cx| {
+                                                    // Initialize drag state
+                                                    let start_y = event.position.y;
+                                                    let start_scroll_offset = f32::from(view_for_thumb.read(cx).scroll_offset);
+
+                                                    // Set drag state
+                                                    let _ = view_for_thumb.update(cx, |app, _cx| {
+                                                    app.scrollbar_drag_state = Some(ScrollbarDragState {
+                                                        start_y,
+                                                        start_scroll_offset,
+                                                    });
+                                                });
+
+                                                cx.stop_propagation();
+                                            }
+                                            })
+                                    )
+                            )
+                    })
             )
+            // Filter dropdown - SHOW ALL IDs WITH SCROLL
+            .when(self.show_id_filter_input, |parent| {
+                // Calculate ALL unique IDs from messages
+                let mut unique_ids = std::collections::HashSet::new();
+                for msg in self.messages.iter() {  // Scan ALL messages
+                    match msg {
+                        LogObject::CanMessage(m) => { unique_ids.insert(m.id); }
+                        LogObject::CanMessage2(m) => { unique_ids.insert(m.id); }
+                        LogObject::CanFdMessage(m) => { unique_ids.insert(m.id); }
+                        LogObject::CanFdMessage64(m) => { unique_ids.insert(m.id); }
+                        LogObject::LinMessage(m) => { unique_ids.insert(m.id as u32); }
+                        _ => {}
+                    }
+                }
+                let mut id_list: Vec<u32> = unique_ids.into_iter().collect();
+                id_list.sort();
+
+                let filter_left = 60.0 + f32::from(time_width) + f32::from(ch_width) + f32::from(type_width) + f32::from(id_width) - 40.0;
+
+                eprintln!("=== Filter dropdown rendering ===");
+                eprintln!("  Found {} unique IDs", id_list.len());
+
+                parent.child(
+                    {
+                        let id_list_clone = id_list.clone();
+                        let view_for_scroll = view.clone();
+                        let id_list_for_wheel = id_list.clone();
+                        // Clone the scroll handle for use in closures
+                        let filter_scroll_handle = self.filter_scroll_handle.clone();
+                        let filter_scroll_handle_for_uniform = filter_scroll_handle.clone();
+
+                        div()
+                            .absolute()
+                            .left(px(filter_left))
+                            .top(px(32.))
+                            .w(px(150.))
+                            .h(px(300.))
+                            .bg(rgb(0x1f2937))
+                            .border_1()
+                            .border_color(rgb(0x3b82f6))
+                            .rounded(px(4.))
+                            .shadow_lg()
+                            .flex()
+                            .flex_col()
+                            .overflow_hidden()  // Important: clip content
+                            // Track mouse move to disable main list hover when over dropdown
+                            .on_mouse_move({
+                                let view_for_scroll = view_for_scroll.clone();
+                                move |_event, _window, cx| {
+                                    cx.stop_propagation();
+                                    let _ = view_for_scroll.update(cx, |app, cx| {
+                                        app.mouse_over_filter_dropdown = true;
+                                        cx.notify();
+                                    });
+                                }
+                            })
+                            // Block all mouse events from reaching the main list
+                            .on_mouse_up(gpui::MouseButton::Left, {
+                                let view_for_scroll = view_for_scroll.clone();
+                                move |_event, _window, cx| {
+                                    cx.stop_propagation();
+                                    let _ = view_for_scroll.update(cx, |app, cx| {
+                                        app.mouse_over_filter_dropdown = true;
+                                        cx.notify();
+                                    });
+                                }
+                            })
+                            .on_mouse_down(gpui::MouseButton::Left, {
+                                let view_for_scroll = view_for_scroll.clone();
+                                move |_event, _window, cx| {
+                                    cx.stop_propagation();
+                                    let _ = view_for_scroll.update(cx, |app, cx| {
+                                        app.mouse_over_filter_dropdown = true;
+                                        cx.notify();
+                                    });
+                                }
+                            })
+                            // Capture wheel events at container level and manually scroll
+                            .on_scroll_wheel(move |event, _window, cx| {
+                                cx.stop_propagation();
+
+                                // Calculate scroll delta
+                                let delta_y = match event.delta {
+                                    gpui::ScrollDelta::Lines(point) => point.y * 24.0,
+                                    gpui::ScrollDelta::Pixels(pixels) => f32::from(pixels.y),
+                                };
+
+                                // Get current scroll offset
+                                let current_offset = view_for_scroll.read(cx).filter_scroll_offset;
+                                let current_offset_f32 = f32::from(current_offset);
+
+                                // Calculate new scroll position
+                                let row_height = 24.0;
+                                let total_items = id_list_for_wheel.len();
+                                let container_height = 300.0;
+                                let total_height = total_items as f32 * row_height;
+                                let max_scroll = (total_height - container_height).max(0.0);
+
+                                let new_offset = (current_offset_f32 - delta_y).clamp(0.0, max_scroll);
+
+                                // Update state
+                                let _ = view_for_scroll.update(cx, |app, cx| {
+                                    app.filter_scroll_offset = px(new_offset);
+                                    cx.notify();
+                                });
+
+                                // Manually scroll the uniform_list using the persistent handle
+                                let target_index = ((new_offset / row_height).round() as usize)
+                                    .clamp(0, total_items.saturating_sub(1));
+
+                                filter_scroll_handle.scroll_to_item_strict(
+                                    target_index,
+                                    gpui::ScrollStrategy::Top
+                                );
+
+                                eprintln!("Manual scroll: delta={:.2}, offset={:.2} -> {:.2}, index={}",
+                                    delta_y, current_offset_f32, new_offset, target_index);
+                            })
+                            .child(
+                                uniform_list(
+                                    "filter-dropdown",
+                                    id_list_clone.len(),
+                                    move |range: std::ops::Range<usize>, _window: &mut gpui::Window, _cx: &mut gpui::App| {
+                                        range
+                                            .map(|index| {
+                                                let id = id_list_clone[index];
+                                                div()
+                                                    .w_full()
+                                                    .px_3()
+                                                    .py_2()
+                                                    .h(px(24.))
+                                                    .text_sm()
+                                                    .text_color(rgb(0xffffff))
+                                                    .hover(|style| style.bg(rgb(0x374151)))
+                                                    .cursor_pointer()
+                                                    // Block all mouse events from propagating to the main list
+                                                    .on_mouse_move(move |_event, _window, cx| {
+                                                        cx.stop_propagation();
+                                                    })
+                                                    .on_mouse_up(gpui::MouseButton::Left, move |_event, _window, cx| {
+                                                        cx.stop_propagation();
+                                                    })
+                                                    .on_mouse_down(gpui::MouseButton::Left, {
+                                                        let view = view_clone1.clone();
+                                                        move |_event, _window, cx| {
+                                                            eprintln!("Selected ID: {}", id);
+                                                            cx.stop_propagation();
+                                                            view.update(cx, |app, cx| {
+                                                                app.id_filter = Some(id);
+                                                                app.id_filter_text = id.to_string().into();
+                                                                app.show_id_filter_input = false;
+                                                                app.mouse_over_filter_dropdown = false;  // Reset hover flag
+                                                                cx.notify();
+                                                            });
+                                                        }
+                                                    })
+                                                    .child(format!("ID: {}", id))
+                                                    .into_any_element()
+                                            })
+                                            .collect::<Vec<_>>()
+                                    },
+                                )
+                                .track_scroll(&filter_scroll_handle_for_uniform)
+                                .flex_1()
+                            )
+                    }
+                )
+            })
+            // Channel filter dropdown
+            .when(self.show_channel_filter_input, |parent| {
+                // Calculate ALL unique channels from messages
+                let mut unique_channels = std::collections::HashSet::new();
+                for msg in self.messages.iter() {
+                    match msg {
+                        LogObject::CanMessage(m) => { unique_channels.insert(m.channel); }
+                        LogObject::CanMessage2(m) => { unique_channels.insert(m.channel); }
+                        LogObject::CanFdMessage(m) => { unique_channels.insert(m.channel); }
+                        LogObject::CanFdMessage64(m) => { unique_channels.insert(m.channel as u16); }
+                        LogObject::LinMessage(m) => { unique_channels.insert(m.channel); }
+                        LogObject::LinMessage2(_) => {}
+                        _ => {}
+                    }
+                }
+                let mut channel_list: Vec<u16> = unique_channels.into_iter().collect();
+                channel_list.sort();
+
+                let filter_left = 60.0 + f32::from(time_width) + 10.0; // Position after TIME column
+
+                eprintln!("=== Channel filter dropdown rendering ===");
+                eprintln!("  Found {} unique channels", channel_list.len());
+
+                parent.child(
+                    {
+                        let channel_list_clone = channel_list.clone();
+                        let view_for_scroll = view.clone();
+                        let channel_list_for_wheel = channel_list.clone();
+                        // Clone the scroll handle for use in closures
+                        let filter_scroll_handle = self.channel_filter_scroll_handle.clone();
+                        let filter_scroll_handle_for_uniform = filter_scroll_handle.clone();
+
+                        div()
+                            .absolute()
+                            .left(px(filter_left))
+                            .top(px(32.))
+                            .w(px(120.))
+                            .h(px(300.))
+                            .bg(rgb(0x1f2937))
+                            .border_1()
+                            .border_color(rgb(0x3b82f6))
+                            .rounded(px(4.))
+                            .shadow_lg()
+                            .flex()
+                            .flex_col()
+                            .overflow_hidden()
+                            // Track mouse move to disable main list hover when over dropdown
+                            .on_mouse_move({
+                                let view_for_scroll = view_for_scroll.clone();
+                                move |_event, _window, cx| {
+                                    cx.stop_propagation();
+                                    let _ = view_for_scroll.update(cx, |app, cx| {
+                                        app.mouse_over_filter_dropdown = true;
+                                        cx.notify();
+                                    });
+                                }
+                            })
+                            // Block all mouse events from reaching the main list
+                            .on_mouse_up(gpui::MouseButton::Left, {
+                                let view_for_scroll = view_for_scroll.clone();
+                                move |_event, _window, cx| {
+                                    cx.stop_propagation();
+                                    let _ = view_for_scroll.update(cx, |app, cx| {
+                                        app.mouse_over_filter_dropdown = true;
+                                        cx.notify();
+                                    });
+                                }
+                            })
+                            .on_mouse_down(gpui::MouseButton::Left, {
+                                let view_for_scroll = view_for_scroll.clone();
+                                move |_event, _window, cx| {
+                                    cx.stop_propagation();
+                                    let _ = view_for_scroll.update(cx, |app, cx| {
+                                        app.mouse_over_filter_dropdown = true;
+                                        cx.notify();
+                                    });
+                                }
+                            })
+                            // Capture wheel events at container level and manually scroll
+                            .on_scroll_wheel(move |event, _window, cx| {
+                                cx.stop_propagation();
+
+                                // Calculate scroll delta
+                                let delta_y = match event.delta {
+                                    gpui::ScrollDelta::Lines(point) => point.y * 24.0,
+                                    gpui::ScrollDelta::Pixels(pixels) => f32::from(pixels.y),
+                                };
+
+                                // Get current scroll offset
+                                let current_offset = view_for_scroll.read(cx).channel_filter_scroll_offset;
+                                let current_offset_f32 = f32::from(current_offset);
+
+                                // Calculate new scroll position
+                                let row_height = 24.0;
+                                let total_items = channel_list_for_wheel.len();
+                                let container_height = 300.0;
+                                let total_height = total_items as f32 * row_height;
+                                let max_scroll = (total_height - container_height).max(0.0);
+
+                                let new_offset = (current_offset_f32 - delta_y).clamp(0.0, max_scroll);
+
+                                // Update state
+                                let _ = view_for_scroll.update(cx, |app, cx| {
+                                    app.channel_filter_scroll_offset = px(new_offset);
+                                    cx.notify();
+                                });
+
+                                // Manually scroll the uniform_list using the persistent handle
+                                let target_index = ((new_offset / row_height).round() as usize)
+                                    .clamp(0, total_items.saturating_sub(1));
+
+                                filter_scroll_handle.scroll_to_item_strict(
+                                    target_index,
+                                    gpui::ScrollStrategy::Top
+                                );
+
+                                eprintln!("Channel filter scroll: delta={:.2}, offset={:.2} -> {:.2}, index={}",
+                                    delta_y, current_offset_f32, new_offset, target_index);
+                            })
+                            .child(
+                                uniform_list(
+                                    "channel-filter-dropdown",
+                                    channel_list_clone.len(),
+                                    move |range: std::ops::Range<usize>, _window: &mut gpui::Window, _cx: &mut gpui::App| {
+                                        range
+                                            .map(|index| {
+                                                let channel = channel_list_clone[index];
+                                                div()
+                                                    .w_full()
+                                                    .px_3()
+                                                    .py_2()
+                                                    .h(px(24.))
+                                                    .text_sm()
+                                                    .text_color(rgb(0xffffff))
+                                                    .hover(|style| style.bg(rgb(0x374151)))
+                                                    .cursor_pointer()
+                                                    // Block all mouse events from propagating to the main list
+                                                    .on_mouse_move(move |_event, _window, cx| {
+                                                        cx.stop_propagation();
+                                                    })
+                                                    .on_mouse_up(gpui::MouseButton::Left, move |_event, _window, cx| {
+                                                        cx.stop_propagation();
+                                                    })
+                                                    .on_mouse_down(gpui::MouseButton::Left, {
+                                                        let view = view_clone2.clone();
+                                                        move |_event, _window, cx| {
+                                                            eprintln!("Selected Channel: {}", channel);
+                                                            cx.stop_propagation();
+                                                            view.update(cx, |app, cx| {
+                                                                app.channel_filter = Some(channel);
+                                                                app.channel_filter_text = channel.to_string().into();
+                                                                app.show_channel_filter_input = false;
+                                                                app.mouse_over_filter_dropdown = false;  // Reset hover flag
+                                                                cx.notify();
+                                                            });
+                                                        }
+                                                    })
+                                                    .child(format!("CH: {}", channel))
+                                                    .into_any_element()
+                                            })
+                                            .collect::<Vec<_>>()
+                                    },
+                                )
+                                .track_scroll(&filter_scroll_handle_for_uniform)
+                                .flex_1()
+                            )
+                    }
+                )
+            })
+    }
+
+    // Render channel filter dropdown
+    fn render_channel_filter_dropdown(
+        &self,
+        parent: gpui::Div,
+        view: Entity<CanViewApp>,
+        ch_width: gpui::Pixels,
+        time_width: gpui::Pixels,
+    ) -> gpui::Div {
+        parent.when(self.show_channel_filter_input, |parent| {
+            // Calculate ALL unique channels from messages
+            let mut unique_channels = std::collections::HashSet::new();
+            for msg in self.messages.iter() {
+                match msg {
+                    LogObject::CanMessage(m) => { unique_channels.insert(m.channel); }
+                    LogObject::CanMessage2(m) => { unique_channels.insert(m.channel); }
+                    LogObject::CanFdMessage(m) => { unique_channels.insert(m.channel); }
+                    LogObject::CanFdMessage64(m) => { unique_channels.insert(m.channel as u16); }
+                    LogObject::LinMessage(m) => { unique_channels.insert(m.channel); }
+                    LogObject::LinMessage2(_) => {}
+                    _ => {}
+                }
+            }
+            let mut channel_list: Vec<u16> = unique_channels.into_iter().collect();
+            channel_list.sort();
+
+            let filter_left = 60.0 + f32::from(time_width) + 10.0; // Position after TIME column
+
+            eprintln!("=== Channel filter dropdown rendering ===");
+            eprintln!("  Found {} unique channels", channel_list.len());
+
+            parent.child(
+                {
+                    let channel_list_clone = channel_list.clone();
+                    let view_for_scroll = view.clone();
+                    let channel_list_for_wheel = channel_list.clone();
+                    // Clone the scroll handle for use in closures
+                    let filter_scroll_handle = self.channel_filter_scroll_handle.clone();
+                    let filter_scroll_handle_for_uniform = filter_scroll_handle.clone();
+
+                    div()
+                        .absolute()
+                        .left(px(filter_left))
+                        .top(px(32.))
+                        .w(px(120.))
+                        .h(px(300.))
+                        .bg(rgb(0x1f2937))
+                        .border_1()
+                        .border_color(rgb(0x3b82f6))
+                        .rounded(px(4.))
+                        .shadow_lg()
+                        .flex()
+                        .flex_col()
+                        .overflow_hidden()
+                        // Track mouse move to disable main list hover when over dropdown
+                        .on_mouse_move({
+                            let view_for_scroll = view_for_scroll.clone();
+                            move |_event, _window, cx| {
+                                cx.stop_propagation();
+                                let _ = view_for_scroll.update(cx, |app, cx| {
+                                    app.mouse_over_filter_dropdown = true;
+                                    cx.notify();
+                                });
+                            }
+                        })
+                        // Block all mouse events from reaching the main list
+                        .on_mouse_up(gpui::MouseButton::Left, {
+                            let view_for_scroll = view_for_scroll.clone();
+                            move |_event, _window, cx| {
+                                cx.stop_propagation();
+                                let _ = view_for_scroll.update(cx, |app, cx| {
+                                    app.mouse_over_filter_dropdown = true;
+                                    cx.notify();
+                                });
+                            }
+                        })
+                        .on_mouse_down(gpui::MouseButton::Left, {
+                            let view_for_scroll = view_for_scroll.clone();
+                            move |_event, _window, cx| {
+                                cx.stop_propagation();
+                                let _ = view_for_scroll.update(cx, |app, cx| {
+                                    app.mouse_over_filter_dropdown = true;
+                                    cx.notify();
+                                });
+                            }
+                        })
+                        // Capture wheel events at container level and manually scroll
+                        .on_scroll_wheel(move |event, _window, cx| {
+                            cx.stop_propagation();
+
+                            // Calculate scroll delta
+                            let delta_y = match event.delta {
+                                gpui::ScrollDelta::Lines(point) => point.y * 24.0,
+                                gpui::ScrollDelta::Pixels(pixels) => f32::from(pixels.y),
+                            };
+
+                            // Get current scroll offset
+                            let current_offset = view_for_scroll.read(cx).channel_filter_scroll_offset;
+                            let current_offset_f32 = f32::from(current_offset);
+
+                            // Calculate new scroll position
+                            let row_height = 24.0;
+                            let total_items = channel_list_for_wheel.len();
+                            let container_height = 300.0;
+                            let total_height = total_items as f32 * row_height;
+                            let max_scroll = (total_height - container_height).max(0.0);
+
+                            let new_offset = (current_offset_f32 - delta_y).clamp(0.0, max_scroll);
+
+                            // Update state
+                            let _ = view_for_scroll.update(cx, |app, cx| {
+                                app.channel_filter_scroll_offset = px(new_offset);
+                                cx.notify();
+                            });
+
+                            // Manually scroll the uniform_list using the persistent handle
+                            let target_index = ((new_offset / row_height).round() as usize)
+                                .clamp(0, total_items.saturating_sub(1));
+
+                            filter_scroll_handle.scroll_to_item_strict(
+                                target_index,
+                                gpui::ScrollStrategy::Top
+                            );
+
+                            eprintln!("Channel filter scroll: delta={:.2}, offset={:.2} -> {:.2}, index={}",
+                                delta_y, current_offset_f32, new_offset, target_index);
+                        })
+                        .child(
+                            uniform_list(
+                                "channel-filter-dropdown",
+                                channel_list_clone.len(),
+                                move |range: std::ops::Range<usize>, _window: &mut gpui::Window, _cx: &mut gpui::App| {
+                                    range
+                                        .map(|index| {
+                                            let channel = channel_list_clone[index];
+                                            div()
+                                                .w_full()
+                                                .px_3()
+                                                .py_2()
+                                                .h(px(24.))
+                                                .text_sm()
+                                                .text_color(rgb(0xffffff))
+                                                .hover(|style| style.bg(rgb(0x374151)))
+                                                .cursor_pointer()
+                                                // Block all mouse events from propagating to the main list
+                                                .on_mouse_move(move |_event, _window, cx| {
+                                                    cx.stop_propagation();
+                                                })
+                                                .on_mouse_up(gpui::MouseButton::Left, move |_event, _window, cx| {
+                                                    cx.stop_propagation();
+                                                })
+                                                .on_mouse_down(gpui::MouseButton::Left, {
+                                                    let view = view.clone();
+                                                    move |_event, _window, cx| {
+                                                        eprintln!("Selected Channel: {}", channel);
+                                                        cx.stop_propagation();
+                                                        view.update(cx, |app, cx| {
+                                                            app.channel_filter = Some(channel);
+                                                            app.channel_filter_text = channel.to_string().into();
+                                                            app.show_channel_filter_input = false;
+                                                            app.mouse_over_filter_dropdown = false;  // Reset hover flag
+                                                            cx.notify();
+                                                        });
+                                                    }
+                                                })
+                                                .child(format!("CH: {}", channel))
+                                                .into_any_element()
+                                        })
+                                        .collect::<Vec<_>>()
+                                },
+                            )
+                            .track_scroll(&filter_scroll_handle_for_uniform)
+                            .flex_1()
+                        )
+                }
+            )
+        })
+    }
+
+    // Calculate optimal column widths based on ALL messages content
+    // Note: DATA column uses flex_1() so we don't calculate its width
+    fn calculate_column_widths(
+        messages: &[LogObject],
+        _dbc_channels: &HashMap<u16, DbcDatabase>,
+        _ldf_channels: &HashMap<u16, LdfDatabase>,
+        start_time: Option<chrono::NaiveDateTime>,
+    ) -> (gpui::Pixels, gpui::Pixels, gpui::Pixels, gpui::Pixels, gpui::Pixels) {
+        // Define minimum widths for each column (for header text)
+        let mut max_time_width = 50.0_f32;   // "TIME" header
+        let mut max_ch_width = 30.0_f32;      // "CH" header
+        let mut max_type_width = 50.0_f32;    // "TYPE" header
+        let mut max_id_width = 80.0_f32;      // "ID" header with gear icon (ID + 10 + ⚙ = ~70px)
+        let mut max_dlc_width = 40.0_f32;     // "DLC" header
+
+        // Calculate widths based on ALL messages
+        // Use a smarter sampling strategy:
+        // - For small datasets (<1000), scan all
+        // - For large datasets, scan in intervals to get representative sample
+        let sample_size = messages.len();
+        let step = if sample_size > 5000 {
+            sample_size / 1000  // Sample ~1000 messages spread evenly
+        } else if sample_size > 1000 {
+            sample_size / 500   // Sample ~500 messages spread evenly
+        } else {
+            1                   // Scan all messages
+        };
+
+        for (i, msg) in messages.iter().enumerate() {
+            // Skip messages based on step size for large datasets
+            if i % step != 0 {
+                continue;
+            }
+
+            let (time_str, channel_id, msg_type, id_str, dlc_str, _data_str) =
+                Self::get_message_strings(msg, start_time, true);  // Use decimal for width calculation
+
+            // Calculate exact width needed for each column
+            // Using 8.0 pixels per character (monospace font approximation)
+            // Add padding: horizontal padding (px_2 or px_3) + some margin
+            max_time_width = max_time_width.max(time_str.len() as f32 * 8.0 + 16.0);  // px_3 = 12px + 4px margin
+            max_ch_width = max_ch_width.max(channel_id.to_string().len() as f32 * 8.0 + 10.0);  // px_2 = 8px + 2px margin
+            max_type_width = max_type_width.max(msg_type.len() as f32 * 8.0 + 10.0);
+            max_id_width = max_id_width.max(id_str.len() as f32 * 8.0 + 10.0);
+            max_dlc_width = max_dlc_width.max(dlc_str.len() as f32 * 8.0 + 10.0);
+        }
+
+        // Apply maximum limits to prevent columns from becoming too wide
+        // This ensures the table remains readable even with very long content
+        max_time_width = max_time_width.min(300.0);
+        max_ch_width = max_ch_width.min(80.0);
+        max_type_width = max_type_width.min(120.0);
+        max_id_width = max_id_width.min(100.0);
+        max_dlc_width = max_dlc_width.min(80.0);
+
+        // Round to integer pixels to ensure consistency across all rows
+        // This prevents rounding errors that can cause misalignment
+        max_time_width = max_time_width.round();
+        max_ch_width = max_ch_width.round();
+        max_type_width = max_type_width.round();
+        max_id_width = max_id_width.round();
+        max_dlc_width = max_dlc_width.round();
+
+        // Return calculated widths (excluding DATA which uses flex_1)
+        (
+            px(max_time_width),
+            px(max_ch_width),
+            px(max_type_width),
+            px(max_id_width),
+            px(max_dlc_width),
+        )
+    }
+
+    // Helper to extract message strings without rendering
+    fn get_message_strings(
+        msg: &LogObject,
+        start_time: Option<chrono::NaiveDateTime>,
+        decimal: bool,
+    ) -> (String, u16, String, String, String, String) {
+        let format_id = |id: u32| -> String {
+            if decimal {
+                id.to_string()
+            } else {
+                format!("0x{:03X}", id)
+            }
+        };
+
+        match msg {
+            LogObject::CanMessage(can_msg) => {
+                let timestamp = can_msg.header.object_time_stamp;
+                let time_str = if let Some(start) = start_time {
+                    let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                    // Format: YYYY-MM-DD HH:MM:SS.mmmmmm (microseconds)
+                    msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
+                } else {
+                    // If no start time, show nanoseconds as seconds with microsecond precision
+                    let seconds = timestamp as f64 / 1_000_000_000.0;
+                    format!("{:.6}", seconds)
+                };
+
+                let data_hex = can_msg
+                    .data
+                    .iter()
+                    .take(can_msg.dlc as usize)
+                    .map(|b| format!("{:02X}", b))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
+                (
+                    time_str,
+                    can_msg.channel,
+                    "CAN".to_string(),
+                    format_id(can_msg.id),
+                    can_msg.dlc.to_string(),
+                    data_hex,
+                )
+            }
+            LogObject::CanMessage2(can_msg) => {
+                let timestamp = can_msg.header.object_time_stamp;
+                let time_str = if let Some(start) = start_time {
+                    let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                    msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
+                } else {
+                    let seconds = timestamp as f64 / 1_000_000_000.0;
+                    format!("{:.6}", seconds)
+                };
+
+                let data_hex = can_msg
+                    .data
+                    .iter()
+                    .take(can_msg.dlc as usize)
+                    .map(|b| format!("{:02X}", b))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
+                (
+                    time_str,
+                    can_msg.channel,
+                    "CAN2".to_string(),
+                    format_id(can_msg.id),
+                    can_msg.dlc.to_string(),
+                    data_hex,
+                )
+            }
+            LogObject::CanErrorFrame(err) => {
+                let timestamp = err.header.object_time_stamp;
+                let time_str = if let Some(start) = start_time {
+                    let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                    msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
+                } else {
+                    let seconds = timestamp as f64 / 1_000_000_000.0;
+                    format!("{:.6}", seconds)
+                };
+
+                (
+                    time_str,
+                    err.channel,
+                    "CAN_ERR".to_string(),
+                    "-".to_string(),
+                    err.length.to_string(),
+                    "-".to_string(),
+                )
+            }
+            LogObject::CanFdMessage(fd_msg) => {
+                let timestamp = fd_msg.header.object_time_stamp;
+                let time_str = if let Some(start) = start_time {
+                    let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                    msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
+                } else {
+                    let seconds = timestamp as f64 / 1_000_000_000.0;
+                    format!("{:.6}", seconds)
+                };
+
+                let data_hex = fd_msg
+                    .data
+                    .iter()
+                    .take(fd_msg.dlc as usize)
+                    .map(|b| format!("{:02X}", b))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
+                (
+                    time_str,
+                    fd_msg.channel as u16,
+                    "CAN_FD".to_string(),
+                    format_id(fd_msg.id),
+                    fd_msg.dlc.to_string(),
+                    data_hex,
+                )
+            }
+            LogObject::CanFdMessage64(fd_msg) => {
+                let timestamp = fd_msg.header.object_time_stamp;
+                let time_str = if let Some(start) = start_time {
+                    let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                    msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
+                } else {
+                    let seconds = timestamp as f64 / 1_000_000_000.0;
+                    format!("{:.6}", seconds)
+                };
+
+                let data_hex = fd_msg
+                    .data
+                    .iter()
+                    .take(fd_msg.valid_data_bytes as usize)
+                    .map(|b| format!("{:02X}", b))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
+                (
+                    time_str,
+                    fd_msg.channel as u16,
+                    "CAN_FD64".to_string(),
+                    format_id(fd_msg.id),
+                    fd_msg.dlc.to_string(),
+                    data_hex,
+                )
+            }
+            LogObject::CanOverloadFrame(ov) => {
+                let timestamp = ov.header.object_time_stamp;
+                let time_str = if let Some(start) = start_time {
+                    let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                    msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
+                } else {
+                    let seconds = timestamp as f64 / 1_000_000_000.0;
+                    format!("{:.6}", seconds)
+                };
+
+                (
+                    time_str,
+                    ov.channel,
+                    "CAN_OV".to_string(),
+                    "-".to_string(),
+                    "-".to_string(),
+                    "-".to_string(),
+                )
+            }
+            LogObject::LinMessage(lin_msg) => {
+                let timestamp = lin_msg.header.object_time_stamp;
+                let time_str = if let Some(start) = start_time {
+                    let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                    // Format: YYYY-MM-DD HH:MM:SS.mmmmmm (microseconds)
+                    msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
+                } else {
+                    format!("{:.6}", timestamp as f64 / 1_000_000_000.0)
+                };
+
+                let data_hex = lin_msg
+                    .data
+                    .iter()
+                    .take(lin_msg.dlc as usize)
+                    .map(|b| format!("{:02X}", b))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
+                (
+                    time_str,
+                    lin_msg.channel,
+                    "LIN".to_string(),
+                    format_id(lin_msg.id as u32),
+                    lin_msg.dlc.to_string(),
+                    data_hex,
+                )
+            }
+            LogObject::LinMessage2(lin_msg) => {
+                let timestamp = lin_msg.header.object_time_stamp;
+                let time_str = if let Some(start) = start_time {
+                    let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                    msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
+                } else {
+                    let seconds = timestamp as f64 / 1_000_000_000.0;
+                    format!("{:.6}", seconds)
+                };
+
+                let data_hex = lin_msg
+                    .data
+                    .iter()
+                    .map(|b| format!("{:02X}", b))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
+                (
+                    time_str,
+                    0 as u16,
+                    "LIN2".to_string(),
+                    "-".to_string(),
+                    "8".to_string(),
+                    data_hex,
+                )
+            }
+            _ => {
+                let type_name = format!("{:?}", msg);
+                (
+                    "-".to_string(),
+                    0,
+                    type_name.split('(').next().unwrap_or("UNKNOWN").to_string(),
+                    "-".to_string(),
+                    "-".to_string(),
+                    "-".to_string(),
+                )
+            }
+        }
+    }
+
+    // Render message row with pre-calculated widths for perfect alignment
+    fn render_message_row_static_with_widths(
+        msg: &LogObject,
+        _index: usize,
+        time_width: gpui::Pixels,
+        ch_width: gpui::Pixels,
+        type_width: gpui::Pixels,
+        id_width: gpui::Pixels,
+        dlc_width: gpui::Pixels,
+        _dbc_channels: &HashMap<u16, DbcDatabase>,
+        _ldf_channels: &HashMap<u16, LdfDatabase>,
+        start_time: Option<chrono::NaiveDateTime>,
+        decimal: bool,
+        disable_hover: bool,  // New parameter to disable hover effect
+    ) -> gpui::AnyElement {
+        let (time_str, channel_id, msg_type, id_str, dlc_str, data_str) =
+            Self::get_message_strings(msg, start_time, decimal);
+
+        let bg_color = rgb(0x181818); // Simplified background
+        let type_color = match msg_type.as_str() {
+            "CAN" | "CAN2" => rgb(0x34d399),
+            "CAN_ERR" => rgb(0xef4444),
+            "CAN_FD" | "CAN_FD64" => rgb(0x8b5cf6),
+            "CAN_OV" => rgb(0xf59e0b),
+            "LIN" | "LIN2" => rgb(0x60a5fa),
+            _ => rgb(0x9ca3af),
+        };
+
+        div()
+            .flex()
+            .w_full()
+            .min_h(px(22.))
+            .bg(bg_color)
+            .border_b_1()
+            .border_color(rgb(0x2a2a2a))
+            .items_center()
+            .text_xs()
+            .text_color(rgb(0xd1d5db))
+            .when(!disable_hover, |div| {
+                div.hover(|style| style.bg(rgb(0x1f2937)))
+            })
+            .cursor_pointer()
+            .overflow_hidden()  // Ensure row doesn't overflow
+            .child(
+                // Line number column
+                div()
+                    .w(px(60.))
+                    .px_3()
+                    .py_1()
+                    .flex()
+                    .items_center()
+                    .flex_shrink_0()
+                    .text_color(rgb(0x6b7280))
+                    .whitespace_nowrap()
+                    .overflow_hidden()
+                    .child(format!("{}", _index + 1)),
+            )
+            .child(
+                div()
+                    .w(time_width)
+                    .px_3()
+                    .py_1()
+                    .flex()
+                    .items_center()
+                    .flex_shrink_0()
+                    .text_color(rgb(0x9ca3af))
+                    .whitespace_nowrap()
+                    .overflow_hidden()
+                    .child(time_str),
+            )
+            .child(
+                div()
+                    .w(ch_width)
+                    .px_2()
+                    .py_1()
+                    .flex()
+                    .items_center()
+                    .flex_shrink_0()
+                    .text_color(rgb(0x60a5fa))
+                    .whitespace_nowrap()
+                    .overflow_hidden()
+                    .child(channel_id.to_string()),
+            )
+            .child(
+                div()
+                    .w(type_width)
+                    .px_2()
+                    .py_1()
+                    .flex()
+                    .items_center()
+                    .flex_shrink_0()
+                    .text_color(type_color)
+                    .whitespace_nowrap()
+                    .overflow_hidden()
+                    .child(msg_type),
+            )
+            .child(
+                div()
+                    .w(id_width)
+                    .px_2()
+                    .py_1()
+                    .flex()
+                    .items_center()
+                    .flex_shrink_0()
+                    .text_color(rgb(0xfbbf24))
+                    .whitespace_nowrap()
+                    .overflow_hidden()
+                    .child(id_str),
+            )
+            .child(
+                div()
+                    .w(dlc_width)
+                    .px_2()
+                    .py_1()
+                    .flex()
+                    .items_center()
+                    .flex_shrink_0()
+                    .whitespace_nowrap()
+                    .overflow_hidden()
+                    .child(dlc_str),
+            )
+            .child(
+                div()
+                    .flex_1()  // DATA列使用flex_1()占据剩余空间
+                    .px_2()
+                    .py_1()
+                    .flex()
+                    .items_center()
+                    .text_color(rgb(0xa78bfa))
+                    .whitespace_nowrap()
+                    .child(data_str),
+            )
+            .into_any_element()
+    }
+
+    // Static helper to format timestamp with microseconds
+    fn format_timestamp_static(timestamp: u64, start_time: Option<chrono::NaiveDateTime>) -> String {
+        if let Some(start) = start_time {
+            let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+            // Format: YYYY-MM-DD HH:MM:SS.mmmmmm (microseconds)
+            msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
+        } else {
+            // If no start time, show nanoseconds as seconds with microsecond precision
+            format!("{:.6}", timestamp as f64 / 1_000_000_000.0)
+        }
+    }
+
+    // Static helper to render a message row (needed for uniform_list closure)
+    fn render_message_row_static(
+        msg: &LogObject,
+        index: usize,
+        dbc_channels: &HashMap<u16, DbcDatabase>,
+        ldf_channels: &HashMap<u16, LdfDatabase>,
+        start_time: Option<chrono::NaiveDateTime>,
+    ) -> gpui::AnyElement {
+        let (time_str, channel_id, msg_type, id_str, dlc_str, data_str): (String, u16, String, String, String, String) = match msg {
+            // CAN Message Types
+            LogObject::CanMessage(can_msg) => {
+                let timestamp = can_msg.header.object_time_stamp;
+                let time_str = Self::format_timestamp_static(timestamp, start_time);
+
+                let data_hex = can_msg
+                    .data
+                    .iter()
+                    .take(can_msg.dlc as usize)
+                    .map(|b| format!("{:02X}", b))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
+                (
+                    time_str,
+                    can_msg.channel,
+                    "CAN".to_string(),
+                    format!("0x{:03X}", can_msg.id),
+                    can_msg.dlc.to_string(),
+                    data_hex,
+                )
+            }
+            LogObject::CanMessage2(can_msg) => {
+                let timestamp = can_msg.header.object_time_stamp;
+                let time_str = Self::format_timestamp_static(timestamp, start_time);
+
+                let data_hex = can_msg
+                    .data
+                    .iter()
+                    .take(can_msg.dlc as usize)
+                    .map(|b| format!("{:02X}", b))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
+                (
+                    time_str,
+                    can_msg.channel,
+                    "CAN2".to_string(),
+                    format!("0x{:03X}", can_msg.id),
+                    can_msg.dlc.to_string(),
+                    data_hex,
+                )
+            }
+            LogObject::CanErrorFrame(err) => {
+                let timestamp = err.header.object_time_stamp;
+                let time_str = Self::format_timestamp_static(timestamp, start_time);
+
+                (
+                    time_str,
+                    err.channel,
+                    "CAN_ERR".to_string(),
+                    "-".to_string(),
+                    err.length.to_string(),
+                    "-".to_string(),
+                )
+            }
+            LogObject::CanFdMessage(fd_msg) => {
+                let timestamp = fd_msg.header.object_time_stamp;
+                let time_str = Self::format_timestamp_static(timestamp, start_time);
+
+                let data_hex = fd_msg
+                    .data
+                    .iter()
+                    .take(fd_msg.dlc as usize)
+                    .map(|b| format!("{:02X}", b))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
+                (
+                    time_str,
+                    fd_msg.channel as u16,  // Convert u8 to u16
+                    "CAN_FD".to_string(),
+                    format!("0x{:03X}", fd_msg.id),
+                    fd_msg.dlc.to_string(),
+                    data_hex,
+                )
+            }
+            LogObject::CanFdMessage64(fd_msg) => {
+                let timestamp = fd_msg.header.object_time_stamp;
+                let time_str = Self::format_timestamp_static(timestamp, start_time);
+
+                let data_hex = fd_msg
+                    .data
+                    .iter()
+                    .take(fd_msg.dlc as usize)
+                    .map(|b| format!("{:02X}", b))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
+                (
+                    time_str,
+                    fd_msg.channel as u16,  // Convert u8 to u16
+                    "CAN_FD64".to_string(),
+                    format!("0x{:03X}", fd_msg.id),
+                    fd_msg.dlc.to_string(),
+                    data_hex,
+                )
+            }
+            LogObject::CanOverloadFrame(ov) => {
+                let timestamp = ov.header.object_time_stamp;
+                let time_str = Self::format_timestamp_static(timestamp, start_time);
+
+                (
+                    time_str,
+                    ov.channel,
+                    "CAN_OV".to_string(),
+                    "-".to_string(),
+                    "-".to_string(),
+                    "-".to_string(),
+                )
+            }
+
+            // LIN Message Types
+            LogObject::LinMessage(lin_msg) => {
+                let timestamp = lin_msg.header.object_time_stamp;
+                let time_str = if let Some(start) = start_time {
+                    let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                    // Format: YYYY-MM-DD HH:MM:SS.mmmmmm (microseconds)
+                    msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
+                } else {
+                    format!("{:.6}", timestamp as f64 / 1_000_000_000.0)
+                };
+
+                let data_hex = lin_msg
+                    .data
+                    .iter()
+                    .take(lin_msg.dlc as usize)
+                    .map(|b| format!("{:02X}", b))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
+                (
+                    time_str,
+                    lin_msg.channel,
+                    "LIN".to_string(),
+                    format!("0x{:02X}", lin_msg.id),
+                    lin_msg.dlc.to_string(),
+                    data_hex,
+                )
+            }
+            LogObject::LinMessage2(lin_msg) => {
+                let timestamp = lin_msg.header.object_time_stamp;
+                let time_str = Self::format_timestamp_static(timestamp, start_time);
+
+                (
+                    time_str,
+                    0 as u16,
+                    "LIN2".to_string(),
+                    "-".to_string(),
+                    "-".to_string(),
+                    "-".to_string(),
+                )
+            }
+
+            // Default case for other types (LIN errors, FlexRay, etc.)
+            _ => {
+                let type_name = format!("{:?}", msg);
+                (
+                    "-".to_string(),
+                    0 as u16,
+                    type_name.split('(').next().unwrap_or("UNKNOWN").to_string(),
+                    "-".to_string(),
+                    "-".to_string(),
+                    "-".to_string(),
+                )
+            }
+        };
+
+        let bg_color = if index % 2 == 0 {
+            rgb(0x181818)
+        } else {
+            rgb(0x1a1a1a)
+        };
+
+        // Color code message types
+        let type_color = match msg_type.as_str() {
+            "CAN" | "CAN2" => rgb(0x34d399),      // Green for normal CAN
+            "CAN_ERR" => rgb(0xef4444),          // Red for errors
+            "CAN_FD" | "CAN_FD64" => rgb(0x8b5cf6), // Purple for CAN FD
+            "CAN_OV" => rgb(0xf59e0b),           // Orange for overload
+            "LIN" | "LIN2" => rgb(0x60a5fa),      // Blue for LIN
+            "LIN_CRC" | "LIN_RX_ERR" | "LIN_TX_ERR" => rgb(0xef4444), // Red for LIN errors
+            "LIN_WAKE" => rgb(0xfbbf24),          // Yellow for wakeup
+            "LIN_SLEEP" => rgb(0x6b7280),         // Gray for sleep
+            "FLEX" | "FLEX_SYNC" => rgb(0xec4899), // Pink for FlexRay
+            _ => rgb(0x9ca3af),                   // Default gray
+        };
+
+        div()
+            .flex()
+            .w_full()
+            .min_h(px(22.))
+            .bg(bg_color)
+            .border_b_1()
+            .border_color(rgb(0x2a2a2a))
+            .items_center()
+            .text_xs()
+            .text_color(rgb(0xd1d5db))
+            .hover(|style| style.bg(rgb(0x1f2937)))
+            .cursor_pointer()
+            .child(
+                div()
+                    .px_3()
+                    .py_1()
+                    .text_color(rgb(0x9ca3af))
+                    .whitespace_nowrap()
+                    .child(time_str),
+            )
+            .child(
+                div()
+                    .px_2()
+                    .py_1()
+                    .text_color(rgb(0x60a5fa))
+                    .whitespace_nowrap()
+                    .child(channel_id.to_string()),
+            )
+            .child(
+                div()
+                    .px_2()
+                    .py_1()
+                    .text_color(type_color)
+                    .whitespace_nowrap()
+                    .child(msg_type),
+            )
+            .child(
+                div()
+                    .px_2()
+                    .py_1()
+                    .text_color(rgb(0xfbbf24))
+                    .whitespace_nowrap()
+                    .child(id_str),
+            )
+            .child(
+                div()
+                    .px_2()
+                    .py_1()
+                    .whitespace_nowrap()
+                    .child(dlc_str),
+            )
+            .child(
+                div()
+                    .px_2()
+                    .py_1()
+                    .text_color(rgb(0xa78bfa))
+                    .whitespace_nowrap()
+                    .child(data_str),
+            )
+            .into_any_element()
     }
 
     fn render_config_view(&self) -> impl IntoElement {
@@ -1210,7 +3299,7 @@ fn main() {
                     },
                 })),
                 titlebar: Some(TitlebarOptions {
-                    title: Some("CanView".into()),
+                    title: Some("CANVIEW - Bus Data Analyzer".into()),
                     appears_transparent: true,
                     traffic_light_position: None,
                 }),
