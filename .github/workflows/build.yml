@@ -44,10 +44,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Remove Cargo.lock
+        shell: bash
+        run: rm -f Cargo.lock
+
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           target: ${{ matrix.target }}
+
+      - name: Update dependencies
+        run: cargo update
 
       - name: Install dependencies (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
