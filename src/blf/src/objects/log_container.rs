@@ -42,7 +42,7 @@ impl LogContainer {
                 decoder.read_to_end(&mut uncompressed)?;
 
                 // Debug: Print first 128 bytes of uncompressed data
-                if uncompressed.len() > 0 {
+                if !uncompressed.is_empty() {
                     println!(
                         "=== LogContainer uncompressed data (first 128 bytes) ===sumlen:{}",
                         uncompressed.len()
@@ -50,8 +50,8 @@ impl LogContainer {
                     let dump_len = uncompressed.len().min(128);
                     for i in (0..dump_len).step_by(16) {
                         print!("{:04x}: ", i);
-                        for j in i..(i + 16).min(dump_len) {
-                            print!("{:02x} ", uncompressed[j]);
+                        for byte in uncompressed.iter().take(i + 16).skip(i) {
+                            print!("{:02x} ", byte);
                         }
                         println!();
                     }

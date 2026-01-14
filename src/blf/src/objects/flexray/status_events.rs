@@ -182,8 +182,8 @@ impl FlexRayVFrError {
         let cluster_no = cursor.read_u32::<LittleEndian>()?;
         let tag = cursor.read_u32::<LittleEndian>()?;
         let mut data = [0u32; 4];
-        for i in 0..4 {
-            data[i] = cursor.read_u32::<LittleEndian>()?;
+        for item in &mut data {
+            *item = cursor.read_u32::<LittleEndian>()?;
         }
         let _reserved2 = cursor.read_u32::<LittleEndian>()?;
 
@@ -245,8 +245,8 @@ impl FlexRayVFrStatus {
         let cc_sync_state = cursor.read_u32::<LittleEndian>()?;
         let tag = cursor.read_u32::<LittleEndian>()?;
         let mut data = [0u32; 2];
-        for i in 0..2 {
-            data[i] = cursor.read_u32::<LittleEndian>()?;
+        for item in &mut data {
+            *item = cursor.read_u32::<LittleEndian>()?;
         }
         let _reserved2 = [0u16; 18]; // Skip reserved array
         cursor.set_position(cursor.position() + (18 * 2) as u64); // Advance cursor by 18 * sizeof(u16)
@@ -315,8 +315,8 @@ impl FlexRayVFrStartCycle {
         let _reserved1 = cursor.read_u16::<LittleEndian>()?;
         let tag = cursor.read_u32::<LittleEndian>()?;
         let mut data = [0u32; 5];
-        for i in 0..5 {
-            data[i] = cursor.read_u32::<LittleEndian>()?;
+        for item in &mut data {
+            *item = cursor.read_u32::<LittleEndian>()?;
         }
         let _reserved2 = cursor.read_u64::<LittleEndian>()?;
 

@@ -34,11 +34,7 @@ impl CanFdExtFrameData {
 
         // Calculate remaining size for reserved data
         let header_size = 8; // 2 * u32
-        let reserved_size = if size > header_size {
-            size - header_size
-        } else {
-            0
-        };
+        let reserved_size = size.saturating_sub(header_size);
 
         let mut reserved = vec![0u8; reserved_size];
         if reserved_size > 0 {
@@ -166,8 +162,7 @@ impl CanFdMessage64 {
 
         */
         let channel = {
-            let val = cursor.read_u8()?;
-            val
+            cursor.read_u8()?
         };
 
         let dlc = cursor.read_u8()?;

@@ -54,6 +54,12 @@ pub struct LdfDatabase {
 
 pub struct LdfParser;
 
+impl Default for LdfParser {
+    fn default() -> Self {
+        Self
+    }
+}
+
 impl LdfParser {
     pub fn new() -> Self {
         Self
@@ -161,8 +167,8 @@ impl LdfParser {
                                 let parts: Vec<&str> = rest.split(',').map(|s| s.trim()).collect();
                                 if parts.len() >= 3 {
                                     let id_str = parts[0];
-                                    let id = if id_str.starts_with("0x") {
-                                        u32::from_str_radix(&id_str[2..], 16).unwrap_or(0)
+                                    let id = if let Some(stripped) = id_str.strip_prefix("0x") {
+                                        u32::from_str_radix(stripped, 16).unwrap_or(0)
                                     } else {
                                         id_str.parse::<u32>().unwrap_or(0)
                                     };

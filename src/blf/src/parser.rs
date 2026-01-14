@@ -134,7 +134,7 @@ impl LogObject {
 }
 
 /// BLF parser for handling log objects
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct BlfParser {
     /// Enable debug logging
     pub debug: bool,
@@ -143,7 +143,7 @@ pub struct BlfParser {
 impl BlfParser {
     /// Creates a new BlfParser.
     pub fn new() -> Self {
-        Self { debug: false }
+        Self::default()
     }
 
     /// Creates a new BlfParser with debug logging enabled.

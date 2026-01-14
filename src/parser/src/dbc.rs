@@ -95,6 +95,12 @@ pub struct DbcDatabase {
 
 pub struct DbcParser;
 
+impl Default for DbcParser {
+    fn default() -> Self {
+        Self
+    }
+}
+
 impl DbcParser {
     pub fn new() -> Self {
         Self
@@ -163,7 +169,7 @@ impl DbcParser {
 
                         // We need to be careful about spaces inside quotes/brackets, but let's assume standard format for now.
                         let chunks: Vec<&str> = rest.split_whitespace().collect();
-                        if chunks.len() >= 1 {
+                        if !chunks.is_empty() {
                             // Parse bit definition: 0|8@1+
                             let bit_def = chunks[0];
                             let pipe_parts: Vec<&str> = bit_def.split('|').collect();

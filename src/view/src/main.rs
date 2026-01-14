@@ -1,4 +1,3 @@
-use anyhow;
 use blf::{read_blf_from_file, BlfResult, LogObject};
 use gpui::{prelude::*, *};
 use parser::dbc::{DbcDatabase, DbcParser};
@@ -123,7 +122,10 @@ struct ScrollbarDragState {
 
 impl CanViewApp {
     fn new() -> Self {
-        let app = Self {
+        
+
+        // 启动时加载配�?        app.load_startup_config();
+        Self {
             current_view: AppView::LogView,
             messages: Vec::new(),
             status_msg: "Ready".into(),
@@ -166,10 +168,7 @@ impl CanViewApp {
             show_channel_filter_input: false,
             channel_filter_scroll_offset: px(0.0),
             channel_filter_scroll_handle: gpui::UniformListScrollHandle::new(),
-        };
-
-        // 启动时加载配�?        app.load_startup_config();
-        app
+        }
     }
 
     fn load_startup_config(&mut self) {
@@ -453,7 +452,7 @@ impl CanViewApp {
             ),
         };
 
-        let bg_color = if index % 2 == 0 {
+        let bg_color = if index.is_multiple_of(2) {
             rgb(0x181818)
         } else {
             rgb(0x1a1a1a)
@@ -575,7 +574,7 @@ impl Render for CanViewApp {
                             "enter" => {
                                 view.update(cx, |app, cx| {
                                     if let Ok(parsed_id) =
-                                        u32::from_str_radix(&app.id_filter_text.to_string(), 10)
+                                        u32::from_str_radix(app.id_filter_text.as_ref(), 10)
                                     {
                                         if !app.id_filter_text.is_empty() {
                                             app.id_filter = Some(parsed_id);
@@ -870,7 +869,7 @@ impl Render for CanViewApp {
                                                     let path = file.path().to_owned();
 
                                                     let _ = cx.update(|cx| {
-                                                        let _ = view.update(cx, |view, _| {
+                                                        view.update(cx, |view, _| {
                                                             view.status_msg =
                                                                 "Loading BLF...".into();
                                                         });
@@ -889,7 +888,7 @@ impl Render for CanViewApp {
                                                         .await;
 
                                                     let _ = cx.update(|cx| {
-                                                        let _ = view.update(cx, |view, cx| {
+                                                        view.update(cx, |view, cx| {
                                                             view.apply_blf_result(result);
                                                             cx.notify(); // Notify that the window needs to be re-rendered
                                                         });
@@ -1415,7 +1414,7 @@ impl CanViewApp {
                         "enter" => {
                             view_for_keyboard.update(cx, |app, cx| {
                                 // Apply filter and close
-                                if let Ok(parsed_id) = u32::from_str_radix(&app.id_filter_text.to_string(), 10) {
+                                if let Ok(parsed_id) = u32::from_str_radix(app.id_filter_text.as_ref(), 10) {
                                     if !app.id_filter_text.is_empty() {
                                         app.id_filter = Some(parsed_id);
                                     }
@@ -1511,7 +1510,7 @@ impl CanViewApp {
                 // Check if left mouse button is still pressed
                 // If not, clear the drag state to prevent ghost dragging
                 if event.pressed_button != Some(MouseButton::Left) {
-                    let _ = view_for_mouse_move.update(cx, |app, _cx| {
+                    view_for_mouse_move.update(cx, |app, _cx| {
                         app.scrollbar_drag_state = None;
                     });
                     return;
@@ -1571,7 +1570,7 @@ impl CanViewApp {
             // Global mouse up handler - this will catch mouse up anywhere
             .on_mouse_up(MouseButton::Left, move |_event, _window, cx| {
                 // Always clear drag state on mouse up, anywhere in the window
-                let _ = view_for_mouse_up.update(cx, |app, _cx| {
+                view_for_mouse_up.update(cx, |app, _cx| {
                     app.scrollbar_drag_state = None;
                 });
             })
@@ -1802,7 +1801,7 @@ impl CanViewApp {
                                 move |range: std::ops::Range<usize>, _window: &mut gpui::Window, cx: &mut gpui::App| {
                                     // Track scroll position by observing the visible range
                                     let first_visible = range.start;
-                                    let _ = view_entity.update(cx, |v, _cx| {
+                                    view_entity.update(cx, |v, _cx| {
                                         v.scroll_offset = px(first_visible as f32 * 22.0);
                                     });
 
@@ -1971,7 +1970,7 @@ impl CanViewApp {
                                                     let start_scroll_offset = f32::from(view_for_thumb.read(cx).scroll_offset);
 
                                                     // Set drag state
-                                                    let _ = view_for_thumb.update(cx, |app, _cx| {
+                                                    view_for_thumb.update(cx, |app, _cx| {
                                                     app.scrollbar_drag_state = Some(ScrollbarDragState {
                                                         start_y,
                                                         start_scroll_offset,
@@ -2035,7 +2034,7 @@ impl CanViewApp {
                                 let view_for_scroll = view_for_scroll.clone();
                                 move |_event, _window, cx| {
                                     cx.stop_propagation();
-                                    let _ = view_for_scroll.update(cx, |app, cx| {
+                                    view_for_scroll.update(cx, |app, cx| {
                                         app.mouse_over_filter_dropdown = true;
                                         cx.notify();
                                     });
@@ -2046,7 +2045,7 @@ impl CanViewApp {
                                 let view_for_scroll = view_for_scroll.clone();
                                 move |_event, _window, cx| {
                                     cx.stop_propagation();
-                                    let _ = view_for_scroll.update(cx, |app, cx| {
+                                    view_for_scroll.update(cx, |app, cx| {
                                         app.mouse_over_filter_dropdown = true;
                                         cx.notify();
                                     });
@@ -2056,7 +2055,7 @@ impl CanViewApp {
                                 let view_for_scroll = view_for_scroll.clone();
                                 move |_event, _window, cx| {
                                     cx.stop_propagation();
-                                    let _ = view_for_scroll.update(cx, |app, cx| {
+                                    view_for_scroll.update(cx, |app, cx| {
                                         app.mouse_over_filter_dropdown = true;
                                         cx.notify();
                                     });
@@ -2086,7 +2085,7 @@ impl CanViewApp {
                                 let new_offset = (current_offset_f32 - delta_y).clamp(0.0, max_scroll);
 
                                 // Update state
-                                let _ = view_for_scroll.update(cx, |app, cx| {
+                                view_for_scroll.update(cx, |app, cx| {
                                     app.filter_scroll_offset = px(new_offset);
                                     cx.notify();
                                 });
@@ -2204,7 +2203,7 @@ impl CanViewApp {
                                 let view_for_scroll = view_for_scroll.clone();
                                 move |_event, _window, cx| {
                                     cx.stop_propagation();
-                                    let _ = view_for_scroll.update(cx, |app, cx| {
+                                    view_for_scroll.update(cx, |app, cx| {
                                         app.mouse_over_filter_dropdown = true;
                                         cx.notify();
                                     });
@@ -2215,7 +2214,7 @@ impl CanViewApp {
                                 let view_for_scroll = view_for_scroll.clone();
                                 move |_event, _window, cx| {
                                     cx.stop_propagation();
-                                    let _ = view_for_scroll.update(cx, |app, cx| {
+                                    view_for_scroll.update(cx, |app, cx| {
                                         app.mouse_over_filter_dropdown = true;
                                         cx.notify();
                                     });
@@ -2225,7 +2224,7 @@ impl CanViewApp {
                                 let view_for_scroll = view_for_scroll.clone();
                                 move |_event, _window, cx| {
                                     cx.stop_propagation();
-                                    let _ = view_for_scroll.update(cx, |app, cx| {
+                                    view_for_scroll.update(cx, |app, cx| {
                                         app.mouse_over_filter_dropdown = true;
                                         cx.notify();
                                     });
@@ -2255,7 +2254,7 @@ impl CanViewApp {
                                 let new_offset = (current_offset_f32 - delta_y).clamp(0.0, max_scroll);
 
                                 // Update state
-                                let _ = view_for_scroll.update(cx, |app, cx| {
+                                view_for_scroll.update(cx, |app, cx| {
                                     app.channel_filter_scroll_offset = px(new_offset);
                                     cx.notify();
                                 });
@@ -2443,7 +2442,7 @@ impl CanViewApp {
                         let new_offset = (current_offset_f32 - delta_y).clamp(0.0, max_scroll);
 
                         // Update state
-                        let _ = view_for_scroll.update(cx, |app, cx| {
+                        view_for_scroll.update(cx, |app, cx| {
                             app.channel_filter_scroll_offset = px(new_offset);
                             cx.notify();
                         });
@@ -3064,7 +3063,7 @@ impl CanViewApp {
 
                 (
                     time_str,
-                    fd_msg.channel as u16, // Convert u8 to u16
+                    fd_msg.channel, // Convert u8 to u16
                     "CAN_FD".to_string(),
                     format!("0x{:03X}", fd_msg.id),
                     fd_msg.dlc.to_string(),
@@ -3140,7 +3139,7 @@ impl CanViewApp {
 
                 (
                     time_str,
-                    0 as u16,
+                    0_u16,
                     "LIN2".to_string(),
                     "-".to_string(),
                     "-".to_string(),
@@ -3153,7 +3152,7 @@ impl CanViewApp {
                 let type_name = format!("{:?}", msg);
                 (
                     "-".to_string(),
-                    0 as u16,
+                    0_u16,
                     type_name.split('(').next().unwrap_or("UNKNOWN").to_string(),
                     "-".to_string(),
                     "-".to_string(),
@@ -3162,7 +3161,7 @@ impl CanViewApp {
             }
         };
 
-        let bg_color = if index % 2 == 0 {
+        let bg_color = if index.is_multiple_of(2) {
             rgb(0x181818)
         } else {
             rgb(0x1a1a1a)
