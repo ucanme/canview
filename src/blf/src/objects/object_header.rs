@@ -291,10 +291,7 @@ impl ObjectHeader {
             // - 32 bytes: full header (flags + clientIndex + objectVersion + timestamp)
             if base.header_size == 16 {
                 // Compact V1 header - no additional fields
-                object_flags = cursor.read_u32::<LittleEndian>()?;
-                client_index = cursor.read_u16::<LittleEndian>()?;
-                object_version = cursor.read_u16::<LittleEndian>()?;
-                object_time_stamp = cursor.read_u64::<LittleEndian>()?;
+                // Keep default values (all zeros)
             } else if base.header_size >= 32 {
                 // Full V1 header
                 object_flags = cursor.read_u32::<LittleEndian>()?;

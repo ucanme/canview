@@ -1,8 +1,22 @@
 {
   "permissions": {
     "allow": [
+      "Bash(Select-String:*)",
+      "Bash(target/release/view.exe:*)",
+      "Bash(cargo build:*)",
+      "Bash(Select-Object -First 50)",
+      "Bash(cargo clean:*)",
+      "Bash(dir:*)",
+      "Bash(ie4uinit.exe:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(cargo check:*)",
       "Bash(cargo update:*)",
-      "Bash(cargo check:*)"
+      "Bash(cargo search:*)",
+      "Bash(find:*)",
+      "Bash(git push:*)",
+      "Bash(cargo fix:*)",
+      "Bash(cargo clippy:*)"
     ],
     "deny": [],
     "ask": []

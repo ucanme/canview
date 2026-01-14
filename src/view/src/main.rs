@@ -123,7 +123,7 @@ struct ScrollbarDragState {
 
 impl CanViewApp {
     fn new() -> Self {
-        let mut app = Self {
+        let app = Self {
             current_view: AppView::LogView,
             messages: Vec::new(),
             status_msg: "Ready".into(),
@@ -344,6 +344,7 @@ impl CanViewApp {
         }
     }
 
+    #[allow(dead_code)]
     fn get_timestamp_string(&self, timestamp: u64) -> String {
         if let Some(start) = &self.start_time {
             let msg_time = *start + chrono::Duration::nanoseconds(timestamp as i64);
@@ -355,6 +356,7 @@ impl CanViewApp {
         }
     }
 
+    #[allow(dead_code)]
     fn render_message_row(&self, msg: &LogObject, index: usize) -> impl IntoElement {
         let (time_str, channel_id, msg_type, id_str, dlc_str, data_str, signals_str) = match msg {
             LogObject::CanMessage(can_msg) => {
@@ -1348,7 +1350,7 @@ impl CanViewApp {
         let view_for_keyboard = view.clone();
 
         // Clone for dialog display
-        let id_filter_text_for_dialog = id_filter_text.clone();
+        let _id_filter_text_for_dialog = id_filter_text.clone();
 
         div()
             .size_full()
@@ -1589,7 +1591,7 @@ impl CanViewApp {
                     )
                     .child(
                         {
-                            let view_for_ch_filter = view.clone();
+                            let _view_for_ch_filter = view.clone();
                             div()
                                 .w(ch_width)
                                 .px_2()
@@ -1902,7 +1904,7 @@ impl CanViewApp {
                                         // The click_y is in range [0, container_h], but thumb top can only be in [0, track_h]
                                         // When click_y is at bottom (container_h), thumb_top should be at track_h
                                         let scroll_ratio = click_y / container_h;
-                                        let desired_thumb_top = (scroll_ratio * track_h).clamp(0.0, track_h);
+                                        let _desired_thumb_top = (scroll_ratio * track_h).clamp(0.0, track_h);
 
                                         // Calculate target index
                                         let visible_items = (container_h / row_h).ceil() as usize;
@@ -2299,12 +2301,13 @@ impl CanViewApp {
             })
     }
 
+    #[allow(dead_code)]
     // Render channel filter dropdown
     fn render_channel_filter_dropdown(
         &self,
         parent: gpui::Div,
         view: Entity<CanViewApp>,
-        ch_width: gpui::Pixels,
+        _ch_width: gpui::Pixels,
         time_width: gpui::Pixels,
     ) -> gpui::Div {
         parent.when(self.show_channel_filter_input, |parent| {
@@ -2357,7 +2360,7 @@ impl CanViewApp {
                             let view_for_scroll = view_for_scroll.clone();
                             move |_event, _window, cx| {
                                 cx.stop_propagation();
-                                let _ = view_for_scroll.update(cx, |app, cx| {
+                                view_for_scroll.update(cx, |app, cx| {
                                     app.mouse_over_filter_dropdown = true;
                                     cx.notify();
                                 });
@@ -2368,7 +2371,7 @@ impl CanViewApp {
                             let view_for_scroll = view_for_scroll.clone();
                             move |_event, _window, cx| {
                                 cx.stop_propagation();
-                                let _ = view_for_scroll.update(cx, |app, cx| {
+                                view_for_scroll.update(cx, |app, cx| {
                                     app.mouse_over_filter_dropdown = true;
                                     cx.notify();
                                 });
@@ -2378,7 +2381,7 @@ impl CanViewApp {
                             let view_for_scroll = view_for_scroll.clone();
                             move |_event, _window, cx| {
                                 cx.stop_propagation();
-                                let _ = view_for_scroll.update(cx, |app, cx| {
+                                view_for_scroll.update(cx, |app, cx| {
                                     app.mouse_over_filter_dropdown = true;
                                     cx.notify();
                                 });
@@ -2660,7 +2663,7 @@ impl CanViewApp {
 
                 (
                     time_str,
-                    fd_msg.channel as u16,
+                    fd_msg.channel,
                     "CAN_FD".to_string(),
                     format_id(fd_msg.id),
                     fd_msg.dlc.to_string(),
@@ -2759,7 +2762,7 @@ impl CanViewApp {
 
                 (
                     time_str,
-                    0 as u16,
+                    0_u16,
                     "LIN2".to_string(),
                     "-".to_string(),
                     "8".to_string(),
@@ -2770,7 +2773,7 @@ impl CanViewApp {
                 let type_name = format!("{:?}", msg);
                 (
                     "-".to_string(),
-                    0,
+                    0_u16,
                     type_name.split('(').next().unwrap_or("UNKNOWN").to_string(),
                     "-".to_string(),
                     "-".to_string(),
@@ -2915,6 +2918,7 @@ impl CanViewApp {
             .into_any_element()
     }
 
+    #[allow(dead_code)]
     // Static helper to format timestamp with microseconds
     fn format_timestamp_static(timestamp: u64, start_time: Option<chrono::NaiveDateTime>) -> String {
         if let Some(start) = start_time {
@@ -2927,12 +2931,13 @@ impl CanViewApp {
         }
     }
 
+    #[allow(dead_code)]
     // Static helper to render a message row (needed for uniform_list closure)
     fn render_message_row_static(
         msg: &LogObject,
         index: usize,
-        dbc_channels: &HashMap<u16, DbcDatabase>,
-        ldf_channels: &HashMap<u16, LdfDatabase>,
+        _dbc_channels: &HashMap<u16, DbcDatabase>,
+        _ldf_channels: &HashMap<u16, LdfDatabase>,
         start_time: Option<chrono::NaiveDateTime>,
     ) -> gpui::AnyElement {
         let (time_str, channel_id, msg_type, id_str, dlc_str, data_str): (String, u16, String, String, String, String) = match msg {
