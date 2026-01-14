@@ -834,6 +834,7 @@ dependencies = [
  "blf",
  "chrono",
  "env_logger",
+ "font-kit",
  "gpui",
  "log",
  "parser",
