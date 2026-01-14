@@ -1,0 +1,61 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Light theme version -->
+  <defs>
+    <linearGradient id="bgGradientLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8fafc;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e2e8f0;stop-opacity:1" />
+    </linearGradient>
+
+    <linearGradient id="accentGradientLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#059669;stop-opacity:1" />
+      <stop offset="33%" style="stop-color:#2563eb;stop-opacity:1" />
+      <stop offset="66%" style="stop-color:#4f46e5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7c3aed;stop-opacity:1" />
+    </linearGradient>
+
+    <linearGradient id="lineGradientLight" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#6366f1;stop-opacity:1" />
+    </linearGradient>
+
+    <filter id="glowLight" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="96" fill="url(#bgGradientLight)"/>
+
+  <circle cx="256" cy="256" r="180" stroke="#cbd5e1" stroke-width="1.5" fill="none" opacity="0.5"/>
+  <circle cx="256" cy="256" r="165" stroke="#cbd5e1" stroke-width="1" fill="none" opacity="0.3"/>
+
+  <g transform="translate(256, 256)">
+    <circle cx="0" cy="0" r="150" stroke="#e2e8f0" stroke-width="2" fill="none" opacity="0.6"/>
+
+    <g filter="url(#glowLight)">
+      <path d="M -110 -25 L -65 -25 L -45 -70 L -25 -25 L 25 -25 L 45 -70 L 65 -25 L 110 -25"
+            stroke="url(#lineGradientLight)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+      <path d="M -110 25 L -65 25 L -45 70 L -25 25 L 25 25 L 45 70 L 65 25 L 110 25"
+            stroke="url(#lineGradientLight)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.35"/>
+    </g>
+
+    <g filter="url(#glowLight)">
+      <circle cx="-110" cy="0" r="14" fill="url(#accentGradientLight)"/>
+      <circle cx="-45" cy="0" r="14" fill="url(#accentGradientLight)"/>
+      <circle cx="0" cy="0" r="20" fill="url(#accentGradientLight)"/>
+      <circle cx="45" cy="0" r="14" fill="url(#accentGradientLight)"/>
+      <circle cx="110" cy="0" r="14" fill="url(#accentGradientLight)"/>
+    </g>
+  </g>
+
+  <g font-family="JetBrains Mono, monospace" font-size="16" font-weight="600" fill="#64748b" text-anchor="middle" opacity="0.8">
+    <text x="256" y="75" letter-spacing="8">1011010</text>
+  </g>
+
+  <text x="256" y="440" font-family="system-ui, sans-serif" font-size="52" font-weight="800" fill="#1e293b" text-anchor="middle" letter-spacing="6">CANVIEW</text>
+  <text x="256" y="470" font-family="system-ui, sans-serif" font-size="18" font-weight="500" fill="#64748b" text-anchor="middle" letter-spacing="3">BUS DATA ANALYZER</text>
+</svg>

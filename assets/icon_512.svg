@@ -1,0 +1,48 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e293b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f172a;stop-opacity:1" />
+    </linearGradient>
+
+    <linearGradient id="accentGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="33%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="66%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+
+    <linearGradient id="lineGrad512" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#34d399;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#818cf8;stop-opacity:1" />
+    </linearGradient>
+
+    <filter id="glow512" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad512)"/>
+
+  <g transform="translate(256, 256)">
+    <circle cx="0" cy="0" r="180" stroke="#374151" stroke-width="3" fill="none" opacity="0.4"/>
+
+    <g filter="url(#glow512)">
+      <path d="M -140 -30 L -80 -30 L -50 -90 L -20 -30 L 20 -30 L 50 -90 L 80 -30 L 140 -30"
+            stroke="url(#lineGrad512)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+      <path d="M -140 30 L -80 30 L -50 90 L -20 30 L 20 30 L 50 90 L 80 30 L 140 30"
+            stroke="url(#lineGrad512)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.3"/>
+    </g>
+
+    <circle cx="-140" cy="0" r="18" fill="url(#accentGrad512)" filter="url(#glow512)"/>
+    <circle cx="-50" cy="0" r="18" fill="url(#accentGrad512)" filter="url(#glow512)"/>
+    <circle cx="0" cy="0" r="26" fill="url(#accentGrad512)" filter="url(#glow512)"/>
+    <circle cx="50" cy="0" r="18" fill="url(#accentGrad512)" filter="url(#glow512)"/>
+    <circle cx="140" cy="0" r="18" fill="url(#accentGrad512)" filter="url(#glow512)"/>
+  </g>
+</svg>

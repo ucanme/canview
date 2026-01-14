@@ -1,0 +1,38 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad128" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e293b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f172a;stop-opacity:1" />
+    </linearGradient>
+
+    <linearGradient id="accentGrad128" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="33%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="66%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+
+    <linearGradient id="lineGrad128" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#34d399;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#818cf8;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <rect width="128" height="128" rx="28" fill="url(#bgGrad128)"/>
+
+  <g transform="translate(64, 64)">
+    <circle cx="0" cy="0" r="45" stroke="#374151" stroke-width="1.5" fill="none" opacity="0.4"/>
+
+    <path d="M -35 -8 L -20 -8 L -12 -22 L -4 -8 L 4 -8 L 12 -22 L 20 -8 L 35 -8"
+          stroke="url(#lineGrad128)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+    <path d="M -35 8 L -20 8 L -12 22 L -4 8 L 4 8 L 12 22 L 20 8 L 35 8"
+          stroke="url(#lineGrad128)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.3"/>
+
+    <circle cx="-35" cy="0" r="4.5" fill="url(#accentGrad128)"/>
+    <circle cx="-12" cy="0" r="4.5" fill="url(#accentGrad128)"/>
+    <circle cx="0" cy="0" r="6.5" fill="url(#accentGrad128)"/>
+    <circle cx="12" cy="0" r="4.5" fill="url(#accentGrad128)"/>
+    <circle cx="35" cy="0" r="4.5" fill="url(#accentGrad128)"/>
+  </g>
+</svg>

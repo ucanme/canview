@@ -1,0 +1,105 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Enhanced modern logo with glow effects -->
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e293b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f172a;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Main accent gradient (green to purple) -->
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="33%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="66%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Line gradient (green to blue) -->
+    <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#34d399;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#60a5fa;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#818cf8;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Glow filter for main elements -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Strong glow for center node -->
+    <filter id="strongGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Subtle shadow -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Main background with subtle gradient -->
+  <rect width="512" height="512" rx="96" fill="url(#bgGradient)"/>
+
+  <!-- Decorative outer ring -->
+  <circle cx="256" cy="256" r="180" stroke="#30363d" stroke-width="1.5" fill="none" opacity="0.3"/>
+  <circle cx="256" cy="256" r="165" stroke="#30363d" stroke-width="1" fill="none" opacity="0.2"/>
+
+  <!-- Central CAN bus visualization -->
+  <g transform="translate(256, 256)">
+    <!-- Inner circular frame -->
+    <circle cx="0" cy="0" r="150" stroke="#374151" stroke-width="2" fill="none" opacity="0.4"/>
+
+    <!-- CAN bus waveform - High line (dominant) -->
+    <g filter="url(#glow)">
+      <path d="M -110 -25 L -65 -25 L -45 -70 L -25 -25 L 25 -25 L 45 -70 L 65 -25 L 110 -25"
+            stroke="url(#lineGradient)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+      <!-- CAN bus waveform - Low line (recessive) -->
+      <path d="M -110 25 L -65 25 L -45 70 L -25 25 L 25 25 L 45 70 L 65 25 L 110 25"
+            stroke="url(#lineGradient)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.35"/>
+    </g>
+
+    <!-- Data nodes with glow -->
+    <g filter="url(#glow)">
+      <circle cx="-110" cy="0" r="14" fill="url(#accentGradient)"/>
+      <circle cx="-45" cy="0" r="14" fill="url(#accentGradient)"/>
+      <circle cx="0" cy="0" r="20" fill="url(#accentGradient)" filter="url(#strongGlow)"/>
+      <circle cx="45" cy="0" r="14" fill="url(#accentGradient)"/>
+      <circle cx="110" cy="0" r="14" fill="url(#accentGradient)"/>
+    </g>
+
+    <!-- Small decorative bits on the waveform -->
+    <circle cx="-45" cy="-70" r="5" fill="#60a5fa" opacity="0.6"/>
+    <circle cx="45" cy="-70" r="5" fill="#60a5fa" opacity="0.6"/>
+    <circle cx="-45" cy="70" r="5" fill="#60a5fa" opacity="0.3"/>
+    <circle cx="45" cy="70" r="5" fill="#60a5fa" opacity="0.3"/>
+  </g>
+
+  <!-- Top decorative binary pattern -->
+  <g font-family="JetBrains Mono, SF Mono, Consolas, monospace" font-size="16" font-weight="600" fill="#4b5563" text-anchor="middle" opacity="0.8">
+    <text x="256" y="75" letter-spacing="8">1011010</text>
+  </g>
+
+  <!-- Decorative corner accents -->
+  <g opacity="0.15">
+    <path d="M 60 60 L 100 60 L 100 64 L 64 64 L 64 100 L 60 100 Z" fill="#6b7280"/>
+    <path d="M 452 60 L 412 60 L 412 64 L 448 64 L 448 100 L 452 100 Z" fill="#6b7280"/>
+    <path d="M 60 452 L 100 452 L 100 448 L 64 448 L 64 412 L 60 412 Z" fill="#6b7280"/>
+    <path d="M 452 452 L 412 452 L 412 448 L 448 448 L 448 412 L 452 412 Z" fill="#6b7280"/>
+  </g>
+
+  <!-- Main title -->
+  <text x="256" y="440" font-family="system-ui, -apple-system, BlinkMacSystemFont, sans-serif" font-size="52" font-weight="800" fill="#f3f4f6" text-anchor="middle" letter-spacing="6" filter="url(#shadow)">CANVIEW</text>
+
+  <!-- Subtitle -->
+  <text x="256" y="470" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="500" fill="#9ca3af" text-anchor="middle" letter-spacing="3">BUS DATA ANALYZER</text>
+</svg>
