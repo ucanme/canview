@@ -1,9 +1,9 @@
 //! Application trigger object definition.
 
+use crate::BlfParseResult;
+use crate::objects::object_header::ObjectHeader;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Cursor, Write};
-use crate::{BlfParseResult};
-use crate::objects::object_header::ObjectHeader;
 
 /// Represents an application-defined trigger (`APP_TRIGGER`).
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -1,9 +1,9 @@
 //! Ethernet frame object definitions.
 
+use crate::BlfParseResult;
+use crate::objects::object_header::ObjectHeader;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Cursor, Read, Write};
-use crate::{BlfParseResult};
-use crate::objects::object_header::ObjectHeader;
 
 /// Represents an Ethernet frame (`ETHERNET_FRAME`).
 #[derive(Debug, Clone, PartialEq)]

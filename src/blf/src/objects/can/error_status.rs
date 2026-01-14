@@ -1,9 +1,9 @@
 //! CAN error and status object definitions.
 
+use crate::BlfParseResult;
+use crate::objects::object_header::ObjectHeader;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::Cursor;
-use crate::{BlfParseResult};
-use crate::objects::object_header::ObjectHeader;
 
 /// Represents a CAN error frame (`CAN_ERROR`).
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

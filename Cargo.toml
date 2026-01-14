@@ -27,7 +27,3 @@ members = [
     "src/view",
     "src/parser",
 ]
-
-# Force ashpd to use tokio across all versions in the dependency tree
-[patch.crates-io]
-ashpd = { git = "https://github.com/bilelmoussaoui/ashpd", branch = "main", version = "0.8" }

@@ -1,10 +1,10 @@
 //! MOST (Media Oriented Systems Transport) object definitions.
 //! Most object definitions.
 
+use crate::BlfParseResult;
+use crate::objects::object_header::ObjectHeader;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Cursor, Read};
-use crate::{BlfParseResult};
-use crate::objects::object_header::ObjectHeader;
 
 /// Represents a message from the MOST Control Channel in spy mode (`MOST_SPY`).
 #[derive(Debug, Clone, PartialEq, Eq)]

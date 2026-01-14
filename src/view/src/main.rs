@@ -541,7 +541,10 @@ impl Render for CanViewApp {
                 move |event, _window, cx| {
                     eprintln!("=== ROOT LEVEL on_key_down ===");
                     eprintln!("keystroke: {}", event.keystroke);
-                    eprintln!("show_id_filter_input: {}", view.read(cx).show_id_filter_input);
+                    eprintln!(
+                        "show_id_filter_input: {}",
+                        view.read(cx).show_id_filter_input
+                    );
 
                     // Only handle when filter is active
                     let show_filter = view.read(cx).show_id_filter_input;
@@ -554,7 +557,10 @@ impl Render for CanViewApp {
                                     if !text.is_empty() {
                                         text.pop();
                                         app.id_filter_text = text.into();
-                                        eprintln!("Filter text (backspace): {}", app.id_filter_text);
+                                        eprintln!(
+                                            "Filter text (backspace): {}",
+                                            app.id_filter_text
+                                        );
                                         cx.notify();
                                     }
                                 });
@@ -568,7 +574,9 @@ impl Render for CanViewApp {
                             }
                             "enter" => {
                                 view.update(cx, |app, cx| {
-                                    if let Ok(parsed_id) = u32::from_str_radix(&app.id_filter_text.to_string(), 10) {
+                                    if let Ok(parsed_id) =
+                                        u32::from_str_radix(&app.id_filter_text.to_string(), 10)
+                                    {
                                         if !app.id_filter_text.is_empty() {
                                             app.id_filter = Some(parsed_id);
                                         }
@@ -642,35 +650,35 @@ impl Render for CanViewApp {
                                                     .w(px(3.))
                                                     .h(px(3.))
                                                     .rounded(px(1.5))
-                                                    .bg(rgb(0x34d399))
+                                                    .bg(rgb(0x34d399)),
                                             )
                                             .child(
                                                 div()
                                                     .w(px(3.))
                                                     .h(px(3.))
                                                     .rounded(px(1.5))
-                                                    .bg(rgb(0x60a5fa))
+                                                    .bg(rgb(0x60a5fa)),
                                             )
                                             .child(
                                                 div()
                                                     .w(px(4.))
                                                     .h(px(4.))
                                                     .rounded(px(2.))
-                                                    .bg(rgb(0x818cf8))
+                                                    .bg(rgb(0x818cf8)),
                                             )
                                             .child(
                                                 div()
                                                     .w(px(3.))
                                                     .h(px(3.))
                                                     .rounded(px(1.5))
-                                                    .bg(rgb(0x60a5fa))
+                                                    .bg(rgb(0x60a5fa)),
                                             )
                                             .child(
                                                 div()
                                                     .w(px(3.))
                                                     .h(px(3.))
                                                     .rounded(px(1.5))
-                                                    .bg(rgb(0x34d399))
+                                                    .bg(rgb(0x34d399)),
                                             ),
                                     )
                                     .child(
@@ -967,18 +975,15 @@ impl Render for CanViewApp {
                                             .border_1()
                                             .border_color(rgb(0x9ca3af)),
                                     )
-                                    .on_mouse_down(
-                                        gpui::MouseButton::Left,
-                                        {
-                                            let view = view.clone();
-                                            move |_event, window, cx| {
-                                                // Use our custom toggle that properly manages state
-                                                view.update(cx, |view, cx| {
-                                                    view.toggle_maximize(window, cx);
-                                                });
-                                            }
-                                        },
-                                    ),
+                                    .on_mouse_down(gpui::MouseButton::Left, {
+                                        let view = view.clone();
+                                        move |_event, window, cx| {
+                                            // Use our custom toggle that properly manages state
+                                            view.update(cx, |view, cx| {
+                                                view.toggle_maximize(window, cx);
+                                            });
+                                        }
+                                    }),
                             )
                             .child(
                                 // Close button
@@ -1007,7 +1012,9 @@ impl Render for CanViewApp {
                     .bg(rgb(0x181818))
                     .overflow_hidden()
                     .child(match self.current_view {
-                        AppView::LogView => self.render_log_view(cx.entity().clone()).into_any_element(),
+                        AppView::LogView => {
+                            self.render_log_view(cx.entity().clone()).into_any_element()
+                        }
                         AppView::ConfigView => self.render_config_view().into_any_element(),
                         AppView::ChartView => self.render_chart_view().into_any_element(),
                     }),
@@ -1239,7 +1246,7 @@ impl CanViewApp {
             scrollbar_drag_state: None,
             scroll_offset: px(0.0),
             list_container_height: 850.0,
-            id_display_decimal: true,  // Default to decimal
+            id_display_decimal: true, // Default to decimal
             id_filter: None,
             id_filter_text: "".into(),
             show_id_filter_input: false,
@@ -1288,8 +1295,9 @@ impl CanViewApp {
             (None, None) => self.messages.clone(),
             (Some(filter_id), None) => {
                 // Only ID filter
-                self.messages.iter().filter(|msg| {
-                    match msg {
+                self.messages
+                    .iter()
+                    .filter(|msg| match msg {
                         LogObject::CanMessage(can_msg) => can_msg.id == filter_id,
                         LogObject::CanMessage2(can_msg) => can_msg.id == filter_id,
                         LogObject::CanFdMessage(fd_msg) => fd_msg.id == filter_id,
@@ -1297,13 +1305,15 @@ impl CanViewApp {
                         LogObject::LinMessage(lin_msg) => lin_msg.id as u32 == filter_id,
                         LogObject::LinMessage2(_) => false,
                         _ => false,
-                    }
-                }).cloned().collect()
+                    })
+                    .cloned()
+                    .collect()
             }
             (None, Some(filter_ch)) => {
                 // Only Channel filter
-                self.messages.iter().filter(|msg| {
-                    match msg {
+                self.messages
+                    .iter()
+                    .filter(|msg| match msg {
                         LogObject::CanMessage(can_msg) => can_msg.channel == filter_ch,
                         LogObject::CanMessage2(can_msg) => can_msg.channel == filter_ch,
                         LogObject::CanFdMessage(fd_msg) => fd_msg.channel == filter_ch,
@@ -1311,22 +1321,35 @@ impl CanViewApp {
                         LogObject::LinMessage(lin_msg) => lin_msg.channel == filter_ch,
                         LogObject::LinMessage2(_) => false,
                         _ => false,
-                    }
-                }).cloned().collect()
+                    })
+                    .cloned()
+                    .collect()
             }
             (Some(filter_id), Some(filter_ch)) => {
                 // Both filters
-                self.messages.iter().filter(|msg| {
-                    match msg {
-                        LogObject::CanMessage(can_msg) => can_msg.id == filter_id && can_msg.channel == filter_ch,
-                        LogObject::CanMessage2(can_msg) => can_msg.id == filter_id && can_msg.channel == filter_ch,
-                        LogObject::CanFdMessage(fd_msg) => fd_msg.id == filter_id && fd_msg.channel == filter_ch,
-                        LogObject::CanFdMessage64(fd_msg) => fd_msg.id == filter_id && fd_msg.channel as u16 == filter_ch,
-                        LogObject::LinMessage(lin_msg) => lin_msg.id as u32 == filter_id && lin_msg.channel == filter_ch,
+                self.messages
+                    .iter()
+                    .filter(|msg| match msg {
+                        LogObject::CanMessage(can_msg) => {
+                            can_msg.id == filter_id && can_msg.channel == filter_ch
+                        }
+                        LogObject::CanMessage2(can_msg) => {
+                            can_msg.id == filter_id && can_msg.channel == filter_ch
+                        }
+                        LogObject::CanFdMessage(fd_msg) => {
+                            fd_msg.id == filter_id && fd_msg.channel == filter_ch
+                        }
+                        LogObject::CanFdMessage64(fd_msg) => {
+                            fd_msg.id == filter_id && fd_msg.channel as u16 == filter_ch
+                        }
+                        LogObject::LinMessage(lin_msg) => {
+                            lin_msg.id as u32 == filter_id && lin_msg.channel == filter_ch
+                        }
                         LogObject::LinMessage2(_) => false,
                         _ => false,
-                    }
-                }).cloned().collect()
+                    })
+                    .cloned()
+                    .collect()
             }
         };
 
@@ -2315,11 +2338,21 @@ impl CanViewApp {
             let mut unique_channels = std::collections::HashSet::new();
             for msg in self.messages.iter() {
                 match msg {
-                    LogObject::CanMessage(m) => { unique_channels.insert(m.channel); }
-                    LogObject::CanMessage2(m) => { unique_channels.insert(m.channel); }
-                    LogObject::CanFdMessage(m) => { unique_channels.insert(m.channel); }
-                    LogObject::CanFdMessage64(m) => { unique_channels.insert(m.channel as u16); }
-                    LogObject::LinMessage(m) => { unique_channels.insert(m.channel); }
+                    LogObject::CanMessage(m) => {
+                        unique_channels.insert(m.channel);
+                    }
+                    LogObject::CanMessage2(m) => {
+                        unique_channels.insert(m.channel);
+                    }
+                    LogObject::CanFdMessage(m) => {
+                        unique_channels.insert(m.channel);
+                    }
+                    LogObject::CanFdMessage64(m) => {
+                        unique_channels.insert(m.channel as u16);
+                    }
+                    LogObject::LinMessage(m) => {
+                        unique_channels.insert(m.channel);
+                    }
                     LogObject::LinMessage2(_) => {}
                     _ => {}
                 }
@@ -2332,151 +2365,155 @@ impl CanViewApp {
             eprintln!("=== Channel filter dropdown rendering ===");
             eprintln!("  Found {} unique channels", channel_list.len());
 
-            parent.child(
-                {
-                    let channel_list_clone = channel_list.clone();
-                    let view_for_scroll = view.clone();
-                    let channel_list_for_wheel = channel_list.clone();
-                    // Clone the scroll handle for use in closures
-                    let filter_scroll_handle = self.channel_filter_scroll_handle.clone();
-                    let filter_scroll_handle_for_uniform = filter_scroll_handle.clone();
+            parent.child({
+                let channel_list_clone = channel_list.clone();
+                let view_for_scroll = view.clone();
+                let channel_list_for_wheel = channel_list.clone();
+                // Clone the scroll handle for use in closures
+                let filter_scroll_handle = self.channel_filter_scroll_handle.clone();
+                let filter_scroll_handle_for_uniform = filter_scroll_handle.clone();
 
-                    div()
-                        .absolute()
-                        .left(px(filter_left))
-                        .top(px(32.))
-                        .w(px(120.))
-                        .h(px(300.))
-                        .bg(rgb(0x1f2937))
-                        .border_1()
-                        .border_color(rgb(0x3b82f6))
-                        .rounded(px(4.))
-                        .shadow_lg()
-                        .flex()
-                        .flex_col()
-                        .overflow_hidden()
-                        // Track mouse move to disable main list hover when over dropdown
-                        .on_mouse_move({
-                            let view_for_scroll = view_for_scroll.clone();
-                            move |_event, _window, cx| {
-                                cx.stop_propagation();
-                                view_for_scroll.update(cx, |app, cx| {
-                                    app.mouse_over_filter_dropdown = true;
-                                    cx.notify();
-                                });
-                            }
-                        })
-                        // Block all mouse events from reaching the main list
-                        .on_mouse_up(gpui::MouseButton::Left, {
-                            let view_for_scroll = view_for_scroll.clone();
-                            move |_event, _window, cx| {
-                                cx.stop_propagation();
-                                view_for_scroll.update(cx, |app, cx| {
-                                    app.mouse_over_filter_dropdown = true;
-                                    cx.notify();
-                                });
-                            }
-                        })
-                        .on_mouse_down(gpui::MouseButton::Left, {
-                            let view_for_scroll = view_for_scroll.clone();
-                            move |_event, _window, cx| {
-                                cx.stop_propagation();
-                                view_for_scroll.update(cx, |app, cx| {
-                                    app.mouse_over_filter_dropdown = true;
-                                    cx.notify();
-                                });
-                            }
-                        })
-                        // Capture wheel events at container level and manually scroll
-                        .on_scroll_wheel(move |event, _window, cx| {
+                div()
+                    .absolute()
+                    .left(px(filter_left))
+                    .top(px(32.))
+                    .w(px(120.))
+                    .h(px(300.))
+                    .bg(rgb(0x1f2937))
+                    .border_1()
+                    .border_color(rgb(0x3b82f6))
+                    .rounded(px(4.))
+                    .shadow_lg()
+                    .flex()
+                    .flex_col()
+                    .overflow_hidden()
+                    // Track mouse move to disable main list hover when over dropdown
+                    .on_mouse_move({
+                        let view_for_scroll = view_for_scroll.clone();
+                        move |_event, _window, cx| {
                             cx.stop_propagation();
-
-                            // Calculate scroll delta
-                            let delta_y = match event.delta {
-                                gpui::ScrollDelta::Lines(point) => point.y * 24.0,
-                                gpui::ScrollDelta::Pixels(pixels) => f32::from(pixels.y),
-                            };
-
-                            // Get current scroll offset
-                            let current_offset = view_for_scroll.read(cx).channel_filter_scroll_offset;
-                            let current_offset_f32 = f32::from(current_offset);
-
-                            // Calculate new scroll position
-                            let row_height = 24.0;
-                            let total_items = channel_list_for_wheel.len();
-                            let container_height = 300.0;
-                            let total_height = total_items as f32 * row_height;
-                            let max_scroll = (total_height - container_height).max(0.0);
-
-                            let new_offset = (current_offset_f32 - delta_y).clamp(0.0, max_scroll);
-
-                            // Update state
-                            let _ = view_for_scroll.update(cx, |app, cx| {
-                                app.channel_filter_scroll_offset = px(new_offset);
+                            view_for_scroll.update(cx, |app, cx| {
+                                app.mouse_over_filter_dropdown = true;
                                 cx.notify();
                             });
+                        }
+                    })
+                    // Block all mouse events from reaching the main list
+                    .on_mouse_up(gpui::MouseButton::Left, {
+                        let view_for_scroll = view_for_scroll.clone();
+                        move |_event, _window, cx| {
+                            cx.stop_propagation();
+                            view_for_scroll.update(cx, |app, cx| {
+                                app.mouse_over_filter_dropdown = true;
+                                cx.notify();
+                            });
+                        }
+                    })
+                    .on_mouse_down(gpui::MouseButton::Left, {
+                        let view_for_scroll = view_for_scroll.clone();
+                        move |_event, _window, cx| {
+                            cx.stop_propagation();
+                            view_for_scroll.update(cx, |app, cx| {
+                                app.mouse_over_filter_dropdown = true;
+                                cx.notify();
+                            });
+                        }
+                    })
+                    // Capture wheel events at container level and manually scroll
+                    .on_scroll_wheel(move |event, _window, cx| {
+                        cx.stop_propagation();
 
-                            // Manually scroll the uniform_list using the persistent handle
-                            let target_index = ((new_offset / row_height).round() as usize)
-                                .clamp(0, total_items.saturating_sub(1));
+                        // Calculate scroll delta
+                        let delta_y = match event.delta {
+                            gpui::ScrollDelta::Lines(point) => point.y * 24.0,
+                            gpui::ScrollDelta::Pixels(pixels) => f32::from(pixels.y),
+                        };
 
-                            filter_scroll_handle.scroll_to_item_strict(
-                                target_index,
-                                gpui::ScrollStrategy::Top
-                            );
+                        // Get current scroll offset
+                        let current_offset = view_for_scroll.read(cx).channel_filter_scroll_offset;
+                        let current_offset_f32 = f32::from(current_offset);
 
-                            eprintln!("Channel filter scroll: delta={:.2}, offset={:.2} -> {:.2}, index={}",
-                                delta_y, current_offset_f32, new_offset, target_index);
-                        })
-                        .child(
-                            uniform_list(
-                                "channel-filter-dropdown",
-                                channel_list_clone.len(),
-                                move |range: std::ops::Range<usize>, _window: &mut gpui::Window, _cx: &mut gpui::App| {
-                                    range
-                                        .map(|index| {
-                                            let channel = channel_list_clone[index];
-                                            div()
-                                                .w_full()
-                                                .px_3()
-                                                .py_2()
-                                                .h(px(24.))
-                                                .text_sm()
-                                                .text_color(rgb(0xffffff))
-                                                .hover(|style| style.bg(rgb(0x374151)))
-                                                .cursor_pointer()
-                                                // Block all mouse events from propagating to the main list
-                                                .on_mouse_move(move |_event, _window, cx| {
+                        // Calculate new scroll position
+                        let row_height = 24.0;
+                        let total_items = channel_list_for_wheel.len();
+                        let container_height = 300.0;
+                        let total_height = total_items as f32 * row_height;
+                        let max_scroll = (total_height - container_height).max(0.0);
+
+                        let new_offset = (current_offset_f32 - delta_y).clamp(0.0, max_scroll);
+
+                        // Update state
+                        let _ = view_for_scroll.update(cx, |app, cx| {
+                            app.channel_filter_scroll_offset = px(new_offset);
+                            cx.notify();
+                        });
+
+                        // Manually scroll the uniform_list using the persistent handle
+                        let target_index = ((new_offset / row_height).round() as usize)
+                            .clamp(0, total_items.saturating_sub(1));
+
+                        filter_scroll_handle
+                            .scroll_to_item_strict(target_index, gpui::ScrollStrategy::Top);
+
+                        eprintln!(
+                            "Channel filter scroll: delta={:.2}, offset={:.2} -> {:.2}, index={}",
+                            delta_y, current_offset_f32, new_offset, target_index
+                        );
+                    })
+                    .child(
+                        uniform_list(
+                            "channel-filter-dropdown",
+                            channel_list_clone.len(),
+                            move |range: std::ops::Range<usize>,
+                                  _window: &mut gpui::Window,
+                                  _cx: &mut gpui::App| {
+                                range
+                                    .map(|index| {
+                                        let channel = channel_list_clone[index];
+                                        div()
+                                            .w_full()
+                                            .px_3()
+                                            .py_2()
+                                            .h(px(24.))
+                                            .text_sm()
+                                            .text_color(rgb(0xffffff))
+                                            .hover(|style| style.bg(rgb(0x374151)))
+                                            .cursor_pointer()
+                                            // Block all mouse events from propagating to the main list
+                                            .on_mouse_move(move |_event, _window, cx| {
+                                                cx.stop_propagation();
+                                            })
+                                            .on_mouse_up(
+                                                gpui::MouseButton::Left,
+                                                move |_event, _window, cx| {
                                                     cx.stop_propagation();
-                                                })
-                                                .on_mouse_up(gpui::MouseButton::Left, move |_event, _window, cx| {
+                                                },
+                                            )
+                                            .on_mouse_down(gpui::MouseButton::Left, {
+                                                let view = view.clone();
+                                                move |_event, _window, cx| {
+                                                    eprintln!("Selected Channel: {}", channel);
                                                     cx.stop_propagation();
-                                                })
-                                                .on_mouse_down(gpui::MouseButton::Left, {
-                                                    let view = view.clone();
-                                                    move |_event, _window, cx| {
-                                                        eprintln!("Selected Channel: {}", channel);
-                                                        cx.stop_propagation();
-                                                        view.update(cx, |app, cx| {
-                                                            app.channel_filter = Some(channel);
-                                                            app.channel_filter_text = channel.to_string().into();
-                                                            app.show_channel_filter_input = false;
-                                                            app.mouse_over_filter_dropdown = false;  // Reset hover flag
-                                                            cx.notify();
-                                                        });
-                                                    }
-                                                })
-                                                .child(format!("CH: {}", channel))
-                                                .into_any_element()
-                                        })
-                                        .collect::<Vec<_>>()
-                                },
-                            )
-                            .track_scroll(&filter_scroll_handle_for_uniform)
-                            .flex_1()
+                                                    view.update(cx, |app, cx| {
+                                                        app.channel_filter = Some(channel);
+                                                        app.channel_filter_text =
+                                                            channel.to_string().into();
+                                                        app.show_channel_filter_input = false;
+                                                        app.mouse_over_filter_dropdown = false; // Reset hover flag
+                                                        cx.notify();
+                                                    });
+                                                }
+                                            })
+                                            .child(format!("CH: {}", channel))
+                                            .into_any_element()
+                                    })
+                                    .collect::<Vec<_>>()
+                            },
                         )
-                }
-            )
+                        .track_scroll(&filter_scroll_handle_for_uniform)
+                        .flex_1(),
+                    )
+            })
         })
     }
 
@@ -2487,13 +2524,19 @@ impl CanViewApp {
         _dbc_channels: &HashMap<u16, DbcDatabase>,
         _ldf_channels: &HashMap<u16, LdfDatabase>,
         start_time: Option<chrono::NaiveDateTime>,
-    ) -> (gpui::Pixels, gpui::Pixels, gpui::Pixels, gpui::Pixels, gpui::Pixels) {
+    ) -> (
+        gpui::Pixels,
+        gpui::Pixels,
+        gpui::Pixels,
+        gpui::Pixels,
+        gpui::Pixels,
+    ) {
         // Define minimum widths for each column (for header text)
-        let mut max_time_width = 50.0_f32;   // "TIME" header
-        let mut max_ch_width = 30.0_f32;      // "CH" header
-        let mut max_type_width = 50.0_f32;    // "TYPE" header
-        let mut max_id_width = 80.0_f32;      // "ID" header with gear icon (ID + 10 + ⚙ = ~70px)
-        let mut max_dlc_width = 40.0_f32;     // "DLC" header
+        let mut max_time_width = 50.0_f32; // "TIME" header
+        let mut max_ch_width = 30.0_f32; // "CH" header
+        let mut max_type_width = 50.0_f32; // "TYPE" header
+        let mut max_id_width = 80.0_f32; // "ID" header with gear icon (ID + 10 + ⚙ = ~70px)
+        let mut max_dlc_width = 40.0_f32; // "DLC" header
 
         // Calculate widths based on ALL messages
         // Use a smarter sampling strategy:
@@ -2501,11 +2544,11 @@ impl CanViewApp {
         // - For large datasets, scan in intervals to get representative sample
         let sample_size = messages.len();
         let step = if sample_size > 5000 {
-            sample_size / 1000  // Sample ~1000 messages spread evenly
+            sample_size / 1000 // Sample ~1000 messages spread evenly
         } else if sample_size > 1000 {
-            sample_size / 500   // Sample ~500 messages spread evenly
+            sample_size / 500 // Sample ~500 messages spread evenly
         } else {
-            1                   // Scan all messages
+            1 // Scan all messages
         };
 
         for (i, msg) in messages.iter().enumerate() {
@@ -2515,13 +2558,13 @@ impl CanViewApp {
             }
 
             let (time_str, channel_id, msg_type, id_str, dlc_str, _data_str) =
-                Self::get_message_strings(msg, start_time, true);  // Use decimal for width calculation
+                Self::get_message_strings(msg, start_time, true); // Use decimal for width calculation
 
             // Calculate exact width needed for each column
             // Using 8.0 pixels per character (monospace font approximation)
             // Add padding: horizontal padding (px_2 or px_3) + some margin
-            max_time_width = max_time_width.max(time_str.len() as f32 * 8.0 + 16.0);  // px_3 = 12px + 4px margin
-            max_ch_width = max_ch_width.max(channel_id.to_string().len() as f32 * 8.0 + 10.0);  // px_2 = 8px + 2px margin
+            max_time_width = max_time_width.max(time_str.len() as f32 * 8.0 + 16.0); // px_3 = 12px + 4px margin
+            max_ch_width = max_ch_width.max(channel_id.to_string().len() as f32 * 8.0 + 10.0); // px_2 = 8px + 2px margin
             max_type_width = max_type_width.max(msg_type.len() as f32 * 8.0 + 10.0);
             max_id_width = max_id_width.max(id_str.len() as f32 * 8.0 + 10.0);
             max_dlc_width = max_dlc_width.max(dlc_str.len() as f32 * 8.0 + 10.0);
@@ -2796,7 +2839,7 @@ impl CanViewApp {
         _ldf_channels: &HashMap<u16, LdfDatabase>,
         start_time: Option<chrono::NaiveDateTime>,
         decimal: bool,
-        disable_hover: bool,  // New parameter to disable hover effect
+        disable_hover: bool, // New parameter to disable hover effect
     ) -> gpui::AnyElement {
         let (time_str, channel_id, msg_type, id_str, dlc_str, data_str) =
             Self::get_message_strings(msg, start_time, decimal);
@@ -2825,7 +2868,7 @@ impl CanViewApp {
                 div.hover(|style| style.bg(rgb(0x1f2937)))
             })
             .cursor_pointer()
-            .overflow_hidden()  // Ensure row doesn't overflow
+            .overflow_hidden() // Ensure row doesn't overflow
             .child(
                 // Line number column
                 div()
@@ -2906,7 +2949,7 @@ impl CanViewApp {
             )
             .child(
                 div()
-                    .flex_1()  // DATA列使用flex_1()占据剩余空间
+                    .flex_1() // DATA列使用flex_1()占据剩余空间
                     .px_2()
                     .py_1()
                     .flex()
@@ -2920,7 +2963,10 @@ impl CanViewApp {
 
     #[allow(dead_code)]
     // Static helper to format timestamp with microseconds
-    fn format_timestamp_static(timestamp: u64, start_time: Option<chrono::NaiveDateTime>) -> String {
+    fn format_timestamp_static(
+        timestamp: u64,
+        start_time: Option<chrono::NaiveDateTime>,
+    ) -> String {
         if let Some(start) = start_time {
             let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
             // Format: YYYY-MM-DD HH:MM:SS.mmmmmm (microseconds)
@@ -2940,7 +2986,14 @@ impl CanViewApp {
         _ldf_channels: &HashMap<u16, LdfDatabase>,
         start_time: Option<chrono::NaiveDateTime>,
     ) -> gpui::AnyElement {
-        let (time_str, channel_id, msg_type, id_str, dlc_str, data_str): (String, u16, String, String, String, String) = match msg {
+        let (time_str, channel_id, msg_type, id_str, dlc_str, data_str): (
+            String,
+            u16,
+            String,
+            String,
+            String,
+            String,
+        ) = match msg {
             // CAN Message Types
             LogObject::CanMessage(can_msg) => {
                 let timestamp = can_msg.header.object_time_stamp;
@@ -3011,7 +3064,7 @@ impl CanViewApp {
 
                 (
                     time_str,
-                    fd_msg.channel as u16,  // Convert u8 to u16
+                    fd_msg.channel as u16, // Convert u8 to u16
                     "CAN_FD".to_string(),
                     format!("0x{:03X}", fd_msg.id),
                     fd_msg.dlc.to_string(),
@@ -3032,7 +3085,7 @@ impl CanViewApp {
 
                 (
                     time_str,
-                    fd_msg.channel as u16,  // Convert u8 to u16
+                    fd_msg.channel as u16, // Convert u8 to u16
                     "CAN_FD64".to_string(),
                     format!("0x{:03X}", fd_msg.id),
                     fd_msg.dlc.to_string(),
@@ -3117,16 +3170,16 @@ impl CanViewApp {
 
         // Color code message types
         let type_color = match msg_type.as_str() {
-            "CAN" | "CAN2" => rgb(0x34d399),      // Green for normal CAN
-            "CAN_ERR" => rgb(0xef4444),          // Red for errors
+            "CAN" | "CAN2" => rgb(0x34d399),        // Green for normal CAN
+            "CAN_ERR" => rgb(0xef4444),             // Red for errors
             "CAN_FD" | "CAN_FD64" => rgb(0x8b5cf6), // Purple for CAN FD
-            "CAN_OV" => rgb(0xf59e0b),           // Orange for overload
-            "LIN" | "LIN2" => rgb(0x60a5fa),      // Blue for LIN
+            "CAN_OV" => rgb(0xf59e0b),              // Orange for overload
+            "LIN" | "LIN2" => rgb(0x60a5fa),        // Blue for LIN
             "LIN_CRC" | "LIN_RX_ERR" | "LIN_TX_ERR" => rgb(0xef4444), // Red for LIN errors
-            "LIN_WAKE" => rgb(0xfbbf24),          // Yellow for wakeup
-            "LIN_SLEEP" => rgb(0x6b7280),         // Gray for sleep
-            "FLEX" | "FLEX_SYNC" => rgb(0xec4899), // Pink for FlexRay
-            _ => rgb(0x9ca3af),                   // Default gray
+            "LIN_WAKE" => rgb(0xfbbf24),            // Yellow for wakeup
+            "LIN_SLEEP" => rgb(0x6b7280),           // Gray for sleep
+            "FLEX" | "FLEX_SYNC" => rgb(0xec4899),  // Pink for FlexRay
+            _ => rgb(0x9ca3af),                     // Default gray
         };
 
         div()
@@ -3173,13 +3226,7 @@ impl CanViewApp {
                     .whitespace_nowrap()
                     .child(id_str),
             )
-            .child(
-                div()
-                    .px_2()
-                    .py_1()
-                    .whitespace_nowrap()
-                    .child(dlc_str),
-            )
+            .child(div().px_2().py_1().whitespace_nowrap().child(dlc_str))
             .child(
                 div()
                     .px_2()

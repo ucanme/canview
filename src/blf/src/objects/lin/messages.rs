@@ -1,6 +1,6 @@
 //! LIN message object definitions.
 
-use crate::{BlfParseResult};
+use crate::BlfParseResult;
 use crate::objects::object_header::ObjectHeader;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Cursor, Read};
@@ -89,7 +89,11 @@ pub struct LinMessage2 {
 }
 impl LinMessage2 {
     /// Reads a `LinMessage2` from a byte cursor.
-    pub fn read(cursor: &mut Cursor<&[u8]>, header: &ObjectHeader, data_size: usize) -> BlfParseResult<Self> {
+    pub fn read(
+        cursor: &mut Cursor<&[u8]>,
+        header: &ObjectHeader,
+        data_size: usize,
+    ) -> BlfParseResult<Self> {
         // Based on C++ LinMessage2.cpp
         let mut data = [0u8; 8];
         cursor.read_exact(&mut data)?;
@@ -107,7 +111,8 @@ impl LinMessage2 {
         }
 
         let mut exact_header_baudrate = None;
-        if remaining_size >= 12 { // 4 for resp_baudrate + 8 for this f64
+        if remaining_size >= 12 {
+            // 4 for resp_baudrate + 8 for this f64
             exact_header_baudrate = Some(cursor.read_f64::<LittleEndian>()?);
         }
 

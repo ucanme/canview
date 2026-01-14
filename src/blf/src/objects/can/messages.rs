@@ -1,6 +1,6 @@
 //! CAN message object definitions (non-FD).
 
-use crate::{BlfParseResult};
+use crate::BlfParseResult;
 use crate::objects::object_header::ObjectHeader;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Cursor, Read};

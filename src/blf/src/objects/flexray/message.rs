@@ -1,9 +1,9 @@
 //! FlexRay message object definitions.
 
+use crate::BlfParseResult;
+use crate::objects::object_header::ObjectHeader;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Cursor, Read, Write};
-use crate::{BlfParseResult};
-use crate::objects::object_header::ObjectHeader;
 
 /// Represents a FlexRay data frame (`FLEXRAY_DATA`, deprecated).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -286,8 +286,30 @@ impl FlexRayVFrReceiveMsgEx {
 
         // The C++ code reads a dynamically sized reserved block at the end.
         // We must calculate its size and skip it to ensure the cursor is correctly positioned.
-        let fixed_part_size = 2 + 2 + 2 + 2 + 4 + 4 + 2 + 2 + 2 + 2 + 2 + 2 + 4 + 4 + 4 + 4 + 4 + 4 + 2 + 2 + 2 + (13 * 2);
-        let remaining_size = (header.object_size as usize - header.calculate_header_size() as usize)
+        let fixed_part_size = 2
+            + 2
+            + 2
+            + 2
+            + 4
+            + 4
+            + 2
+            + 2
+            + 2
+            + 2
+            + 2
+            + 2
+            + 4
+            + 4
+            + 4
+            + 4
+            + 4
+            + 4
+            + 2
+            + 2
+            + 2
+            + (13 * 2);
+        let remaining_size = (header.object_size as usize
+            - header.calculate_header_size() as usize)
             .saturating_sub(fixed_part_size + data_bytes_len);
         cursor.set_position(cursor.position() + remaining_size as u64);
 

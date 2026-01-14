@@ -111,7 +111,9 @@ pub fn serialize_file_statistics(stats: &FileStatistics) -> Vec<u8> {
 }
 
 pub fn serialize_object_header(header: &ObjectHeader, writer: &mut impl Write) {
-    writer.write_u32::<LittleEndian>(header.base.signature).unwrap();
+    writer
+        .write_u32::<LittleEndian>(header.base.signature)
+        .unwrap();
     writer
         .write_u16::<LittleEndian>(header.base.header_size)
         .unwrap();

@@ -53,7 +53,7 @@ impl ObjectHeaderBase {
             signature: OBJECT_SIGNATURE,
             header_size: 16, // Will be calculated by derived classes
             header_version,
-            object_size: 0,  // Will be calculated by derived classes
+            object_size: 0, // Will be calculated by derived classes
             object_type,
         }
     }
@@ -97,7 +97,7 @@ impl ObjectHeaderBase {
         std::mem::size_of::<u16>() as u16 + // headerSize
         std::mem::size_of::<u16>() as u16 + // headerVersion
         std::mem::size_of::<u32>() as u16 + // objectSize
-        std::mem::size_of::<u32>() as u16   // objectType
+        std::mem::size_of::<u32>() as u16 // objectType
     }
 
     /// Calculates the object size in bytes (corresponds to C++ ObjectHeaderBase::calculateObjectSize).
@@ -361,7 +361,9 @@ impl ObjectHeader {
             writer.write_u64::<LittleEndian>(self.object_time_stamp)?;
             writer.write_u64::<LittleEndian>(self.original_time_stamp.unwrap_or(0))?;
         } else {
-            return Err(BlfParseError::UnknownHeaderVersion(self.base.header_version));
+            return Err(BlfParseError::UnknownHeaderVersion(
+                self.base.header_version,
+            ));
         }
         Ok(())
     }
@@ -377,7 +379,7 @@ impl ObjectHeader {
             std::mem::size_of::<u32>() as u16 + // objectFlags
             std::mem::size_of::<u16>() as u16 + // clientIndex
             std::mem::size_of::<u16>() as u16 + // objectVersion
-            std::mem::size_of::<u64>() as u16   // objectTimeStamp
+            std::mem::size_of::<u64>() as u16 // objectTimeStamp
         } else if self.base.header_version == 2 {
             // V2: ObjectHeader2 = 40 bytes
             self.base.calculate_header_size() + // 16
@@ -386,8 +388,8 @@ impl ObjectHeader {
             std::mem::size_of::<u8>() as u16 +  // reserved (1)
             std::mem::size_of::<u16>() as u16 + // objectVersion (2)
             std::mem::size_of::<u64>() as u16 + // objectTimeStamp (8)
-            std::mem::size_of::<u64>() as u16   // originalTimeStamp (8)
-            // Total: 16 + 4 + 1 + 1 + 2 + 8 + 8 = 40 bytes
+            std::mem::size_of::<u64>() as u16 // originalTimeStamp (8)
+        // Total: 16 + 4 + 1 + 1 + 2 + 8 + 8 = 40 bytes
         } else {
             self.base.header_size
         }
@@ -449,14 +451,14 @@ impl std::ops::DerefMut for ObjectHeader {
 // Manual implementation of PartialEq for ObjectHeader
 impl PartialEq for ObjectHeader {
     fn eq(&self, other: &Self) -> bool {
-        self.base == other.base &&
-        self.object_flags == other.object_flags &&
-        self.client_index == other.client_index &&
-        self.object_version == other.object_version &&
-        self.object_time_stamp == other.object_time_stamp &&
-        self.original_time_stamp == other.original_time_stamp &&
-        self.time_stamp_status == other.time_stamp_status &&
-        self.reserved == other.reserved
+        self.base == other.base
+            && self.object_flags == other.object_flags
+            && self.client_index == other.client_index
+            && self.object_version == other.object_version
+            && self.object_time_stamp == other.object_time_stamp
+            && self.original_time_stamp == other.original_time_stamp
+            && self.time_stamp_status == other.time_stamp_status
+            && self.reserved == other.reserved
     }
 }
 

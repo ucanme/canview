@@ -20,7 +20,9 @@
       "Bash(cargo tree:*)",
       "Bash(wsl:*)",
       "Bash(rustc:*)",
-      "Bash(rustup update:*)"
+      "Bash(rustup update:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(/bashes:*)"
     ],
     "deny": [],
     "ask": []

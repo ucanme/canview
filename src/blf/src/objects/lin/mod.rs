@@ -1,7 +1,7 @@
 //! LIN object definitions.
 
-pub mod messages;
 pub mod events;
+pub mod messages;
 
-pub use messages::*;
 pub use events::*;
+pub use messages::*;

@@ -66,19 +66,35 @@ pub fn serialize_file_statistics(stats: &FileStatistics) -> Vec<u8> {
 }
 
 /// Helper to serialize an ObjectHeaderBase struct into bytes.
-pub fn serialize_object_header_base(header: &crate::objects::object_header::ObjectHeaderBase, writer: &mut impl Write) {
+pub fn serialize_object_header_base(
+    header: &crate::objects::object_header::ObjectHeaderBase,
+    writer: &mut impl Write,
+) {
     use crate::objects::object_header::OBJECT_SIGNATURE;
     use byteorder::WriteBytesExt;
 
-    writer.write_u32::<byteorder::LittleEndian>(header.signature).unwrap();
-    writer.write_u16::<byteorder::LittleEndian>(header.header_size).unwrap();
-    writer.write_u16::<byteorder::LittleEndian>(header.header_version).unwrap();
-    writer.write_u32::<byteorder::LittleEndian>(header.object_size).unwrap();
-    writer.write_u32::<byteorder::LittleEndian>(header.object_type as u32).unwrap();
+    writer
+        .write_u32::<byteorder::LittleEndian>(header.signature)
+        .unwrap();
+    writer
+        .write_u16::<byteorder::LittleEndian>(header.header_size)
+        .unwrap();
+    writer
+        .write_u16::<byteorder::LittleEndian>(header.header_version)
+        .unwrap();
+    writer
+        .write_u32::<byteorder::LittleEndian>(header.object_size)
+        .unwrap();
+    writer
+        .write_u32::<byteorder::LittleEndian>(header.object_type as u32)
+        .unwrap();
 }
 
 /// Helper to serialize an ObjectHeader struct into bytes.
-pub fn serialize_object_header(header: &crate::objects::object_header::ObjectHeader, writer: &mut impl Write) {
+pub fn serialize_object_header(
+    header: &crate::objects::object_header::ObjectHeader,
+    writer: &mut impl Write,
+) {
     use crate::objects::object_header::OBJECT_SIGNATURE;
     use byteorder::WriteBytesExt;
 
@@ -86,22 +102,36 @@ pub fn serialize_object_header(header: &crate::objects::object_header::ObjectHea
     serialize_object_header_base(&header.base, writer);
 
     // Write version-specific fields
-    writer.write_u32::<byteorder::LittleEndian>(header.object_flags).unwrap();
+    writer
+        .write_u32::<byteorder::LittleEndian>(header.object_flags)
+        .unwrap();
 
     if header.base.header_version == 1 {
-        writer.write_u16::<byteorder::LittleEndian>(header.client_index).unwrap();
-        writer.write_u16::<byteorder::LittleEndian>(header.object_version).unwrap();
-        writer.write_u64::<byteorder::LittleEndian>(header.object_time_stamp).unwrap();
+        writer
+            .write_u16::<byteorder::LittleEndian>(header.client_index)
+            .unwrap();
+        writer
+            .write_u16::<byteorder::LittleEndian>(header.object_version)
+            .unwrap();
+        writer
+            .write_u64::<byteorder::LittleEndian>(header.object_time_stamp)
+            .unwrap();
     } else if header.base.header_version == 2 {
-        writer.write_u8(header.time_stamp_status.unwrap_or(0)).unwrap();
+        writer
+            .write_u8(header.time_stamp_status.unwrap_or(0))
+            .unwrap();
         writer.write_u8(0).unwrap(); // reserved
-        writer.write_u16::<byteorder::LittleEndian>(header.object_version).unwrap();
-        writer.write_u64::<byteorder::LittleEndian>(header.object_time_stamp).unwrap();
-        writer.write_u64::<byteorder::LittleEndian>(header.original_time_stamp.unwrap_or(0)).unwrap();
+        writer
+            .write_u16::<byteorder::LittleEndian>(header.object_version)
+            .unwrap();
+        writer
+            .write_u64::<byteorder::LittleEndian>(header.object_time_stamp)
+            .unwrap();
+        writer
+            .write_u64::<byteorder::LittleEndian>(header.original_time_stamp.unwrap_or(0))
+            .unwrap();
     }
 }
-
-
 
 /// Helper to serialize a CanMessage object into bytes (including header).
 pub fn serialize_can_message(msg: &CanMessage) -> Vec<u8> {

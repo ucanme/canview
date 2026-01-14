@@ -1,7 +1,7 @@
 //! Log container object definition.
 
-use crate::{BlfParseError, BlfParseResult};
 use crate::objects::object_header::ObjectHeaderBase;
+use crate::{BlfParseError, BlfParseResult};
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::ZlibDecoder;
 use std::io::{Cursor, Read};
@@ -43,7 +43,10 @@ impl LogContainer {
 
                 // Debug: Print first 128 bytes of uncompressed data
                 if uncompressed.len() > 0 {
-                    println!("=== LogContainer uncompressed data (first 128 bytes) ===sumlen:{}", uncompressed.len());
+                    println!(
+                        "=== LogContainer uncompressed data (first 128 bytes) ===sumlen:{}",
+                        uncompressed.len()
+                    );
                     let dump_len = uncompressed.len().min(128);
                     for i in (0..dump_len).step_by(16) {
                         print!("{:04x}: ", i);

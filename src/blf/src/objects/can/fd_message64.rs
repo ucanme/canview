@@ -1,6 +1,6 @@
 //! CAN FD Message 64 object definitions.
 
-use crate::{BlfParseResult};
+use crate::BlfParseResult;
 use crate::objects::object_header::ObjectHeader;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Cursor, Read};
@@ -160,7 +160,7 @@ impl CanFdMessage64 {
         // For 16-byte compact headers, there's an 8-byte timestamp before the actual data
         // This timestamp should be stored in the header, but the header was already read.
         // For 16-byte compact headers, skip 8-byte timestamp in body
-       /* if header.header_size == 16 {
+        /* if header.header_size == 16 {
             let _skip = cursor.read_u64::<LittleEndian>()?;
         }
 
