@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 mod database;
+mod playback;
 use database::{LibraryExt, VersionExt};
 
 // 定义枚举和结构体
