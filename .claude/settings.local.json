@@ -24,7 +24,8 @@
       "Bash(cargo fmt:*)",
       "Bash(/bashes:*)",
       "Bash(git tag:*)",
-      "Bash(gh run list:*)"
+      "Bash(gh run list:*)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []

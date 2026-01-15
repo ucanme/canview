@@ -33,4 +33,4 @@ ashpd = { version = "0.8", default-features = false, features = ["tokio"] }
 
 [patch.crates-io]
 # Force ashpd to use only tokio feature (avoid async-std conflict)
-ashpd = { git = "https://github.com/bilelmoussaoui/ashpd", branch = "main" }
+ashpd = { git = "https://github.com/bilelmoussaoui/ashpd", branch = "master" }
