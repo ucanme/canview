@@ -831,7 +831,6 @@ name = "canview"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "ashpd 0.8.1",
  "blf",
  "chrono",
  "env_logger",

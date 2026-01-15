@@ -79,7 +79,8 @@ jobs:
             libfreetype6-dev \
             libxcb-render0-dev \
             libxcb-shape0-dev \
-            libxcb-xfixes0-dev
+            libxcb-xfixes0-dev \
+            fontconfig
 
       - name: Show Rust version
         run: |
