@@ -2,6 +2,7 @@
 name = "view"
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0"
 
 [dependencies]
 gpui = { git = "https://github.com/zed-industries/zed", branch = "main" }
