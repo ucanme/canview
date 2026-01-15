@@ -30,7 +30,7 @@ members = [
 
 [workspace.dependencies]
 ashpd = { version = "0.8", default-features = false, features = ["tokio"] }
-font-kit = { version = "0.14", default-features = false, features = ["source-fs"] }
+font-kit = { version = "0.14", default-features = false }
 
 [patch.crates-io]
 ashpd = { git = "https://github.com/bilelmoussaoui/ashpd", branch = "master" }
