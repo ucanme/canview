@@ -3,6 +3,7 @@
 //!
 //! 提供DBC/LDF文件的验证、解析和版本管理功能
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use parser::dbc::DbcParser;
 use parser::ldf::LdfParser;
@@ -283,6 +284,8 @@ impl LibraryExt for crate::SignalLibrary {
             name,
             path,
             date,
+            description: String::new(),
+            channel_databases: HashMap::new(),
         };
 
         // 检查是否已存在同名版本

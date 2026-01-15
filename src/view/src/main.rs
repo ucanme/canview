@@ -19,15 +19,23 @@ enum ChannelType {
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 struct LibraryVersion {
-    name: String,
-    path: String,
+    name: String,  // 版本号（可手动输入）
+    path: String,  // 保留用于向后兼容，默认数据库文件
     date: String,
+    description: String,  // 版本描述
+    // 每个通道的数据库文件映射（新增）
+    // Key: channel_id, Value: database file path
+    #[serde(default)]
+    channel_databases: HashMap<u16, String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 struct SignalLibrary {
     id: String,
     name: String,
+    // 库的类型：CAN 或 LIN（新增）
+    #[serde(default = "default_channel_type")]
+    channel_type: ChannelType,
     versions: Vec<LibraryVersion>,
 }
 
@@ -125,8 +133,16 @@ struct CanViewApp {
     show_add_version_dialog: bool,
     // Config view: new library name input
     new_library_name: SharedString,
-    // Config view: new version name input
+    // Config view: new library type selection (CAN/LIN)
+    new_library_type: ChannelType,
+    // Config view: new version name input (手动版本号)
     new_version_name: SharedString,
+    // Config view: new version description input
+    new_version_description: SharedString,
+    // Config view: selected channel for database mapping
+    selected_channel_id: Option<u16>,
+    // Config view: channel to database file mapping (during version creation)
+    channel_database_mapping: HashMap<u16, String>,
     // Config view: validation results cache
     validation_cache: HashMap<String, String>,
 }
@@ -191,7 +207,11 @@ impl CanViewApp {
             show_add_library_dialog: false,
             show_add_version_dialog: false,
             new_library_name: "".into(),
+            new_library_type: ChannelType::CAN,
             new_version_name: "".into(),
+            new_version_description: "".into(),
+            selected_channel_id: None,
+            channel_database_mapping: HashMap::new(),
             validation_cache: HashMap::new(),
         }
     }
@@ -216,7 +236,13 @@ impl CanViewApp {
                                                 .iter()
                                                 .find(|v| v.name == *version_name)
                                             {
-                                                mapping.path = version.path.clone();
+                                                // Try new structure: channel_databases
+                                                if let Some(db_path) = version.channel_databases.get(&mapping.channel_id) {
+                                                    mapping.path = db_path.clone();
+                                                } else {
+                                                    // Fallback to legacy path field
+                                                    mapping.path = version.path.clone();
+                                                }
                                             }
                                         }
                                     }
@@ -601,6 +627,7 @@ impl CanViewApp {
                         let mut library = SignalLibrary {
                             id: library_id.clone(),
                             name: library_name.clone(),
+                            channel_type: ChannelType::CAN,  // 默认为 CAN
                             versions: Vec::new(),
                         };
 
@@ -629,6 +656,8 @@ impl CanViewApp {
             name: "temp".to_string(),
             path: path.to_string(),
             date: chrono::Utc::now().format("%Y-%m-%d").to_string(),
+            description: String::new(),
+            channel_databases: HashMap::new(),
         };
 
         temp_version.validate_dbc()
@@ -640,6 +669,8 @@ impl CanViewApp {
             name: "temp".to_string(),
             path: path.to_string(),
             date: chrono::Utc::now().format("%Y-%m-%d").to_string(),
+            description: String::new(),
+            channel_databases: HashMap::new(),
         };
 
         temp_version.validate_ldf()
@@ -749,6 +780,7 @@ impl CanViewApp {
         let library = SignalLibrary {
             id: library_id.clone(),
             name: name.clone(),
+            channel_type: ChannelType::CAN,  // 默认为 CAN
             versions: Vec::new(),
         };
 
@@ -1512,7 +1544,11 @@ impl CanViewApp {
             show_add_library_dialog: false,
             show_add_version_dialog: false,
             new_library_name: "".into(),
+            new_library_type: ChannelType::CAN,
             new_version_name: "".into(),
+            new_version_description: "".into(),
+            selected_channel_id: None,
+            channel_database_mapping: HashMap::new(),
             validation_cache: HashMap::new(),
         };
 

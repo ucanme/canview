@@ -25,7 +25,16 @@
       "Bash(/bashes:*)",
       "Bash(git tag:*)",
       "Bash(gh run list:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(cargo run:*)",
+      "Bash(nul)",
+      "Bash(./target/debug/test_blf_debug.exe:*)",
+      "Bash(./target/release/test_blf_debug.exe:*)",
+      "Bash(awk:*)",
+      "Bash(cat:*)",
+      "Bash(git clean:*)",
+      "Bash(git checkout:*)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []
