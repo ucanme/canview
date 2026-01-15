@@ -161,9 +161,7 @@ impl CanFdMessage64 {
         }
 
         */
-        let channel = {
-            cursor.read_u8()?
-        };
+        let channel = { cursor.read_u8()? };
 
         let dlc = cursor.read_u8()?;
         let valid_data_bytes = cursor.read_u8()?;

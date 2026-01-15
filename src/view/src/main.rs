@@ -122,8 +122,6 @@ struct ScrollbarDragState {
 
 impl CanViewApp {
     fn new() -> Self {
-        
-
         // 启动时加载配�?        app.load_startup_config();
         Self {
             current_view: AppView::LogView,
