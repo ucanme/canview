@@ -178,19 +178,37 @@ jobs:
 
       - name: Show downloaded files
         run: |
-          echo "=== ARM64 binaries ==="
-          ls -laR binaries-arm64/
+          echo "=== Current working directory ==="
+          pwd
 
-          echo "=== x86_64 binaries ==="
-          ls -laR binaries-x86_64/
+          echo "=== All files ==="
+          ls -la
+
+          echo "=== ARM64 binaries (recursive) ==="
+          find binaries-arm64 -type f -ls
+
+          echo "=== x86_64 binaries (recursive) ==="
+          find binaries-x86_64 -type f -ls
 
       - name: Create universal binary
         run: |
-          lipo -create \
-            binaries-arm64/canview-macos-aarch64 \
-            binaries-x86_64/canview-macos-x86_64 \
-            -output canview-universal
+          ARM64=$(find binaries-arm64 -type f -name 'canview-macos-aarch64' | head -1)
+          X86_64=$(find binaries-x86_64 -type f -name 'canview-macos-x86_64' | head -1)
+
+          echo "ARM64 binary: $ARM64"
+          echo "x86_64 binary: $X86_64"
+
+          if [ -z "$ARM64" ] || [ -z "$X86_64" ]; then
+            echo "Error: Could not find binaries"
+            exit 1
+          fi
+
+          lipo -create "$ARM64" "$X86_64" -output canview-universal
           chmod +x canview-universal
+
+          echo "=== Universal binary created ==="
+          ls -la canview-universal
+          file canview-universal
 
       - name: Create archive
         run: tar czf canview-macos-universal.tar.gz canview-universal
