@@ -51,10 +51,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Remove Cargo.lock
-        shell: bash
-        run: rm -f Cargo.lock
-
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
