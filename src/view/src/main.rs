@@ -3910,10 +3910,11 @@ impl CanViewApp {
     fn render_version_list(&self, library: &SignalLibrary, cx: &mut Context<Self>) -> impl IntoElement {
         let mut list = div().flex().flex_col();
 
-        for version in &library.versions {
+        for (index, version) in library.versions.iter().enumerate() {
             let version_name = version.name.clone();
             let version_path = version.path.clone();
             let version_date = version.date.clone();
+            let is_latest = index == 0; // 第一个版本是最新版本（因为已排序）
 
             // Get validation result
             let validation_msg = self.validation_cache.get(&version.path)
@@ -3948,16 +3949,18 @@ impl CanViewApp {
                                             .text_color(rgb(0xffffff))
                                             .child(version_name.clone())
                                     )
-                                    .child(
-                                        div()
-                                            .px_2()
-                                            .py(px(1.))
-                                            .bg(rgb(0x3b82f6))
-                                            .rounded(px(3.))
-                                            .text_xs()
-                                            .text_color(rgb(0xffffff))
-                                            .child("Latest")
-                                    )
+                                    .when(is_latest, |d| {
+                                        d.child(
+                                            div()
+                                                .px_2()
+                                                .py(px(1.))
+                                                .bg(rgb(0x3b82f6))
+                                                .rounded(px(3.))
+                                                .text_xs()
+                                                .text_color(rgb(0xffffff))
+                                                .child("Latest")
+                                        )
+                                    })
                             )
                             .child(
                                 div()
