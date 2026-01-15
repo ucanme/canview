@@ -131,7 +131,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset_name }}
-          path: ${{ matrix.asset_name }}.tar.gz
+          path: upload/${{ matrix.artifact_name }}
           retention-days: 30
 
       - name: Upload artifact (Windows)
@@ -168,34 +168,27 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: canview-macos-aarch64
+          path: binaries-arm64
 
       - name: Download x86_64 binary
         uses: actions/download-artifact@v4
         with:
           name: canview-macos-x86_64
+          path: binaries-x86_64
 
       - name: Show downloaded files
         run: |
-          echo "=== Root directory ==="
-          ls -la
+          echo "=== ARM64 binaries ==="
+          ls -laR binaries-arm64/
 
-          echo "=== canview-macos-aarch64 directory ==="
-          ls -la canview-macos-aarch64/ || echo "Directory not found"
-
-          echo "=== canview-macos-x86_64 directory ==="
-          ls -la canview-macos-x86_64/ || echo "Directory not found"
-
-      - name: Extract binaries
-        run: |
-          tar xzf canview-macos-aarch64/canview-macos-aarch64.tar.gz
-          tar xzf canview-macos-x86_64/canview-macos-x86_64.tar.gz
-          ls -la
+          echo "=== x86_64 binaries ==="
+          ls -laR binaries-x86_64/
 
       - name: Create universal binary
         run: |
           lipo -create \
-            canview-macos-aarch64 \
-            canview-macos-x86_64 \
+            binaries-arm64/canview-macos-aarch64 \
+            binaries-x86_64/canview-macos-x86_64 \
             -output canview-universal
           chmod +x canview-universal
 
