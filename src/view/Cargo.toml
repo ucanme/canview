@@ -8,7 +8,17 @@ gpui = { git = "https://github.com/zed-industries/zed", branch = "main" }
 anyhow = "1.0"
 blf = { path = "../blf" }
 parser = { path = "../parser" }
-rfd = { version = "0.14", default-features = false, features = ["tokio", "xdg-portal"] } # For file dialogs
+
+# Platform-specific file dialog backend
+[target.'cfg(windows)'.dependencies]
+rfd = { version = "0.14", default-features = false, features = ["tokio"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+rfd = { version = "0.14", default-features = false, features = ["tokio"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+rfd = { version = "0.14", default-features = false, features = ["tokio", "xdg-portal"] }
+
 chrono = "0.4" # For timestamp formatting
 log = "0.4"
 env_logger = "0.11"
