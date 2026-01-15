@@ -168,31 +168,34 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: canview-macos-aarch64
-          path: artifacts-arm64
 
       - name: Download x86_64 binary
         uses: actions/download-artifact@v4
         with:
           name: canview-macos-x86_64
-          path: artifacts-x86_64
+
+      - name: Show downloaded files
+        run: |
+          echo "=== Root directory ==="
+          ls -la
+
+          echo "=== canview-macos-aarch64 directory ==="
+          ls -la canview-macos-aarch64/ || echo "Directory not found"
+
+          echo "=== canview-macos-x86_64 directory ==="
+          ls -la canview-macos-x86_64/ || echo "Directory not found"
 
       - name: Extract binaries
         run: |
-          cd artifacts-arm64
-          tar xzf canview-macos-aarch64.tar.gz
-
-          cd ../artifacts-x86_64
-          tar xzf canview-macos-x86_64.tar.gz
-
-          cd ..
-          ls -la artifacts-arm64/
-          ls -la artifacts-x86_64/
+          tar xzf canview-macos-aarch64/canview-macos-aarch64.tar.gz
+          tar xzf canview-macos-x86_64/canview-macos-x86_64.tar.gz
+          ls -la
 
       - name: Create universal binary
         run: |
           lipo -create \
-            artifacts-arm64/canview-macos-aarch64 \
-            artifacts-x86_64/canview-macos-x86_64 \
+            canview-macos-aarch64 \
+            canview-macos-x86_64 \
             -output canview-universal
           chmod +x canview-universal
 
