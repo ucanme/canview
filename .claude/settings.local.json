@@ -22,7 +22,9 @@
       "Bash(rustc:*)",
       "Bash(rustup update:*)",
       "Bash(cargo fmt:*)",
-      "Bash(/bashes:*)"
+      "Bash(/bashes:*)",
+      "Bash(git tag:*)",
+      "Bash(gh run list:*)"
     ],
     "deny": [],
     "ask": []
