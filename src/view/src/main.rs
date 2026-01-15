@@ -101,6 +101,8 @@ struct CanViewApp {
     filter_scroll_handle: gpui::UniformListScrollHandle,
     // Track if mouse is hovering over filter dropdown
     mouse_over_filter_dropdown: bool,
+    // Track if dropdown was just opened (to prevent immediate close on same click)
+    dropdown_just_opened: bool,
     // Channel filter: Some(channel_value) to filter messages, None to show all
     channel_filter: Option<u16>,
     // Channel filter input text
@@ -118,6 +120,7 @@ struct CanViewApp {
 struct ScrollbarDragState {
     start_y: Pixels,
     start_scroll_offset: f32,
+    filtered_count: usize,  // Number of filtered messages at drag start
 }
 
 impl CanViewApp {
@@ -160,6 +163,7 @@ impl CanViewApp {
             filter_scroll_handle: gpui::UniformListScrollHandle::new(),
             // Initialize mouse tracking
             mouse_over_filter_dropdown: false,
+            dropdown_just_opened: false,
             // Channel filter
             channel_filter: None,
             channel_filter_text: "".into(),
@@ -1250,6 +1254,7 @@ impl CanViewApp {
             filter_scroll_offset: px(0.0),
             filter_scroll_handle: gpui::UniformListScrollHandle::new(),
             mouse_over_filter_dropdown: false,
+            dropdown_just_opened: false,
             // Channel filter
             channel_filter: None,
             channel_filter_text: "".into(),
@@ -1350,11 +1355,13 @@ impl CanViewApp {
             }
         };
 
+        // Save filtered message count BEFORE filtered_messages is moved
+        let filtered_count = filtered_messages.len();
+
         let dbc_channels = self.dbc_channels.clone();
         let ldf_channels = self.ldf_channels.clone();
         let start_time = self.start_time;
         let scroll_handle = self.list_scroll_handle.clone();
-        let total_messages = self.messages.len();
         let id_display_decimal = self.id_display_decimal;
         let id_filter = self.id_filter;
         let id_filter_text = self.id_filter_text.clone();
@@ -1517,17 +1524,29 @@ impl CanViewApp {
                 let current_y = event.position.y;
                 let container_h = view_for_mouse_move.read(cx).list_container_height;
                 let row_h = 22.0;
-                let total_messages = view_for_mouse_move.read(cx).messages.len();
-                let total_content_height = total_messages as f32 * row_h;
+
+                // Use filtered message count from drag state
+                let filtered_count = drag.filtered_count;
+                let total_content_height = filtered_count as f32 * row_h;
                 let max_scroll_offset = (total_content_height - container_h).max(0.0);
 
                 if max_scroll_offset <= 0.0 {
                     return;
                 }
 
-                // Calculate thumb dimensions
+                // Calculate thumb dimensions with dynamic minimum size
                 let thumb_ratio = (container_h / total_content_height).min(1.0);
-                let thumb_h = (thumb_ratio * container_h).max(20.0);
+
+                // Use same dynamic minimum thumb size
+                let min_thumb_size = if filtered_count > 100 {
+                    15.0
+                } else if filtered_count > 50 {
+                    20.0
+                } else {
+                    30.0
+                };
+
+                let thumb_h = (thumb_ratio * container_h).max(min_thumb_size);
                 let track_h = (container_h - thumb_h).max(0.0);
 
                 // Calculate thumb position based on mouse Y
@@ -1546,9 +1565,9 @@ impl CanViewApp {
                 let scroll_progress = new_thumb_top / track_h;
                 let new_scroll_offset = (scroll_progress * max_scroll_offset).clamp(0.0, max_scroll_offset);
 
-                // Convert to item index
+                // Convert to item index based on FILTERED messages
                 let visible_items = (container_h / row_h).ceil() as usize;
-                let max_start_index = total_messages.saturating_sub(visible_items);
+                let max_start_index = filtered_count.saturating_sub(visible_items);
 
                 // Calculate target index based on scroll offset
                 let target_index = ((new_scroll_offset / row_h).round() as usize).clamp(0, max_start_index);
@@ -1557,7 +1576,7 @@ impl CanViewApp {
                 // This ensures the last row is visible at the bottom
                 if target_index >= max_start_index.saturating_sub(1) {
                     view_for_mouse_move.read(cx).list_scroll_handle.scroll_to_item_strict(
-                        total_messages.saturating_sub(1),
+                        filtered_count.saturating_sub(1),
                         gpui::ScrollStrategy::Bottom
                     );
                 } else {
@@ -1570,6 +1589,23 @@ impl CanViewApp {
                 // Always clear drag state on mouse up, anywhere in the window
                 view_for_mouse_up.update(cx, |app, _cx| {
                     app.scrollbar_drag_state = None;
+
+                    // Close filter dropdowns if clicking outside
+                    // Check if dropdown was just opened (in which case, don't close it)
+                    if !app.dropdown_just_opened && !app.mouse_over_filter_dropdown {
+                        // Close ID filter dropdown if open
+                        if app.show_id_filter_input {
+                            app.show_id_filter_input = false;
+                        }
+                        // Close channel filter dropdown if open
+                        if app.show_channel_filter_input {
+                            app.show_channel_filter_input = false;
+                        }
+                    }
+
+                    // Reset flags after processing
+                    app.mouse_over_filter_dropdown = false;
+                    app.dropdown_just_opened = false;
                 });
             })
             .child(
@@ -1618,31 +1654,51 @@ impl CanViewApp {
                                 .py_1()
                                 .flex()
                                 .items_center()
-                                .justify_between()
                                 .flex_shrink_0()
                                 .whitespace_nowrap()
                                 .overflow_hidden()
                                 .child("CH")
-                                .when(self.channel_filter.is_some(), |this| {
-                                    this.child(
-                                        gpui::div()
-                                            .text_color(rgb(0x3b82f6))
-                                            .child("✓")
-                                    )
-                                })
                                 .child(
                                     div()
+                                        .text_xs()
                                         .cursor_pointer()
+                                        .text_color(if self.channel_filter.is_some() {
+                                            rgb(0x60a5fa)
+                                        } else {
+                                            rgb(0x4b5563)
+                                        })
+                                        .hover(|style| style.bg(rgb(0x374151)))
+                                        .rounded(px(2.))
+                                        .ml_0p5()  // Small left margin to bring it closer to CH
+                                        .pl_0()  // No left padding
+                                        .pr_0()  // No right padding
+                                        .py_0p5()
                                         .on_mouse_down(gpui::MouseButton::Left, {
                                             let view = view.clone();
                                             move |_event, _window, cx| {
                                                 view.update(cx, |app, cx| {
-                                                    app.show_channel_filter_input = !app.show_channel_filter_input;
+                                                    // If filter is active, clicking clears it
+                                                    // If filter is not active, clicking shows dropdown
+                                                    if app.channel_filter.is_some() {
+                                                        eprintln!("Clearing channel filter");
+                                                        app.channel_filter = None;
+                                                        app.channel_filter_text = "".into();
+                                                        app.show_channel_filter_input = false;
+                                                    } else {
+                                                        eprintln!("Before: show_channel_filter_input={}", app.show_channel_filter_input);
+                                                        app.show_channel_filter_input = !app.show_channel_filter_input;
+                                                        eprintln!("After: show_channel_filter_input={}", app.show_channel_filter_input);
+
+                                                        // If we're opening the dropdown, set the flag to prevent immediate close
+                                                        if app.show_channel_filter_input {
+                                                            app.dropdown_just_opened = true;
+                                                        }
+                                                    }
                                                     cx.notify();
                                                 });
                                             }
                                         })
-                                        .child("⚙")
+                                        .child(if self.channel_filter.is_some() { "✓" } else { "⚙" })
                                 )
                         }
                     )
@@ -1732,6 +1788,11 @@ impl CanViewApp {
                                                             eprintln!("Before: show_id_filter_input={}", app.show_id_filter_input);
                                                             app.show_id_filter_input = !app.show_id_filter_input;
                                                             eprintln!("After: show_id_filter_input={}", app.show_id_filter_input);
+
+                                                            // If we're opening the dropdown, set the flag to prevent immediate close
+                                                            if app.show_id_filter_input {
+                                                                app.dropdown_just_opened = true;
+                                                            }
                                                         }
                                                         cx.notify();
                                                     });
@@ -1832,20 +1893,30 @@ impl CanViewApp {
                         )
                     })
                     .child({
-                        // Calculate scrollbar dimensions based on actual content
+                        // Calculate scrollbar dimensions based on FILTERED content
                         let row_height = 22.0;
-                        let total_height = total_messages as f32 * row_height;
+                        let total_height = filtered_count as f32 * row_height;
                         let container_height = self.list_container_height;
 
-                        let max_scroll = (total_height - container_height).max(0.0);
-
-                        // Calculate thumb height with minimum visibility
+                        // Smooth thumb height calculation with better minimum visibility
                         let thumb_height_ratio = if total_height > 0.0 {
                             (container_height / total_height).min(1.0)
                         } else {
                             1.0
                         };
-                        let thumb_height = (thumb_height_ratio * container_height).max(20.0);  // Minimum 20px
+
+                        let max_scroll = (total_height - container_height).max(0.0);
+
+                        // Dynamic minimum thumb size - smaller when there are many messages
+                        let min_thumb_size = if filtered_count > 100 {
+                            15.0  // Smaller for large datasets
+                        } else if filtered_count > 50 {
+                            20.0  // Medium for medium datasets
+                        } else {
+                            30.0  // Larger for small datasets
+                        };
+
+                        let thumb_height = (thumb_height_ratio * container_height).max(min_thumb_size);
                         let thumb_height_px = px(thumb_height);
 
                         // Calculate scrollable track height (container minus thumb)
@@ -1862,7 +1933,7 @@ impl CanViewApp {
                             let container_h = self.list_container_height;
                             let row_h = 22.0_f32;
                             let visible_items = (container_h / row_h).ceil() as usize;
-                            let max_start_index = total_messages.saturating_sub(visible_items);
+                            let max_start_index = filtered_count.saturating_sub(visible_items);
                             let current_start_index = (current_scroll_offset / row_h).round() as usize;
 
                             // If we're at the last page, force thumb to bottom
@@ -1903,14 +1974,24 @@ impl CanViewApp {
                                         let container_h = view_for_scroll_track.read(cx).list_container_height;
                                         let row_h = row_height;
 
-                                        if total_messages == 0 {
+                                        if filtered_count == 0 {
                                             return;
                                         }
 
-                                        // Calculate thumb dimensions
-                                        let total_content_height = total_messages as f32 * row_h;
+                                        // Calculate thumb dimensions based on FILTERED messages with dynamic minimum size
+                                        let total_content_height = filtered_count as f32 * row_h;
                                         let thumb_ratio = (container_h / total_content_height).min(1.0);
-                                        let thumb_h = (thumb_ratio * container_h).max(20.0);
+
+                                        // Use same dynamic minimum thumb size as main scrollbar
+                                        let min_thumb_size = if filtered_count > 100 {
+                                            15.0
+                                        } else if filtered_count > 50 {
+                                            20.0
+                                        } else {
+                                            30.0
+                                        };
+
+                                        let thumb_h = (thumb_ratio * container_h).max(min_thumb_size);
                                         let track_h = (container_h - thumb_h).max(0.0);
 
                                         // Adjust click position to be relative to container
@@ -1926,9 +2007,9 @@ impl CanViewApp {
                                         let scroll_ratio = click_y / container_h;
                                         let _desired_thumb_top = (scroll_ratio * track_h).clamp(0.0, track_h);
 
-                                        // Calculate target index
+                                        // Calculate target index based on FILTERED messages
                                         let visible_items = (container_h / row_h).ceil() as usize;
-                                        let max_start_index = total_messages.saturating_sub(visible_items);
+                                        let max_start_index = filtered_count.saturating_sub(visible_items);
 
                                         let target_index = if max_start_index > 0 {
                                             (scroll_ratio * max_start_index as f32).round() as usize
@@ -1940,7 +2021,7 @@ impl CanViewApp {
                                         // This ensures the last row is visible at the bottom
                                         if target_index >= max_start_index.saturating_sub(1) {
                                             scroll_handle_clone.scroll_to_item_strict(
-                                                total_messages.saturating_sub(1),
+                                                filtered_count.saturating_sub(1),
                                                 gpui::ScrollStrategy::Bottom
                                             );
                                         } else {
@@ -1972,6 +2053,7 @@ impl CanViewApp {
                                                     app.scrollbar_drag_state = Some(ScrollbarDragState {
                                                         start_y,
                                                         start_scroll_offset,
+                                                        filtered_count,
                                                     });
                                                 });
 
@@ -2530,7 +2612,7 @@ impl CanViewApp {
     ) {
         // Define minimum widths for each column (for header text)
         let mut max_time_width = 50.0_f32; // "TIME" header
-        let mut max_ch_width = 30.0_f32; // "CH" header
+        let mut max_ch_width = 60.0_f32; // "CH" header with gear icon (CH + ⚙ + padding = ~50px)
         let mut max_type_width = 50.0_f32; // "TYPE" header
         let mut max_id_width = 80.0_f32; // "ID" header with gear icon (ID + 10 + ⚙ = ~70px)
         let mut max_dlc_width = 40.0_f32; // "DLC" header

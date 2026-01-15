@@ -148,19 +148,40 @@ pub struct CanFdMessage64 {
 impl CanFdMessage64 {
     /// Reads a `CanFdMessage64` from a byte cursor.
     pub fn read(cursor: &mut Cursor<&[u8]>, header: &ObjectHeader) -> BlfParseResult<Self> {
-        // Debug: Show the raw body data (first 64 bytes)
-        let current_pos = cursor.position();
-        let remaining = cursor.get_ref().len() - current_pos as usize;
-        let _dump_len = remaining.min(64);
-        let _data_slice = &cursor.get_ref()[current_pos as usize..];
-        // For 16-byte compact headers, there's an 8-byte timestamp before the actual data
-        // This timestamp should be stored in the header, but the header was already read.
-        // For 16-byte compact headers, skip 8-byte timestamp in body
-        /* if header.header_size == 16 {
-            let _skip = cursor.read_u64::<LittleEndian>()?;
+        // Check if we need to skip bytes (similar to CanMessage)
+        // Some BLF variants have extra metadata before the actual CAN FD data
+        let remaining = &cursor.get_ref()[cursor.position() as usize..];
+        let skip_bytes = if remaining.len() >= 32 {
+            // Check both offset 0 and offset 16
+            let channel_at_0 = remaining[0];
+            let dlc_at_1 = remaining[1];
+            let id_at_4 = u32::from_le_bytes([remaining[4], remaining[5], remaining[6], remaining[7]]);
+
+            let channel_at_16 = remaining[16];
+            let dlc_at_17 = remaining[17];
+            let id_at_20 = u32::from_le_bytes([remaining[20], remaining[21], remaining[22], remaining[23]]);
+
+            // Offset 0 looks invalid (all zeros or suspicious) AND offset 16 looks valid
+            let offset_0_invalid = (channel_at_0 == 0 && dlc_at_1 == 0 && id_at_4 == 0) ||
+                                   (dlc_at_1 == 0 && id_at_4 == 0 && channel_at_0 <= 1);
+
+            let offset_16_valid = (channel_at_16 > 0 || dlc_at_17 > 0 || id_at_20 > 0) && dlc_at_17 <= 15;
+
+            if offset_0_invalid && offset_16_valid {
+                16
+            } else {
+                0
+            }
+        } else {
+            0
+        };
+
+        // Skip extra bytes if detected
+        if skip_bytes > 0 {
+            let mut temp = [0u8; 16];
+            cursor.read_exact(&mut temp)?;
         }
 
-        */
         let channel = { cursor.read_u8()? };
 
         let dlc = cursor.read_u8()?;

@@ -28,6 +28,10 @@ members = [
     "src/parser",
 ]
 
+[[bin]]
+name = "test_blf_debug"
+path = "test_blf_debug.rs"
+
 [workspace.dependencies]
 ashpd = { version = "0.8", default-features = false, features = ["tokio"] }
 font-kit = { version = "0.14", default-features = false }
