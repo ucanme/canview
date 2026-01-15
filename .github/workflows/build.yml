@@ -17,6 +17,8 @@ jobs:
   build:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -158,6 +160,8 @@ jobs:
     name: Build Universal macOS Binary
     needs: build
     runs-on: macos-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
