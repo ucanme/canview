@@ -36,7 +36,7 @@ jobs:
             asset_name: canview-macos-x86_64
 
           # Linux x86_64
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact_name: view
             asset_name: canview-linux-x86_64
@@ -67,7 +67,7 @@ jobs:
           key: ${{ matrix.target }}
 
       - name: Install dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-20.04'
+        if: startsWith(matrix.os, 'ubuntu')
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
