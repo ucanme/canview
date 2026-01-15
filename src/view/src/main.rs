@@ -574,78 +574,117 @@ impl CanViewApp {
 
     /// Import a database file and add it as a new version
     fn import_database_file(&mut self, cx: &mut Context<Self>) {
-        // Use synchronous file dialog
+        // Open add version dialog
+        self.show_add_version_dialog = true;
+
+        // Auto-fill version name from current date if empty
+        if self.new_version_name.is_empty() {
+            self.new_version_name = format!("v{}", chrono::Utc::now().format("%Y%m%d")).into();
+        }
+
+        // Clear previous mappings
+        self.channel_database_mapping.clear();
+
+        cx.notify();
+    }
+
+    /// Actually add the version with current settings
+    fn add_version_from_dialog(&mut self, cx: &mut Context<Self>) {
+        // Check if we have a selected library
+        let lib_id = if let Some(id) = &self.selected_library_id {
+            id.clone()
+        } else {
+            self.status_msg = "Please select a library first".into();
+            self.show_add_version_dialog = false;
+            cx.notify();
+            return;
+        };
+
+        // Validate inputs
+        let version_name = self.new_version_name.to_string();
+        if version_name.is_empty() {
+            self.status_msg = "Version name cannot be empty".into();
+            cx.notify();
+            return;
+        }
+
+        // Check if we have any database files mapped
+        if self.channel_database_mapping.is_empty() {
+            self.status_msg = "Please add at least one database file".into();
+            cx.notify();
+            return;
+        }
+
+        let description = self.new_version_description.to_string();
+        let date = chrono::Utc::now().format("%Y-%m-%d").to_string();
+
+        // Create the version
+        let mut version = LibraryVersion {
+            name: version_name.clone(),
+            path: self.channel_database_mapping.values().next().unwrap().clone(), // Use first database as default
+            date,
+            description,
+            channel_databases: self.channel_database_mapping.clone(),
+        };
+
+        // Validate the first database file
+        let validation_result = if version.path.ends_with(".dbc") {
+            self.validate_dbc_file(&version.path)
+        } else {
+            self.validate_ldf_file(&version.path)
+        };
+
+        match validation_result {
+            Ok(validation) => {
+                let validation_msg = if validation.is_valid {
+                    format!("Valid - {} messages, {} signals",
+                        validation.message_count, validation.signal_count)
+                } else {
+                    format!("Invalid - {:?}", validation.error)
+                };
+
+                // Cache validation for all database files
+                for db_path in self.channel_database_mapping.values() {
+                    self.validation_cache.insert(db_path.clone(), validation_msg.clone());
+                }
+
+                // Add version to library
+                if let Some(library) = self.app_config.libraries.iter_mut()
+                    .find(|l| l.id == lib_id)
+                {
+                    library.versions.push(version);
+                    library.sort_versions();
+                    self.status_msg = format!("Added version {} to library {}",
+                        version_name, library.name).into();
+
+                    // Clear dialog inputs
+                    self.new_version_name = "".into();
+                    self.new_version_description = "".into();
+                    self.channel_database_mapping.clear();
+                    self.show_add_version_dialog = false;
+
+                    self.save_config(cx);
+                } else {
+                    self.status_msg = "Selected library not found".into();
+                }
+            }
+            Err(error) => {
+                self.status_msg = format!("Failed to validate database: {}", error).into();
+            }
+        }
+
+        cx.notify();
+    }
+
+    /// Add a database file for a specific channel (in the dialog)
+    fn add_channel_database(&mut self, channel_id: u16, cx: &mut Context<Self>) {
         if let Some(path) = rfd::FileDialog::new()
             .add_filter("Database Files", &["dbc", "ldf"])
             .pick_file()
         {
             let path_str = path.to_string_lossy().to_string();
-            self.status_msg = "Importing database file...".into();
-
-            // Validate and extract version info
-            let version_name = database::extract_version_from_path(&path);
-            let date = chrono::Utc::now().format("%Y-%m-%d").to_string();
-
-            // Validate the database file
-            let validation_result = if path.extension().and_then(|e| e.to_str()) == Some("dbc") {
-                self.validate_dbc_file(&path_str)
-            } else {
-                self.validate_ldf_file(&path_str)
-            };
-
-            match validation_result {
-                Ok(validation) => {
-                    let validation_msg = if validation.is_valid {
-                        format!("Valid - {} messages, {} signals",
-                            validation.message_count, validation.signal_count)
-                    } else {
-                        format!("Invalid - {:?}", validation.error)
-                    };
-
-                    // Cache the validation result
-                    self.validation_cache.insert(path_str.clone(), validation_msg);
-
-                    // If a library is selected, add the version to it
-                    if let Some(lib_id) = &self.selected_library_id {
-                        if let Some(library) = self.app_config.libraries.iter_mut()
-                            .find(|l| &l.id == lib_id)
-                        {
-                            library.add_version(version_name.clone(), path_str.clone(), date.clone());
-                            self.status_msg = format!("Added version {} to library {}",
-                                version_name, library.name).into();
-                        } else {
-                            self.status_msg = "Selected library not found".into();
-                        }
-                    } else {
-                        // Create a new library from the file name
-                        let library_name = path.file_stem()
-                            .and_then(|s| s.to_str())
-                            .unwrap_or("New Library")
-                            .to_string();
-
-                        let library_id = database::generate_library_id(&library_name);
-                        let mut library = SignalLibrary {
-                            id: library_id.clone(),
-                            name: library_name.clone(),
-                            channel_type: ChannelType::CAN,  // 默认为 CAN
-                            versions: Vec::new(),
-                        };
-
-                        library.add_version(version_name.clone(), path_str.clone(), date.clone());
-
-                        self.app_config.libraries.push(library);
-                        self.selected_library_id = Some(library_id);
-                        self.status_msg = format!("Created new library '{}' with version {}",
-                            library_name, version_name).into();
-                    }
-
-                    self.save_config(cx);
-                }
-                Err(error) => {
-                    self.status_msg = format!("Failed to validate file: {}", error).into();
-                }
-            }
-
+            self.channel_database_mapping.insert(channel_id, path_str);
+            self.status_msg = format!("Added database for channel {}", channel_id).into();
             cx.notify();
         }
     }
@@ -767,7 +806,7 @@ impl CanViewApp {
         cx.notify();
     }
 
-    /// Create a new library
+    /// Create a new library with selected type
     fn create_library(&mut self, name: String, cx: &mut Context<Self>) {
         let library_id = database::generate_library_id(&name);
 
@@ -780,13 +819,24 @@ impl CanViewApp {
         let library = SignalLibrary {
             id: library_id.clone(),
             name: name.clone(),
-            channel_type: ChannelType::CAN,  // 默认为 CAN
+            channel_type: self.new_library_type,
             versions: Vec::new(),
         };
 
         self.app_config.libraries.push(library);
         self.selected_library_id = Some(library_id);
-        self.status_msg = format!("Created library '{}'", name).into();
+        self.status_msg = format!("Created {} library '{}'",
+            match self.new_library_type {
+                ChannelType::CAN => "CAN",
+                ChannelType::LIN => "LIN",
+            },
+            name).into();
+
+        // Reset input
+        self.new_library_name = "".into();
+        self.new_library_type = ChannelType::CAN;
+        self.show_add_library_dialog = false;
+
         self.save_config(cx);
         cx.notify();
     }
@@ -3742,6 +3792,12 @@ impl CanViewApp {
                             )
                     )
             )
+            .when(self.show_add_library_dialog, |div| {
+                div.child(self.render_add_library_dialog(cx))
+            })
+            .when(self.show_add_version_dialog, |div| {
+                div.child(self.render_add_version_dialog(cx))
+            })
     }
 
     fn render_library_list(&self, cx: &mut Context<Self>) -> impl IntoElement {
@@ -4130,6 +4186,473 @@ impl CanViewApp {
                             .text_color(rgb(0x6b7280))
                             .child("Real-time signal analysis and plotting"),
                     ),
+            )
+    }
+
+    /// Render the "Add Library" dialog
+    fn render_add_library_dialog(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let view = cx.entity().clone();
+        let lib_name = self.new_library_name.clone();
+
+        div()
+            .absolute()
+            .inset_0()
+            .bg(rgb(0x111111))
+            .items_center()
+            .justify_center()
+            .child(
+                div()
+                    .w(px(400.))
+                    .bg(rgb(0x1f1f1f))
+                    .border_1()
+                    .border_color(rgb(0x2a2a2a))
+                    .rounded(px(8.))
+                    .p_6()
+                    .flex()
+                    .flex_col()
+                    .gap_4()
+                    .child(
+                        div()
+                            .text_lg()
+                            .font_weight(FontWeight::MEDIUM)
+                            .text_color(rgb(0xffffff))
+                            .child("Add New Library"),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap_2()
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .text_color(rgb(0x9ca3af))
+                                    .child("Library Name"),
+                            )
+                            .child(
+                                div()
+                                    .px_3()
+                                    .py_2()
+                                    .bg(rgb(0x374151))
+                                    .rounded(px(4.))
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(rgb(0xffffff))
+                                            .child(lib_name.clone())
+                                    )
+                            )
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap_2()
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .text_color(rgb(0x9ca3af))
+                                    .child("Library Type"),
+                            )
+                            .child(
+                                div()
+                                    .flex()
+                                    .gap_2()
+                                    .child(
+                                        div()
+                                            .flex_1()
+                                            .px_3()
+                                            .py_2()
+                                            .bg(rgb(0x374151))
+                                            .rounded(px(4.))
+                                            .cursor_pointer()
+                                            .when(self.new_library_type == ChannelType::CAN, |div| {
+                                                div.border_2().border_color(rgb(0x3b82f6))
+                                            })
+                                            .child(
+                                                div()
+                                                    .text_sm()
+                                                    .text_color(rgb(0xffffff))
+                                                    .child("CAN")
+                                            )
+                                            .on_mouse_down(gpui::MouseButton::Left, {
+                                                let view = view.clone();
+                                                move |_event, _window, cx| {
+                                                    view.update(cx, |this, cx| {
+                                                        this.new_library_type = ChannelType::CAN;
+                                                        cx.notify();
+                                                    });
+                                                }
+                                            })
+                                    )
+                                    .child(
+                                        div()
+                                            .flex_1()
+                                            .px_3()
+                                            .py_2()
+                                            .bg(rgb(0x374151))
+                                            .rounded(px(4.))
+                                            .cursor_pointer()
+                                            .when(self.new_library_type == ChannelType::LIN, |div| {
+                                                div.border_2().border_color(rgb(0x3b82f6))
+                                            })
+                                            .child(
+                                                div()
+                                                    .text_sm()
+                                                    .text_color(rgb(0xffffff))
+                                                    .child("LIN")
+                                            )
+                                            .on_mouse_down(gpui::MouseButton::Left, {
+                                                let view = view.clone();
+                                                move |_event, _window, cx| {
+                                                    view.update(cx, |this, cx| {
+                                                        this.new_library_type = ChannelType::LIN;
+                                                        cx.notify();
+                                                    });
+                                                }
+                                            })
+                                    )
+                            )
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .gap_2()
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .px_4()
+                                    .py_2()
+                                    .bg(rgb(0x6b7280))
+                                    .rounded(px(4.))
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(rgb(0x4b5563)))
+                                    .items_center()
+                                    .justify_center()
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .font_weight(FontWeight::MEDIUM)
+                                            .text_color(rgb(0xffffff))
+                                            .child("Cancel")
+                                    )
+                                    .on_mouse_down(gpui::MouseButton::Left, {
+                                        let view = view.clone();
+                                        move |_event, _window, cx| {
+                                            view.update(cx, |this, cx| {
+                                                this.show_add_library_dialog = false;
+                                                this.new_library_name = "".into();
+                                                cx.notify();
+                                            });
+                                        }
+                                    })
+                            )
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .px_4()
+                                    .py_2()
+                                    .bg(rgb(0x3b82f6))
+                                    .rounded(px(4.))
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(rgb(0x2563eb)))
+                                    .items_center()
+                                    .justify_center()
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .font_weight(FontWeight::MEDIUM)
+                                            .text_color(rgb(0xffffff))
+                                            .child("Create")
+                                    )
+                                    .on_mouse_down(gpui::MouseButton::Left, {
+                                        let view = view.clone();
+                                        let lib_name = lib_name.clone();
+                                        move |_event, _window, cx| {
+                                            view.update(cx, |this, cx| {
+                                                if !lib_name.is_empty() {
+                                                    this.create_library(lib_name.to_string(), cx);
+                                                }
+                                            });
+                                        }
+                                    })
+                            )
+                    )
+            )
+    }
+
+    /// Render the "Add Version" dialog
+    fn render_add_version_dialog(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let view = cx.entity().clone();
+        let version_name = self.new_version_name.clone();
+        let description = self.new_version_description.clone();
+
+        div()
+            .absolute()
+            .inset_0()
+            .bg(rgb(0x111111))
+            .items_center()
+            .justify_center()
+            .child(
+                div()
+                    .w(px(600.))
+                    .max_h(px(700.))
+                    .bg(rgb(0x1f1f1f))
+                    .border_1()
+                    .border_color(rgb(0x2a2a2a))
+                    .rounded(px(8.))
+                    .p_6()
+                    .flex()
+                    .flex_col()
+                    .gap_4()
+                    .child(
+                        div()
+                            .text_lg()
+                            .font_weight(FontWeight::MEDIUM)
+                            .text_color(rgb(0xffffff))
+                            .child("Add New Version"),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap_2()
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .text_color(rgb(0x9ca3af))
+                                    .child("Version Name (e.g., v1.0, 2024-01-15)"),
+                            )
+                            .child(
+                                div()
+                                    .px_3()
+                                    .py_2()
+                                    .bg(rgb(0x374151))
+                                    .rounded(px(4.))
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(rgb(0xffffff))
+                                            .child(version_name.clone())
+                                    )
+                            )
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap_2()
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .text_color(rgb(0x9ca3af))
+                                    .child("Description (optional)"),
+                            )
+                            .child(
+                                div()
+                                    .px_3()
+                                    .py_2()
+                                    .bg(rgb(0x374151))
+                                    .rounded(px(4.))
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(rgb(0xffffff))
+                                            .child(if description.is_empty() {
+                                                "No description".to_string()
+                                            } else {
+                                                description.to_string()
+                                            })
+                                    )
+                            )
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap_2()
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .justify_between()
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .font_weight(FontWeight::MEDIUM)
+                                            .text_color(rgb(0x9ca3af))
+                                            .child("Channel Database Files"),
+                                    )
+                                    .child(
+                                        div()
+                                            .px_3()
+                                            .py_1()
+                                            .bg(rgb(0x059669))
+                                            .rounded(px(4.))
+                                            .cursor_pointer()
+                                            .hover(|style| style.bg(rgb(0x047857)))
+                                            .child(
+                                                div()
+                                                    .text_xs()
+                                                    .text_color(rgb(0xffffff))
+                                                    .child("+ Add Channel"),
+                                            )
+                                            .on_mouse_down(gpui::MouseButton::Left, {
+                                                let view = view.clone();
+                                                move |_event, _window, cx| {
+                                                    view.update(cx, |this, cx| {
+                                                        // Auto-select next available channel
+                                                        let next_channel = (1..=16u16)
+                                                            .find(|ch| !this.channel_database_mapping.contains_key(ch))
+                                                            .unwrap_or(1);
+                                                        this.selected_channel_id = Some(next_channel);
+                                                        this.add_channel_database(next_channel, cx);
+                                                    });
+                                                }
+                                            })
+                                    )
+                            )
+                            .child(
+                                // Channel list
+                                if self.channel_database_mapping.is_empty() {
+                                    div()
+                                        .p_4()
+                                        .bg(rgb(0x374151))
+                                        .rounded(px(4.))
+                                        .items_center()
+                                        .justify_center()
+                                        .child(
+                                            div()
+                                                .text_sm()
+                                                .text_color(rgb(0x6b7280))
+                                                .child("No channels configured. Click '+ Add Channel' to add database files.")
+                                        )
+                                } else {
+                                    div().flex().flex_col().gap_2().children(
+                                        self.channel_database_mapping
+                                            .iter()
+                                            .map(|(ch, path)| {
+                                                let ch = *ch;
+                                                let path = path.clone();
+                                                div()
+                                                    .px_3()
+                                                    .py_2()
+                                                    .bg(rgb(0x374151))
+                                                    .rounded(px(4.))
+                                                    .flex()
+                                                    .items_center()
+                                                    .justify_between()
+                                                    .child(
+                                                        div()
+                                                            .flex()
+                                                            .gap_2()
+                                                            .child(
+                                                                div()
+                                                                    .text_sm()
+                                                                    .font_weight(FontWeight::MEDIUM)
+                                                                    .text_color(rgb(0xffffff))
+                                                                    .child(format!("Channel {}", ch))
+                                                            )
+                                                            .child(
+                                                                div()
+                                                                    .text_xs()
+                                                                    .text_color(rgb(0x9ca3af))
+                                                                    .child(path.clone())
+                                                            )
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .px_2()
+                                                            .py_1()
+                                                            .bg(rgb(0xef4444))
+                                                            .rounded(px(3.))
+                                                            .cursor_pointer()
+                                                            .hover(|style| style.bg(rgb(0xdc2626)))
+                                                            .child(
+                                                                div()
+                                                                    .text_xs()
+                                                                    .text_color(rgb(0xffffff))
+                                                                    .child("Remove")
+                                                            )
+                                                            .on_mouse_down(gpui::MouseButton::Left, {
+                                                                let view = view.clone();
+                                                                move |_event, _window, cx| {
+                                                                    view.update(cx, |this, cx| {
+                                                                        this.channel_database_mapping.remove(&ch);
+                                                                        cx.notify();
+                                                                    });
+                                                                }
+                                                            })
+                                                    )
+                                                    .into_any_element()
+                                            })
+                                    )
+                                }
+                            )
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .gap_2()
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .px_4()
+                                    .py_2()
+                                    .bg(rgb(0x6b7280))
+                                    .rounded(px(4.))
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(rgb(0x4b5563)))
+                                    .items_center()
+                                    .justify_center()
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .font_weight(FontWeight::MEDIUM)
+                                            .text_color(rgb(0xffffff))
+                                            .child("Cancel")
+                                    )
+                                    .on_mouse_down(gpui::MouseButton::Left, {
+                                        let view = view.clone();
+                                        move |_event, _window, cx| {
+                                            view.update(cx, |this, cx| {
+                                                this.show_add_version_dialog = false;
+                                                this.new_version_name = "".into();
+                                                this.new_version_description = "".into();
+                                                this.channel_database_mapping.clear();
+                                                cx.notify();
+                                            });
+                                        }
+                                    })
+                            )
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .px_4()
+                                    .py_2()
+                                    .bg(rgb(0x3b82f6))
+                                    .rounded(px(4.))
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(rgb(0x2563eb)))
+                                    .items_center()
+                                    .justify_center()
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .font_weight(FontWeight::MEDIUM)
+                                            .text_color(rgb(0xffffff))
+                                            .child("Save Version")
+                                    )
+                                    .on_mouse_down(gpui::MouseButton::Left, {
+                                        let view = view.clone();
+                                        move |_event, _window, cx| {
+                                            view.update(cx, |this, cx| {
+                                                this.add_version_from_dialog(cx);
+                                            });
+                                        }
+                                    })
+                            )
+                    )
             )
     }
 }
