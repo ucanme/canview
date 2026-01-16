@@ -37,22 +37,72 @@ impl DatabaseType {
     }
 }
 
+/// 通道数据库配置
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ChannelDatabase {
+    /// 通道ID
+    pub channel_id: u16,
+    /// 通道名称
+    pub channel_name: String,
+    /// 数据库文件路径
+    pub database_path: String,
+}
+
+impl ChannelDatabase {
+    /// 创建新的通道数据库配置
+    pub fn new(channel_id: u16, channel_name: String, database_path: String) -> Self {
+        Self {
+            channel_id,
+            channel_name,
+            database_path,
+        }
+    }
+
+    /// 验证通道配置
+    pub fn validate(&self) -> Result<(), String> {
+        // 检查通道ID是否有效（1-255）
+        if self.channel_id == 0 || self.channel_id > 255 {
+            return Err(format!("Invalid channel ID: {}. Must be between 1 and 255", self.channel_id));
+        }
+
+        // 检查通道名称是否为空
+        if self.channel_name.trim().is_empty() {
+            return Err("Channel name cannot be empty".to_string());
+        }
+
+        // 检查数据库文件路径是否为空
+        if self.database_path.trim().is_empty() {
+            return Err("Database path cannot be empty".to_string());
+        }
+
+        Ok(())
+    }
+
+    /// 获取数据库类型
+    pub fn database_type(&self) -> Option<DatabaseType> {
+        std::path::Path::new(&self.database_path)
+            .extension()
+            .and_then(|e| e.to_str())
+            .and_then(|ext| DatabaseType::from_extension(ext))
+    }
+}
+
 /// 信号库版本
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LibraryVersion {
     /// 版本名称/号（如 "v1.0", "v2.1"）
     pub name: String,
-    /// 数据库文件路径
+    /// 默认数据库文件路径（向后兼容）
     pub path: String,
     /// 创建日期
     pub date: String,
     /// 版本描述
     #[serde(default)]
     pub description: String,
-    /// 每个通道的数据库文件映射
-    /// Key: channel_id, Value: database file path
+    /// 每个通道的数据库文件配置列表
+    /// 存储结构：按通道类型分组的配置
     #[serde(default)]
-    pub channel_databases: HashMap<u16, String>,
+    pub channel_databases: Vec<ChannelDatabase>,
 }
 
 impl LibraryVersion {
@@ -63,7 +113,7 @@ impl LibraryVersion {
             path,
             date,
             description: String::new(),
-            channel_databases: HashMap::new(),
+            channel_databases: Vec::new(),
         }
     }
 
@@ -73,16 +123,85 @@ impl LibraryVersion {
         self
     }
 
-    /// 添加通道数据库映射
-    pub fn add_channel_database(&mut self, channel_id: u16, db_path: String) {
-        self.channel_databases.insert(channel_id, db_path);
+    /// 添加通道数据库配置
+    pub fn add_channel_database(&mut self, channel_db: ChannelDatabase) -> Result<(), String> {
+        // 验证通道配置
+        channel_db.validate()?;
+
+        // 检查通道ID是否已存在
+        if self.channel_databases.iter().any(|db| db.channel_id == channel_db.channel_id) {
+            return Err(format!("Channel ID {} already exists in this version", channel_db.channel_id));
+        }
+
+        self.channel_databases.push(channel_db);
+        Ok(())
     }
 
-    /// 获取通道的数据库路径
-    pub fn get_channel_database(&self, channel_id: u16) -> Option<&String> {
-        self.channel_databases.get(&channel_id)
-            .or_else(|| if !self.path.is_empty() { Some(&self.path) } else { None })
+    /// 获取指定通道的数据库配置
+    pub fn get_channel_database(&self, channel_id: u16) -> Option<&ChannelDatabase> {
+        self.channel_databases.iter()
+            .find(|db| db.channel_id == channel_id)
     }
+
+    /// 获取所有CAN通道
+    pub fn get_can_channels(&self) -> Vec<&ChannelDatabase> {
+        self.channel_databases.iter()
+            .filter(|db| db.database_type() == Some(DatabaseType::DBC))
+            .collect()
+    }
+
+    /// 获取所有LIN通道
+    pub fn get_lin_channels(&self) -> Vec<&ChannelDatabase> {
+        self.channel_databases.iter()
+            .filter(|db| db.database_type() == Some(DatabaseType::LDF))
+            .collect()
+    }
+
+    /// 获取通道数据库列表（用于向后兼容）
+    pub fn get_channel_map(&self) -> HashMap<u16, String> {
+        let mut map = HashMap::new();
+        for db in &self.channel_databases {
+            map.insert(db.channel_id, db.database_path.clone());
+        }
+        // 如果没有配置通道数据库，使用默认path
+        if map.is_empty() && !self.path.is_empty() {
+            // 尝试推断通道ID
+            if let Some(1) = Some(1) {
+                map.insert(1, self.path.clone());
+            }
+        }
+        map
+    }
+
+    /// 检查通道ID是否已被使用
+    pub fn is_channel_id_used(&self, channel_id: u16) -> bool {
+        self.channel_databases.iter().any(|db| db.channel_id == channel_id)
+    }
+
+    /// 获取已使用的通道ID列表
+    pub fn get_used_channel_ids(&self) -> Vec<u16> {
+        self.channel_databases.iter().map(|db| db.channel_id).collect()
+    }
+
+    /// 获取版本统计信息
+    pub fn get_stats(&self) -> VersionStats {
+        let can_count = self.get_can_channels().len();
+        let lin_count = self.get_lin_channels().len();
+
+        VersionStats {
+            total_channels: self.channel_databases.len(),
+            can_channels: can_count,
+            lin_channels: lin_count,
+        }
+    }
+}
+
+/// 版本统计信息
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VersionStats {
+    pub total_channels: usize,
+    pub can_channels: usize,
+    pub lin_channels: usize,
 }
 
 /// 信号库

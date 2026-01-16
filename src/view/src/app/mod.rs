@@ -11,6 +11,31 @@ use crate::config::*;
 use crate::filters::*;
 use crate::library::LibraryManager;
 
+/// Channel configuration for version creation
+#[derive(Debug, Clone)]
+pub struct ChannelConfig {
+    pub channel_id: String,
+    pub channel_name: String,
+    pub file_path: String,
+}
+
+impl ChannelConfig {
+    pub fn new() -> Self {
+        Self {
+            channel_id: String::new(),
+            channel_name: String::new(),
+            file_path: String::new(),
+        }
+    }
+
+    pub fn is_valid(&self) -> bool {
+        !self.channel_id.is_empty()
+            && !self.channel_name.is_empty()
+            && !self.file_path.is_empty()
+            && self.channel_id.parse::<u16>().map_or(false, |id| id >= 1 && id <= 255)
+    }
+}
+
 /// Main CanView application structure
 pub struct CanViewApp {
     // View state
@@ -67,6 +92,13 @@ pub struct CanViewApp {
     pub new_version_name: SharedString,
     pub new_version_description: SharedString,
     pub new_version_path: SharedString,
+
+    // Channel configuration for version creation
+    pub channel_configs: Vec<ChannelConfig>,
+    pub show_add_channel_dialog: bool,
+    pub new_channel_id: String,
+    pub new_channel_name: String,
+    pub new_channel_file: String,
 }
 
 impl CanViewApp {
@@ -114,6 +146,13 @@ impl CanViewApp {
             new_version_name: "".into(),
             new_version_description: "".into(),
             new_version_path: "".into(),
+
+            // Channel configuration for version creation
+            channel_configs: Vec::new(),
+            show_add_channel_dialog: false,
+            new_channel_id: String::new(),
+            new_channel_name: String::new(),
+            new_channel_file: String::new(),
         };
 
         // Load startup config
@@ -452,6 +491,194 @@ impl CanViewApp {
             self.validate_database_file(self.new_version_name.to_string());
             cx.notify();
         }
+    }
+
+    // ==================== Channel Configuration Methods ====================
+
+    /// Open add channel dialog
+    pub fn open_add_channel_dialog(&mut self, cx: &mut Context<Self>) {
+        self.show_add_channel_dialog = true;
+        self.new_channel_id = String::new();
+        self.new_channel_name = String::new();
+        self.new_channel_file = String::new();
+        cx.notify();
+    }
+
+    /// Close add channel dialog
+    pub fn close_add_channel_dialog(&mut self, cx: &mut Context<Self>) {
+        self.show_add_channel_dialog = false;
+        self.new_channel_id.clear();
+        self.new_channel_name.clear();
+        self.new_channel_file.clear();
+        cx.notify();
+    }
+
+    /// Browse for channel database file
+    pub fn browse_channel_database_file(&mut self, cx: &mut Context<Self>) {
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("Database Files", &["dbc", "ldf"])
+            .pick_file()
+        {
+            self.new_channel_file = path.to_string_lossy().to_string();
+
+            // Auto-fill channel name if empty
+            if self.new_channel_name.is_empty() {
+                if let Some(file_name) = path.file_stem() {
+                    self.new_channel_name = file_name.to_string_lossy().to_string();
+                }
+            }
+
+            cx.notify();
+        }
+    }
+
+    /// Add channel configuration
+    pub fn add_channel_config(&mut self, cx: &mut Context<Self>) {
+        // Validate inputs
+        if self.new_channel_id.is_empty() {
+            self.status_msg = "Channel ID is required".into();
+            cx.notify();
+            return;
+        }
+
+        let channel_id = match self.new_channel_id.parse::<u16>() {
+            Ok(id) if id >= 1 && id <= 255 => id,
+            _ => {
+                self.status_msg = "Invalid channel ID. Must be between 1 and 255".into();
+                cx.notify();
+                return;
+            }
+        };
+
+        if self.new_channel_name.trim().is_empty() {
+            self.status_msg = "Channel name is required".into();
+            cx.notify();
+            return;
+        }
+
+        if self.new_channel_file.trim().is_empty() {
+            self.status_msg = "Database file is required".into();
+            cx.notify();
+            return;
+        }
+
+        // Check for duplicate channel ID
+        if self.channel_configs.iter().any(|c| c.channel_id == self.new_channel_id) {
+            self.status_msg = format!("Channel ID {} already exists", self.new_channel_id).into();
+            cx.notify();
+            return;
+        }
+
+        // Check file type matches library type
+        let file_type = std::path::Path::new(&self.new_channel_file)
+            .extension()
+            .and_then(|e| e.to_str())
+            .and_then(|e| DatabaseType::from_extension(e));
+
+        let expected_type = if self.new_library_type == ChannelType::CAN {
+            DatabaseType::DBC
+        } else {
+            DatabaseType::LDF
+        };
+
+        if file_type != Some(expected_type) {
+            self.status_msg = format!(
+                "File type mismatch. Expected {:?}, got {:?}",
+                expected_type, file_type
+            ).into();
+            cx.notify();
+            return;
+        }
+
+        // Add channel configuration
+        let config = ChannelConfig {
+            channel_id: self.new_channel_id.clone(),
+            channel_name: self.new_channel_name.clone(),
+            file_path: self.new_channel_file.clone(),
+        };
+
+        self.channel_configs.push(config);
+        self.status_msg = format!("Added channel {} ({})", self.new_channel_id, self.new_channel_name).into();
+
+        // Clear inputs
+        self.new_channel_id.clear();
+        self.new_channel_name.clear();
+        self.new_channel_file.clear();
+
+        cx.notify();
+    }
+
+    /// Remove channel configuration
+    pub fn remove_channel_config(&mut self, index: usize, cx: &mut Context<Self>) {
+        if index < self.channel_configs.len() {
+            let removed = self.channel_configs.remove(index);
+            self.status_msg = format!("Removed channel {}", removed.channel_id).into();
+            cx.notify();
+        }
+    }
+
+    /// Add version with channel configurations
+    pub fn add_version_with_channels(&mut self, cx: &mut Context<Self>) {
+        if let Some(lib_id) = &self.selected_library_id {
+            // Validate inputs
+            let version_name = self.new_version_name.to_string();
+            if version_name.is_empty() {
+                self.status_msg = "Version name is required".into();
+                cx.notify();
+                return;
+            }
+
+            if self.channel_configs.is_empty() {
+                self.status_msg = "At least one channel is required".into();
+                cx.notify();
+                return;
+            }
+
+            // Create ChannelDatabase list
+            let channel_dbs: Vec<ChannelDatabase> = self.channel_configs
+                .iter()
+                .filter_map(|config| {
+                    let channel_id = config.channel_id.parse::<u16>().ok()?;
+                    Some(ChannelDatabase::new(
+                        channel_id,
+                        config.channel_name.clone(),
+                        config.file_path.clone(),
+                    ))
+                })
+                .collect();
+
+            // Add version
+            match self.library_manager.add_version_with_channels(
+                lib_id,
+                version_name.clone(),
+                self.new_version_description.to_string(),
+                channel_dbs,
+            ) {
+                Ok(_) => {
+                    self.status_msg = format!("Added version {} with {} channels", version_name, self.channel_configs.len()).into();
+                    self.save_library_config(cx);
+
+                    // Clear dialog state
+                    self.close_add_channel_dialog(cx);
+                    self.channel_configs.clear();
+                }
+                Err(e) => {
+                    self.status_msg = format!("Failed to add version: {}", e).into();
+                }
+            }
+
+            cx.notify();
+        } else {
+            self.status_msg = "Please select a library first".into();
+            cx.notify();
+        }
+    }
+
+    /// Clear channel configurations
+    pub fn clear_channel_configs(&mut self, cx: &mut Context<Self>) {
+        self.channel_configs.clear();
+        self.status_msg = "Cleared all channel configurations".into();
+        cx.notify();
     }
 }
 

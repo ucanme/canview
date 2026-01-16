@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 // Re-export library types
-pub use library::{SignalLibrary, LibraryVersion, DatabaseType};
+pub use library::{SignalLibrary, LibraryVersion, DatabaseType, ChannelDatabase, VersionStats};
 
 /// Channel type enumeration
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Copy)]

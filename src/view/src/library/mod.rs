@@ -129,7 +129,69 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// 添加版本到库
+    /// 添加版本到库（带通道配置）
+    pub fn add_version_with_channels(
+        &mut self,
+        library_id: &str,
+        name: String,
+        description: String,
+        channel_dbs: Vec<ChannelDatabase>,
+    ) -> Result<(), String> {
+        let library = self.find_library_mut(library_id)
+            .ok_or("Library not found")?;
+
+        // 验证所有通道配置
+        for channel_db in &channel_dbs {
+            channel_db.validate()?;
+
+            // 检查文件是否存在
+            if !std::path::Path::new(&channel_db.database_path).exists() {
+                return Err(format!("Database file not found for channel {}: {}",
+                    channel_db.channel_id, channel_db.database_path));
+            }
+
+            // 验证文件类型
+            let db_type = channel_db.database_type()
+                .ok_or("Unknown database type")?;
+
+            // 检查类型是否与库类型匹配
+            let expected_type = library.database_type();
+            if (expected_type == DatabaseType::DBC && db_type != DatabaseType::DBC) ||
+               (expected_type == DatabaseType::LDF && db_type != DatabaseType::LDF) {
+                return Err(format!(
+                    "Channel {}: Database type mismatch. Expected {:?}, got {:?}",
+                    channel_db.channel_id, expected_type, db_type
+                ));
+            }
+        }
+
+        // 检查通道ID重复
+        let mut channel_ids = std::collections::HashSet::new();
+        for channel_db in &channel_dbs {
+            if !channel_ids.insert(channel_db.channel_id) {
+                return Err(format!("Duplicate channel ID: {}", channel_db.channel_id));
+            }
+        }
+
+        // 创建版本（使用第一个通道的路径作为默认path，用于向后兼容）
+        let default_path = channel_dbs.first()
+            .map(|db| db.database_path.clone())
+            .unwrap_or_default();
+
+        let date = chrono::Utc::now().format("%Y-%m-%d").to_string();
+        let mut version = LibraryVersion::new(name, default_path, date)
+            .with_description(description);
+
+        // 添加所有通道配置
+        for channel_db in channel_dbs {
+            version.add_channel_database(channel_db)?;
+        }
+
+        library.add_version(version);
+        Ok(())
+    }
+
+    /// 添加版本到库（简单版本，用于向后兼容）
     pub fn add_version(
         &mut self,
         library_id: &str,
