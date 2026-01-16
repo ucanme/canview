@@ -1,7 +1,12 @@
 //! Data models for the CanView application
 
+pub mod library;
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+// Re-export library types
+pub use library::{SignalLibrary, LibraryVersion, DatabaseType};
 
 /// Channel type enumeration
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Copy)]
@@ -31,6 +36,12 @@ pub struct ChannelMapping {
     pub path: String,
     #[serde(default)]
     pub description: String,
+    /// 关联的信号库ID
+    #[serde(default)]
+    pub library_id: Option<String>,
+    /// 激活的版本名称
+    #[serde(default)]
+    pub version_name: Option<String>,
 }
 
 fn default_channel_type() -> ChannelType {
@@ -40,7 +51,17 @@ fn default_channel_type() -> ChannelType {
 /// Application configuration
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct AppConfig {
+    /// 信号库列表
+    #[serde(default)]
+    pub libraries: Vec<SignalLibrary>,
+    /// 通道映射列表
     pub mappings: Vec<ChannelMapping>,
+    /// 当前激活的库ID
+    #[serde(default)]
+    pub active_library_id: Option<String>,
+    /// 当前激活的版本名称
+    #[serde(default)]
+    pub active_version_name: Option<String>,
 }
 
 /// Application view enumeration
