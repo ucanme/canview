@@ -1,42 +1,18 @@
 use blf::{read_blf_from_file, BlfResult, LogObject};
 use gpui::{prelude::*, *};
-use parser::dbc::{DbcDatabase, DbcParser};
-use parser::ldf::{LdfDatabase, LdfParser};
+use parser::dbc::DbcDatabase;
+use parser::ldf::LdfDatabase;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-mod database;
 mod playback;
-use database::{LibraryExt, VersionExt};
 
 // 定义枚举和结构体
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Copy)]
 enum ChannelType {
     CAN,
     LIN,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-struct LibraryVersion {
-    name: String,  // 版本号（可手动输入）
-    path: String,  // 保留用于向后兼容，默认数据库文件
-    date: String,
-    description: String,  // 版本描述
-    // 每个通道的数据库文件映射（新增）
-    // Key: channel_id, Value: database file path
-    #[serde(default)]
-    channel_databases: HashMap<u16, String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-struct SignalLibrary {
-    id: String,
-    name: String,
-    // 库的类型：CAN 或 LIN（新增）
-    #[serde(default = "default_channel_type")]
-    channel_type: ChannelType,
-    versions: Vec<LibraryVersion>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -49,8 +25,6 @@ struct ChannelMapping {
     path: String,
     #[serde(default)]
     description: String,
-    library_id: Option<String>,
-    version_name: Option<String>,
 }
 
 fn default_channel_type() -> ChannelType {
@@ -59,10 +33,7 @@ fn default_channel_type() -> ChannelType {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 struct AppConfig {
-    libraries: Vec<SignalLibrary>,
     mappings: Vec<ChannelMapping>,
-    active_library_id: Option<String>,
-    active_version_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -125,26 +96,6 @@ struct CanViewApp {
     channel_filter_scroll_offset: gpui::Pixels,
     // Channel filter dropdown scroll handle
     channel_filter_scroll_handle: gpui::UniformListScrollHandle,
-    // Config view: selected library for version management
-    selected_library_id: Option<String>,
-    // Config view: show add library dialog
-    show_add_library_dialog: bool,
-    // Config view: show add version dialog
-    show_add_version_dialog: bool,
-    // Config view: new library name input
-    new_library_name: SharedString,
-    // Config view: new library type selection (CAN/LIN)
-    new_library_type: ChannelType,
-    // Config view: new version name input (手动版本号)
-    new_version_name: SharedString,
-    // Config view: new version description input
-    new_version_description: SharedString,
-    // Config view: selected channel for database mapping
-    selected_channel_id: Option<u16>,
-    // Config view: channel to database file mapping (during version creation)
-    channel_database_mapping: HashMap<u16, String>,
-    // Config view: validation results cache
-    validation_cache: HashMap<String, String>,
 }
 
 // State for tracking scrollbar drag operation
@@ -202,17 +153,6 @@ impl CanViewApp {
             show_channel_filter_input: false,
             channel_filter_scroll_offset: px(0.0),
             channel_filter_scroll_handle: gpui::UniformListScrollHandle::new(),
-            // Config view state
-            selected_library_id: None,
-            show_add_library_dialog: false,
-            show_add_version_dialog: false,
-            new_library_name: "".into(),
-            new_library_type: ChannelType::CAN,
-            new_version_name: "".into(),
-            new_version_description: "".into(),
-            selected_channel_id: None,
-            channel_database_mapping: HashMap::new(),
-            validation_cache: HashMap::new(),
         }
     }
 
@@ -222,34 +162,7 @@ impl CanViewApp {
             self.status_msg = "Found saved config, loading...".into();
             if let Ok(content) = std::fs::read_to_string(&path) {
                 match serde_json::from_str::<AppConfig>(&content) {
-                    Ok(mut config) => {
-                        // Fill in missing paths from library versions for legacy configs
-                        for mapping in &mut config.mappings {
-                            if mapping.path.is_empty() {
-                                if let Some(lib_id) = &mapping.library_id {
-                                    if let Some(version_name) = &mapping.version_name {
-                                        if let Some(library) =
-                                            config.libraries.iter().find(|l| l.id == *lib_id)
-                                        {
-                                            if let Some(version) = library
-                                                .versions
-                                                .iter()
-                                                .find(|v| v.name == *version_name)
-                                            {
-                                                // Try new structure: channel_databases
-                                                if let Some(db_path) = version.channel_databases.get(&mapping.channel_id) {
-                                                    mapping.path = db_path.clone();
-                                                } else {
-                                                    // Fallback to legacy path field
-                                                    mapping.path = version.path.clone();
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
+                    Ok(config) => {
                         self.app_config = config.clone();
                         self.config_dir = Some(
                             path.parent()
@@ -258,13 +171,6 @@ impl CanViewApp {
                         );
                         self.config_file_path = Some(path);
                         self.status_msg = "Configuration loaded.".into();
-
-                        // Auto-Apply if Active Version Exists
-                        if let (Some(l_id), Some(v_name)) =
-                            (&config.active_library_id, &config.active_version_name)
-                        {
-                            self.apply_active_version(l_id, v_name);
-                        }
                     }
                     Err(e) => {
                         self.status_msg =
@@ -276,65 +182,6 @@ impl CanViewApp {
             }
         } else {
             self.status_msg = "Ready - GPUI version initialized".into();
-        }
-    }
-
-    fn apply_active_version(&mut self, library_id: &str, version_name: &str) {
-        if let Some(parent) = &self.config_dir {
-            self.status_msg = format!("Applying active version: {}...", version_name).into();
-
-            self.dbc_channels.clear();
-            self.ldf_channels.clear();
-
-            for mapping in &self.app_config.mappings {
-                if mapping.library_id.as_ref() == Some(&library_id.to_string())
-                    && mapping.version_name.as_ref() == Some(&version_name.to_string())
-                {
-                    // Try to find the actual file path from library versions
-                    let file_path = if !mapping.path.is_empty() {
-                        mapping.path.clone()
-                    } else if let Some(library) = self
-                        .app_config
-                        .libraries
-                        .iter()
-                        .find(|l| l.id == library_id)
-                    {
-                        if let Some(version) =
-                            library.versions.iter().find(|v| v.name == version_name)
-                        {
-                            version.path.clone()
-                        } else {
-                            continue;
-                        }
-                    } else {
-                        continue;
-                    };
-
-                    let full_path = parent.join(&file_path);
-                    if let Ok(content) = std::fs::read_to_string(&full_path) {
-                        match mapping.channel_type {
-                            ChannelType::CAN => {
-                                let parser = DbcParser::new();
-                                if let Ok(db) = parser.parse(&content) {
-                                    self.dbc_channels.insert(mapping.channel_id, db);
-                                }
-                            }
-                            ChannelType::LIN => {
-                                let parser = LdfParser::new();
-                                if let Ok(db) = parser.parse(&content) {
-                                    self.ldf_channels.insert(mapping.channel_id, db);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            self.status_msg = format!(
-                "Loaded {} DBC and {} LIN channels",
-                self.dbc_channels.len(),
-                self.ldf_channels.len()
-            )
-            .into();
         }
     }
 
@@ -572,273 +419,16 @@ impl CanViewApp {
             )
     }
 
-    /// Import a database file and add it as a new version
+    /// Import a database file
     fn import_database_file(&mut self, cx: &mut Context<Self>) {
-        // Open add version dialog
-        self.show_add_version_dialog = true;
-
-        // Auto-fill version name from current date if empty
-        if self.new_version_name.is_empty() {
-            self.new_version_name = format!("v{}", chrono::Utc::now().format("%Y%m%d")).into();
-        }
-
-        // Clear previous mappings
-        self.channel_database_mapping.clear();
-
-        cx.notify();
-    }
-
-    /// Actually add the version with current settings
-    fn add_version_from_dialog(&mut self, cx: &mut Context<Self>) {
-        // Check if we have a selected library
-        let lib_id = if let Some(id) = &self.selected_library_id {
-            id.clone()
-        } else {
-            self.status_msg = "Please select a library first".into();
-            self.show_add_version_dialog = false;
-            cx.notify();
-            return;
-        };
-
-        // Validate inputs
-        let version_name = self.new_version_name.to_string();
-        if version_name.is_empty() {
-            self.status_msg = "Version name cannot be empty".into();
-            cx.notify();
-            return;
-        }
-
-        // Check if we have any database files mapped
-        if self.channel_database_mapping.is_empty() {
-            self.status_msg = "Please add at least one database file".into();
-            cx.notify();
-            return;
-        }
-
-        let description = self.new_version_description.to_string();
-        let date = chrono::Utc::now().format("%Y-%m-%d").to_string();
-
-        // Create the version
-        let mut version = LibraryVersion {
-            name: version_name.clone(),
-            path: self.channel_database_mapping.values().next().unwrap().clone(), // Use first database as default
-            date,
-            description,
-            channel_databases: self.channel_database_mapping.clone(),
-        };
-
-        // Validate the first database file
-        let validation_result = if version.path.ends_with(".dbc") {
-            self.validate_dbc_file(&version.path)
-        } else {
-            self.validate_ldf_file(&version.path)
-        };
-
-        match validation_result {
-            Ok(validation) => {
-                let validation_msg = if validation.is_valid {
-                    format!("Valid - {} messages, {} signals",
-                        validation.message_count, validation.signal_count)
-                } else {
-                    format!("Invalid - {:?}", validation.error)
-                };
-
-                // Cache validation for all database files
-                for db_path in self.channel_database_mapping.values() {
-                    self.validation_cache.insert(db_path.clone(), validation_msg.clone());
-                }
-
-                // Add version to library
-                if let Some(library) = self.app_config.libraries.iter_mut()
-                    .find(|l| l.id == lib_id)
-                {
-                    library.versions.push(version);
-                    library.sort_versions();
-                    self.status_msg = format!("Added version {} to library {}",
-                        version_name, library.name).into();
-
-                    // Clear dialog inputs
-                    self.new_version_name = "".into();
-                    self.new_version_description = "".into();
-                    self.channel_database_mapping.clear();
-                    self.show_add_version_dialog = false;
-
-                    self.save_config(cx);
-                } else {
-                    self.status_msg = "Selected library not found".into();
-                }
-            }
-            Err(error) => {
-                self.status_msg = format!("Failed to validate database: {}", error).into();
-            }
-        }
-
-        cx.notify();
-    }
-
-    /// Add a database file for a specific channel (in the dialog)
-    fn add_channel_database(&mut self, channel_id: u16, cx: &mut Context<Self>) {
         if let Some(path) = rfd::FileDialog::new()
             .add_filter("Database Files", &["dbc", "ldf"])
             .pick_file()
         {
             let path_str = path.to_string_lossy().to_string();
-            self.channel_database_mapping.insert(channel_id, path_str);
-            self.status_msg = format!("Added database for channel {}", channel_id).into();
+            self.status_msg = format!("Loaded database: {}", path_str).into();
             cx.notify();
         }
-    }
-
-    /// Validate a DBC file
-    fn validate_dbc_file(&self, path: &str) -> Result<database::DatabaseValidation, String> {
-        let temp_version = LibraryVersion {
-            name: "temp".to_string(),
-            path: path.to_string(),
-            date: chrono::Utc::now().format("%Y-%m-%d").to_string(),
-            description: String::new(),
-            channel_databases: HashMap::new(),
-        };
-
-        temp_version.validate_dbc()
-    }
-
-    /// Validate an LDF file
-    fn validate_ldf_file(&self, path: &str) -> Result<database::DatabaseValidation, String> {
-        let temp_version = LibraryVersion {
-            name: "temp".to_string(),
-            path: path.to_string(),
-            date: chrono::Utc::now().format("%Y-%m-%d").to_string(),
-            description: String::new(),
-            channel_databases: HashMap::new(),
-        };
-
-        temp_version.validate_ldf()
-    }
-
-    /// Activate a specific version for decoding
-    fn activate_version(&mut self, library_id: &str, version_name: &str, cx: &mut Context<Self>) {
-        // Find the library and version
-        let library_name = self.app_config.libraries.iter()
-            .find(|l| l.id == library_id)
-            .map(|l| l.name.clone());
-
-        let version_path = self.app_config.libraries.iter()
-            .find(|l| l.id == library_id)
-            .and_then(|l| l.versions.iter().find(|v| v.name == version_name))
-            .map(|v| v.path.clone());
-
-        if let (Some(name), Some(path)) = (library_name, version_path) {
-            // Load the database file
-            let result = if path.ends_with(".dbc") {
-                self.load_dbc_file(&path)
-            } else {
-                self.load_ldf_file(&path)
-            };
-
-            match result {
-                Ok(()) => {
-                    self.app_config.active_library_id = Some(library_id.to_string());
-                    self.app_config.active_version_name = Some(version_name.to_string());
-                    self.status_msg = format!("Activated {} v{}", name, version_name).into();
-                    self.save_config(cx);
-                }
-                Err(e) => {
-                    self.status_msg = format!("Failed to load database: {}", e).into();
-                }
-            }
-        } else {
-            self.status_msg = "Library or version not found".into();
-        }
-
-        cx.notify();
-    }
-
-    /// Load a DBC file into the decoder
-    fn load_dbc_file(&mut self, path: &str) -> Result<(), String> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| format!("Failed to read file: {}", e))?;
-
-        let parser = DbcParser::new();
-        let db = parser.parse(&content)
-            .map_err(|e| format!("Parse error: {}", e))?;
-
-        // For now, load into all channels
-        // TODO: Allow channel selection
-        for channel in 1..=16u16 {
-            self.dbc_channels.insert(channel, db.clone());
-        }
-
-        Ok(())
-    }
-
-    /// Load an LDF file into the decoder
-    fn load_ldf_file(&mut self, path: &str) -> Result<(), String> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| format!("Failed to read file: {}", e))?;
-
-        let parser = LdfParser::new();
-        let db = parser.parse(&content)
-            .map_err(|e| format!("Parse error: {}", e))?;
-
-        // For now, load into all channels
-        // TODO: Allow channel selection
-        for channel in 1..=16u16 {
-            self.ldf_channels.insert(channel, db.clone());
-        }
-
-        Ok(())
-    }
-
-    /// Remove a version from a library
-    fn remove_version(&mut self, library_id: &str, version_name: &str, cx: &mut Context<Self>) {
-        if let Some(library) = self.app_config.libraries.iter_mut()
-            .find(|l| l.id == library_id)
-        {
-            if library.remove_version(version_name) {
-                self.status_msg = format!("Removed version {}", version_name).into();
-                self.validation_cache.retain(|k, _| !k.contains(version_name));
-                self.save_config(cx);
-            } else {
-                self.status_msg = "Version not found".into();
-            }
-        }
-
-        cx.notify();
-    }
-
-    /// Create a new library with selected type
-    fn create_library(&mut self, name: String, cx: &mut Context<Self>) {
-        let library_id = database::generate_library_id(&name);
-
-        // Check if library already exists
-        if self.app_config.libraries.iter().any(|l| l.id == library_id) {
-            self.status_msg = "Library already exists".into();
-            return;
-        }
-
-        let library = SignalLibrary {
-            id: library_id.clone(),
-            name: name.clone(),
-            channel_type: self.new_library_type,
-            versions: Vec::new(),
-        };
-
-        self.app_config.libraries.push(library);
-        self.selected_library_id = Some(library_id);
-        self.status_msg = format!("Created {} library '{}'",
-            match self.new_library_type {
-                ChannelType::CAN => "CAN",
-                ChannelType::LIN => "LIN",
-            },
-            name).into();
-
-        // Reset input
-        self.new_library_name = "".into();
-        self.new_library_type = ChannelType::CAN;
-        self.show_add_library_dialog = false;
-
-        self.save_config(cx);
-        cx.notify();
     }
 
     /// Save the current configuration to file
@@ -1589,17 +1179,6 @@ impl CanViewApp {
             show_channel_filter_input: false,
             channel_filter_scroll_offset: px(0.0),
             channel_filter_scroll_handle: gpui::UniformListScrollHandle::new(),
-            // Config view state
-            selected_library_id: None,
-            show_add_library_dialog: false,
-            show_add_version_dialog: false,
-            new_library_name: "".into(),
-            new_library_type: ChannelType::CAN,
-            new_version_name: "".into(),
-            new_version_description: "".into(),
-            selected_channel_id: None,
-            channel_database_mapping: HashMap::new(),
-            validation_cache: HashMap::new(),
         };
 
         // Load startup config (this will reset some state, so do it carefully)
@@ -1624,6 +1203,20 @@ impl CanViewApp {
         if (container_height - self.list_container_height).abs() > 10.0 {
             self.list_container_height = container_height;
         }
+    }
+
+    fn render_chart_view(&self) -> impl IntoElement {
+        div()
+            .size_full()
+            .flex()
+            .items_center()
+            .justify_center()
+            .child(
+                div()
+                    .text_lg()
+                    .text_color(rgb(0x9ca3af))
+                    .child("Chart view - Feature coming soon")
+            )
     }
 
     fn render_log_view(&self, view: Entity<CanViewApp>) -> impl IntoElement {
@@ -3674,7 +3267,7 @@ impl CanViewApp {
                             .text_lg()
                             .font_weight(FontWeight::MEDIUM)
                             .text_color(rgb(0xffffff))
-                            .child("Signal Library Management"),
+                            .child("Configuration"),
                     )
                     .child(
                         div()
@@ -3690,7 +3283,7 @@ impl CanViewApp {
                                     .hover(|style| style.bg(rgb(0x2563eb)))
                                     .text_color(rgb(0xffffff))
                                     .text_sm()
-                                    .child("+ Add Library")
+                                    .child("Import Database")
                                     .on_mouse_down(gpui::MouseButton::Left, {
                                         let view = cx.entity().clone();
                                         move |_event, _window, cx| {
@@ -3700,47 +3293,83 @@ impl CanViewApp {
                                         }
                                     }),
                             )
+                            .child(
+                                div()
+                                    .px_3()
+                                    .py_1()
+                                    .bg(rgb(0x10b981))
+                                    .rounded(px(4.))
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(rgb(0x059669)))
+                                    .text_color(rgb(0xffffff))
+                                    .text_sm()
+                                    .child("Save Config")
+                                    .on_mouse_down(gpui::MouseButton::Left, {
+                                        let view = cx.entity().clone();
+                                        move |_event, _window, cx| {
+                                            view.update(cx, |this, cx| {
+                                                this.save_config(cx);
+                                            });
+                                        }
+                                    }),
+                            )
                     )
             )
             .child(
                 div()
                     .flex_1()
+                    .bg(rgb(0x1f1f1f))
+                    .border_1()
+                    .border_color(rgb(0x2a2a2a))
+                    .rounded(px(8.))
                     .flex()
-                    .gap_4()
+                    .flex_col()
+                    .gap_2()
+                    .p_4()
                     .child(
-                        // Left panel: Library list
                         div()
-                            .w(px(300.))
-                            .flex()
-                            .flex_col()
-                            .gap_2()
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .font_weight(FontWeight::MEDIUM)
-                                    .text_color(rgb(0xffffff))
-                                    .child("Libraries"),
-                            )
-                            .child(
-                                self.render_library_list(cx),
-                            )
+                            .text_sm()
+                            .font_weight(FontWeight::MEDIUM)
+                            .text_color(rgb(0xffffff))
+                            .child("Channel Mappings"),
                     )
                     .child(
-                        // Right panel: Version details
                         div()
                             .flex_1()
                             .flex()
                             .flex_col()
                             .gap_2()
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .font_weight(FontWeight::MEDIUM)
-                                    .text_color(rgb(0xffffff))
-                                    .child("Versions"),
-                            )
-                            .child(
-                                self.render_version_details(cx),
+                            .children(
+                                self.app_config.mappings.iter().map(|mapping| {
+                                    div()
+                                        .p_3()
+                                        .bg(rgb(0x374151))
+                                        .rounded(px(4.))
+                                        .flex()
+                                        .items_center()
+                                        .justify_between()
+                                        .child(
+                                            div()
+                                                .flex()
+                                                .flex_col()
+                                                .gap_1()
+                                                .child(
+                                                    div()
+                                                        .text_sm()
+                                                        .font_weight(FontWeight::MEDIUM)
+                                                        .text_color(rgb(0xffffff))
+                                                        .child(format!("Channel {} ({})",
+                                                            mapping.channel_id,
+                                                            if mapping.channel_type == ChannelType::CAN { "CAN" } else { "LIN" })),
+                                                )
+                                                .child(
+                                                    div()
+                                                        .text_xs()
+                                                        .text_color(rgb(0x9ca3af))
+                                                        .child(mapping.path.clone()),
+                                                )
+                                        )
+                                })
                             )
                     )
             )
@@ -3783,874 +3412,6 @@ impl CanViewApp {
                                     .text_xs()
                                     .text_color(rgb(0x9ca3af))
                                     .child(format!("LIN: {}", self.ldf_channels.len())),
-                            )
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(rgb(0x9ca3af))
-                                    .child(format!("Libraries: {}", self.app_config.libraries.len())),
-                            )
-                    )
-            )
-            .when(self.show_add_library_dialog, |div| {
-                div.child(self.render_add_library_dialog(cx))
-            })
-            .when(self.show_add_version_dialog, |div| {
-                div.child(self.render_add_version_dialog(cx))
-            })
-    }
-
-    fn render_library_list(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let libraries = &self.app_config.libraries;
-
-        if libraries.is_empty() {
-            return div()
-                .flex_1()
-                .p_4()
-                .bg(rgb(0x1f1f1f))
-                .border_1()
-                .border_color(rgb(0x2a2a2a))
-                .rounded(px(8.))
-                .items_center()
-                .justify_center()
-                .child(
-                    div()
-                        .text_sm()
-                        .text_color(rgb(0x6b7280))
-                        .child("No libraries configured")
-                );
-        }
-
-        let mut list = div()
-            .flex_1()
-            .bg(rgb(0x1f1f1f))
-            .border_1()
-            .border_color(rgb(0x2a2a2a))
-            .rounded(px(8.))
-            .flex()
-            .flex_col()
-            .gap_1();
-
-        for library in libraries {
-            let is_selected = self.selected_library_id.as_ref() == Some(&library.id);
-            let lib_id = library.id.clone();
-            let lib_name = library.name.clone();
-            let version_count = library.versions.len();
-
-            list = list.child(
-                div()
-                    .px_3()
-                    .py_2()
-                    .cursor_pointer()
-                    .hover(|style| style.bg(rgb(0x374151)))
-                    .when(is_selected, |div| {
-                        div.bg(rgb(0x3b82f6))
-                    })
-                    .rounded(px(4.))
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap_1()
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .font_weight(FontWeight::MEDIUM)
-                                    .text_color(rgb(0xffffff))
-                                    .child(lib_name.clone())
-                            )
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(rgb(0x9ca3af))
-                                    .child(format!("{} versions", version_count))
-                            )
-                    )
-                    .on_mouse_down(gpui::MouseButton::Left, {
-                        let lib_id = lib_id.clone();
-                        let view = cx.entity().clone();
-                        move |_event, _window, cx| {
-                            view.update(cx, |this, cx| {
-                                this.selected_library_id = Some(lib_id.clone());
-                                cx.notify();
-                            });
-                        }
-                    })
-            );
-        }
-
-        list
-    }
-
-    fn render_version_details(&self, cx: &mut Context<Self>) -> AnyElement {
-        if let Some(selected_id) = &self.selected_library_id {
-            if let Some(library) = self.app_config.libraries.iter().find(|l| &l.id == selected_id) {
-                return self.render_library_versions(library, cx);
-            }
-        }
-
-        div()
-            .flex_1()
-            .p_6()
-            .bg(rgb(0x1f1f1f))
-            .border_1()
-            .border_color(rgb(0x2a2a2a))
-            .rounded(px(8.))
-            .items_center()
-            .justify_center()
-            .child(
-                div()
-                    .text_sm()
-                    .text_color(rgb(0x6b7280))
-                    .child("Select a library to view versions")
-            )
-            .into_any_element()
-    }
-
-    fn render_library_versions(&self, library: &SignalLibrary, cx: &mut Context<Self>) -> AnyElement {
-        div()
-            .flex_1()
-            .bg(rgb(0x1f1f1f))
-            .border_1()
-            .border_color(rgb(0x2a2a2a))
-            .rounded(px(8.))
-            .flex()
-            .flex_col()
-            .child(
-                // Header
-                div()
-                    .px_4()
-                    .py_3()
-                    .border_b_1()
-                    .border_color(rgb(0x2a2a2a))
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap_1()
-                            .child(
-                                div()
-                                    .text_base()
-                                    .font_weight(FontWeight::MEDIUM)
-                                    .text_color(rgb(0xffffff))
-                                    .child(library.name.clone())
-                            )
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(rgb(0x9ca3af))
-                                    .child(format!("ID: {}", library.id))
-                            )
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .gap_2()
-                            .child(
-                                div()
-                                    .px_3()
-                                    .py_1()
-                                    .bg(rgb(0x10b981))
-                                    .rounded(px(4.))
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0x059669)))
-                                    .text_color(rgb(0xffffff))
-                                    .text_xs()
-                                    .child("+ Add Version")
-                                    .on_mouse_down(gpui::MouseButton::Left, {
-                                        let view = cx.entity().clone();
-                                        move |_event, _window, cx| {
-                                            view.update(cx, |this, cx| {
-                                                this.import_database_file(cx);
-                                            });
-                                        }
-                                    })
-                            )
-                    )
-            )
-            .child(
-                // Version list
-                div()
-                    .flex_1()
-                    .child(
-                        if library.versions.is_empty() {
-                            div()
-                                .p_6()
-                                .items_center()
-                                .justify_center()
-                                .child(
-                                    div()
-                                        .text_sm()
-                                        .text_color(rgb(0x6b7280))
-                                        .child("No versions available")
-                                )
-                                .into_any_element()
-                        } else {
-                            self.render_version_list(library, cx).into_any_element()
-                        }
-                    )
-            )
-            .into_any_element()
-    }
-
-    fn render_version_list(&self, library: &SignalLibrary, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut list = div().flex().flex_col();
-
-        for (index, version) in library.versions.iter().enumerate() {
-            let version_name = version.name.clone();
-            let version_path = version.path.clone();
-            let version_date = version.date.clone();
-            let is_latest = index == 0; // 第一个版本是最新版本（因为已排序）
-
-            // Get validation result
-            let validation_msg = self.validation_cache.get(&version.path)
-                .cloned()
-                .unwrap_or_else(|| "Not validated".to_string());
-
-            list = list.child(
-                div()
-                    .px_4()
-                    .py_3()
-                    .border_b_1()
-                    .border_color(rgb(0x2a2a2a))
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .hover(|style| style.bg(rgb(0x374151)))
-                    .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap_2()
-                            .flex_1()
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap_2()
-                                    .child(
-                                        div()
-                                            .text_sm()
-                                            .font_weight(FontWeight::MEDIUM)
-                                            .text_color(rgb(0xffffff))
-                                            .child(version_name.clone())
-                                    )
-                                    .when(is_latest, |d| {
-                                        d.child(
-                                            div()
-                                                .px_2()
-                                                .py(px(1.))
-                                                .bg(rgb(0x3b82f6))
-                                                .rounded(px(3.))
-                                                .text_xs()
-                                                .text_color(rgb(0xffffff))
-                                                .child("Latest")
-                                        )
-                                    })
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap_4()
-                                    .child(
-                                        div()
-                                            .text_xs()
-                                            .text_color(rgb(0x9ca3af))
-                                            .child(format!("Path: {}", version_path))
-                                    )
-                                    .child(
-                                        div()
-                                            .text_xs()
-                                            .text_color(rgb(0x9ca3af))
-                                            .child(format!("Added: {}", version_date))
-                                    )
-                            )
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .when(validation_msg.contains("Valid"), |div| {
-                                        div.text_color(rgb(0x10b981))
-                                    })
-                                    .when(validation_msg.contains("Error"), |div| {
-                                        div.text_color(rgb(0xef4444))
-                                    })
-                                    .when(!validation_msg.contains("Valid") && !validation_msg.contains("Error"), |div| {
-                                        div.text_color(rgb(0x9ca3af))
-                                    })
-                                    .child(validation_msg)
-                            )
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .gap_2()
-                            .child(
-                                div()
-                                    .px_3()
-                                    .py_1()
-                                    .bg(rgb(0x6366f1))
-                                    .rounded(px(4.))
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0x4f46e5)))
-                                    .text_color(rgb(0xffffff))
-                                    .text_xs()
-                                    .child("Activate")
-                                    .on_mouse_down(gpui::MouseButton::Left, {
-                                        let version_name = version_name.clone();
-                                        let view = cx.entity().clone();
-                                        move |_event, _window, cx| {
-                                            let version_name = version_name.clone();
-                                            view.update(cx, |this, cx| {
-                                                if let Some(lib_id) = this.selected_library_id.clone() {
-                                                    this.activate_version(&lib_id, &version_name, cx);
-                                                }
-                                            });
-                                        }
-                                    })
-                            )
-                            .child(
-                                div()
-                                    .px_3()
-                                    .py_1()
-                                    .bg(rgb(0xef4444))
-                                    .rounded(px(4.))
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0xdc2626)))
-                                    .text_color(rgb(0xffffff))
-                                    .text_xs()
-                                    .child("Remove")
-                                    .on_mouse_down(gpui::MouseButton::Left, {
-                                        let version_name = version_name.clone();
-                                        let view = cx.entity().clone();
-                                        move |_event, _window, cx| {
-                                            let version_name = version_name.clone();
-                                            view.update(cx, |this, cx| {
-                                                if let Some(lib_id) = this.selected_library_id.clone() {
-                                                    this.remove_version(&lib_id, &version_name, cx);
-                                                }
-                                            });
-                                        }
-                                    })
-                            )
-                    )
-            );
-        }
-
-        list
-    }
-
-    fn render_chart_view(&self) -> impl IntoElement {
-        div()
-            .size_full()
-            .p_6()
-            .flex()
-            .flex_col()
-            .gap_4()
-            .text_color(rgb(0xd1d5db))
-            .child(
-                div()
-                    .text_lg()
-                    .font_weight(FontWeight::MEDIUM)
-                    .mb_4()
-                    .text_color(rgb(0xffffff))
-                    .child("Analytics"),
-            )
-            .child(
-                div()
-                    .p_6()
-                    .bg(rgb(0x1f1f1f))
-                    .border_1()
-                    .border_color(rgb(0x2a2a2a))
-                    .rounded(px(8.))
-                    .flex()
-                    .flex_col()
-                    .items_center()
-                    .justify_center()
-                    .gap_3()
-                    .child(
-                        div()
-                            .text_sm()
-                            .text_color(rgb(0x9ca3af))
-                            .child("Chart visualization coming soon"),
-                    )
-                    .child(
-                        div()
-                            .text_xs()
-                            .text_color(rgb(0x6b7280))
-                            .child("Real-time signal analysis and plotting"),
-                    ),
-            )
-    }
-
-    /// Render the "Add Library" dialog
-    fn render_add_library_dialog(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let view = cx.entity().clone();
-        let lib_name = self.new_library_name.clone();
-
-        div()
-            .absolute()
-            .inset_0()
-            .bg(rgb(0x111111))
-            .items_center()
-            .justify_center()
-            .child(
-                div()
-                    .w(px(400.))
-                    .bg(rgb(0x1f1f1f))
-                    .border_1()
-                    .border_color(rgb(0x2a2a2a))
-                    .rounded(px(8.))
-                    .p_6()
-                    .flex()
-                    .flex_col()
-                    .gap_4()
-                    .child(
-                        div()
-                            .text_lg()
-                            .font_weight(FontWeight::MEDIUM)
-                            .text_color(rgb(0xffffff))
-                            .child("Add New Library"),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap_2()
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .text_color(rgb(0x9ca3af))
-                                    .child("Library Name"),
-                            )
-                            .child(
-                                div()
-                                    .px_3()
-                                    .py_2()
-                                    .bg(rgb(0x374151))
-                                    .rounded(px(4.))
-                                    .child(
-                                        div()
-                                            .text_sm()
-                                            .text_color(rgb(0xffffff))
-                                            .child(lib_name.clone())
-                                    )
-                            )
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap_2()
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .text_color(rgb(0x9ca3af))
-                                    .child("Library Type"),
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .gap_2()
-                                    .child(
-                                        div()
-                                            .flex_1()
-                                            .px_3()
-                                            .py_2()
-                                            .bg(rgb(0x374151))
-                                            .rounded(px(4.))
-                                            .cursor_pointer()
-                                            .when(self.new_library_type == ChannelType::CAN, |div| {
-                                                div.border_2().border_color(rgb(0x3b82f6))
-                                            })
-                                            .child(
-                                                div()
-                                                    .text_sm()
-                                                    .text_color(rgb(0xffffff))
-                                                    .child("CAN")
-                                            )
-                                            .on_mouse_down(gpui::MouseButton::Left, {
-                                                let view = view.clone();
-                                                move |_event, _window, cx| {
-                                                    view.update(cx, |this, cx| {
-                                                        this.new_library_type = ChannelType::CAN;
-                                                        cx.notify();
-                                                    });
-                                                }
-                                            })
-                                    )
-                                    .child(
-                                        div()
-                                            .flex_1()
-                                            .px_3()
-                                            .py_2()
-                                            .bg(rgb(0x374151))
-                                            .rounded(px(4.))
-                                            .cursor_pointer()
-                                            .when(self.new_library_type == ChannelType::LIN, |div| {
-                                                div.border_2().border_color(rgb(0x3b82f6))
-                                            })
-                                            .child(
-                                                div()
-                                                    .text_sm()
-                                                    .text_color(rgb(0xffffff))
-                                                    .child("LIN")
-                                            )
-                                            .on_mouse_down(gpui::MouseButton::Left, {
-                                                let view = view.clone();
-                                                move |_event, _window, cx| {
-                                                    view.update(cx, |this, cx| {
-                                                        this.new_library_type = ChannelType::LIN;
-                                                        cx.notify();
-                                                    });
-                                                }
-                                            })
-                                    )
-                            )
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .gap_2()
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .px_4()
-                                    .py_2()
-                                    .bg(rgb(0x6b7280))
-                                    .rounded(px(4.))
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0x4b5563)))
-                                    .items_center()
-                                    .justify_center()
-                                    .child(
-                                        div()
-                                            .text_sm()
-                                            .font_weight(FontWeight::MEDIUM)
-                                            .text_color(rgb(0xffffff))
-                                            .child("Cancel")
-                                    )
-                                    .on_mouse_down(gpui::MouseButton::Left, {
-                                        let view = view.clone();
-                                        move |_event, _window, cx| {
-                                            view.update(cx, |this, cx| {
-                                                this.show_add_library_dialog = false;
-                                                this.new_library_name = "".into();
-                                                cx.notify();
-                                            });
-                                        }
-                                    })
-                            )
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .px_4()
-                                    .py_2()
-                                    .bg(rgb(0x3b82f6))
-                                    .rounded(px(4.))
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0x2563eb)))
-                                    .items_center()
-                                    .justify_center()
-                                    .child(
-                                        div()
-                                            .text_sm()
-                                            .font_weight(FontWeight::MEDIUM)
-                                            .text_color(rgb(0xffffff))
-                                            .child("Create")
-                                    )
-                                    .on_mouse_down(gpui::MouseButton::Left, {
-                                        let view = view.clone();
-                                        let lib_name = lib_name.clone();
-                                        move |_event, _window, cx| {
-                                            view.update(cx, |this, cx| {
-                                                if !lib_name.is_empty() {
-                                                    this.create_library(lib_name.to_string(), cx);
-                                                }
-                                            });
-                                        }
-                                    })
-                            )
-                    )
-            )
-    }
-
-    /// Render the "Add Version" dialog
-    fn render_add_version_dialog(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let view = cx.entity().clone();
-        let version_name = self.new_version_name.clone();
-        let description = self.new_version_description.clone();
-
-        div()
-            .absolute()
-            .inset_0()
-            .bg(rgb(0x111111))
-            .items_center()
-            .justify_center()
-            .child(
-                div()
-                    .w(px(600.))
-                    .max_h(px(700.))
-                    .bg(rgb(0x1f1f1f))
-                    .border_1()
-                    .border_color(rgb(0x2a2a2a))
-                    .rounded(px(8.))
-                    .p_6()
-                    .flex()
-                    .flex_col()
-                    .gap_4()
-                    .child(
-                        div()
-                            .text_lg()
-                            .font_weight(FontWeight::MEDIUM)
-                            .text_color(rgb(0xffffff))
-                            .child("Add New Version"),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap_2()
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .text_color(rgb(0x9ca3af))
-                                    .child("Version Name (e.g., v1.0, 2024-01-15)"),
-                            )
-                            .child(
-                                div()
-                                    .px_3()
-                                    .py_2()
-                                    .bg(rgb(0x374151))
-                                    .rounded(px(4.))
-                                    .child(
-                                        div()
-                                            .text_sm()
-                                            .text_color(rgb(0xffffff))
-                                            .child(version_name.clone())
-                                    )
-                            )
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap_2()
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .text_color(rgb(0x9ca3af))
-                                    .child("Description (optional)"),
-                            )
-                            .child(
-                                div()
-                                    .px_3()
-                                    .py_2()
-                                    .bg(rgb(0x374151))
-                                    .rounded(px(4.))
-                                    .child(
-                                        div()
-                                            .text_sm()
-                                            .text_color(rgb(0xffffff))
-                                            .child(if description.is_empty() {
-                                                "No description".to_string()
-                                            } else {
-                                                description.to_string()
-                                            })
-                                    )
-                            )
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap_2()
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .justify_between()
-                                    .child(
-                                        div()
-                                            .text_sm()
-                                            .font_weight(FontWeight::MEDIUM)
-                                            .text_color(rgb(0x9ca3af))
-                                            .child("Channel Database Files"),
-                                    )
-                                    .child(
-                                        div()
-                                            .px_3()
-                                            .py_1()
-                                            .bg(rgb(0x059669))
-                                            .rounded(px(4.))
-                                            .cursor_pointer()
-                                            .hover(|style| style.bg(rgb(0x047857)))
-                                            .child(
-                                                div()
-                                                    .text_xs()
-                                                    .text_color(rgb(0xffffff))
-                                                    .child("+ Add Channel"),
-                                            )
-                                            .on_mouse_down(gpui::MouseButton::Left, {
-                                                let view = view.clone();
-                                                move |_event, _window, cx| {
-                                                    view.update(cx, |this, cx| {
-                                                        // Auto-select next available channel
-                                                        let next_channel = (1..=16u16)
-                                                            .find(|ch| !this.channel_database_mapping.contains_key(ch))
-                                                            .unwrap_or(1);
-                                                        this.selected_channel_id = Some(next_channel);
-                                                        this.add_channel_database(next_channel, cx);
-                                                    });
-                                                }
-                                            })
-                                    )
-                            )
-                            .child(
-                                // Channel list
-                                if self.channel_database_mapping.is_empty() {
-                                    div()
-                                        .p_4()
-                                        .bg(rgb(0x374151))
-                                        .rounded(px(4.))
-                                        .items_center()
-                                        .justify_center()
-                                        .child(
-                                            div()
-                                                .text_sm()
-                                                .text_color(rgb(0x6b7280))
-                                                .child("No channels configured. Click '+ Add Channel' to add database files.")
-                                        )
-                                } else {
-                                    div().flex().flex_col().gap_2().children(
-                                        self.channel_database_mapping
-                                            .iter()
-                                            .map(|(ch, path)| {
-                                                let ch = *ch;
-                                                let path = path.clone();
-                                                div()
-                                                    .px_3()
-                                                    .py_2()
-                                                    .bg(rgb(0x374151))
-                                                    .rounded(px(4.))
-                                                    .flex()
-                                                    .items_center()
-                                                    .justify_between()
-                                                    .child(
-                                                        div()
-                                                            .flex()
-                                                            .gap_2()
-                                                            .child(
-                                                                div()
-                                                                    .text_sm()
-                                                                    .font_weight(FontWeight::MEDIUM)
-                                                                    .text_color(rgb(0xffffff))
-                                                                    .child(format!("Channel {}", ch))
-                                                            )
-                                                            .child(
-                                                                div()
-                                                                    .text_xs()
-                                                                    .text_color(rgb(0x9ca3af))
-                                                                    .child(path.clone())
-                                                            )
-                                                    )
-                                                    .child(
-                                                        div()
-                                                            .px_2()
-                                                            .py_1()
-                                                            .bg(rgb(0xef4444))
-                                                            .rounded(px(3.))
-                                                            .cursor_pointer()
-                                                            .hover(|style| style.bg(rgb(0xdc2626)))
-                                                            .child(
-                                                                div()
-                                                                    .text_xs()
-                                                                    .text_color(rgb(0xffffff))
-                                                                    .child("Remove")
-                                                            )
-                                                            .on_mouse_down(gpui::MouseButton::Left, {
-                                                                let view = view.clone();
-                                                                move |_event, _window, cx| {
-                                                                    view.update(cx, |this, cx| {
-                                                                        this.channel_database_mapping.remove(&ch);
-                                                                        cx.notify();
-                                                                    });
-                                                                }
-                                                            })
-                                                    )
-                                                    .into_any_element()
-                                            })
-                                    )
-                                }
-                            )
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .gap_2()
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .px_4()
-                                    .py_2()
-                                    .bg(rgb(0x6b7280))
-                                    .rounded(px(4.))
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0x4b5563)))
-                                    .items_center()
-                                    .justify_center()
-                                    .child(
-                                        div()
-                                            .text_sm()
-                                            .font_weight(FontWeight::MEDIUM)
-                                            .text_color(rgb(0xffffff))
-                                            .child("Cancel")
-                                    )
-                                    .on_mouse_down(gpui::MouseButton::Left, {
-                                        let view = view.clone();
-                                        move |_event, _window, cx| {
-                                            view.update(cx, |this, cx| {
-                                                this.show_add_version_dialog = false;
-                                                this.new_version_name = "".into();
-                                                this.new_version_description = "".into();
-                                                this.channel_database_mapping.clear();
-                                                cx.notify();
-                                            });
-                                        }
-                                    })
-                            )
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .px_4()
-                                    .py_2()
-                                    .bg(rgb(0x3b82f6))
-                                    .rounded(px(4.))
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0x2563eb)))
-                                    .items_center()
-                                    .justify_center()
-                                    .child(
-                                        div()
-                                            .text_sm()
-                                            .font_weight(FontWeight::MEDIUM)
-                                            .text_color(rgb(0xffffff))
-                                            .child("Save Version")
-                                    )
-                                    .on_mouse_down(gpui::MouseButton::Left, {
-                                        let view = view.clone();
-                                        move |_event, _window, cx| {
-                                            view.update(cx, |this, cx| {
-                                                this.add_version_from_dialog(cx);
-                                            });
-                                        }
-                                    })
                             )
                     )
             )
