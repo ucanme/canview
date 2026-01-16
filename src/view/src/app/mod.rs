@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use crate::models::*;
 use crate::config::*;
 use crate::filters::*;
+use crate::library::LibraryManager;
 
 /// Main CanView application structure
 pub struct CanViewApp {
@@ -56,6 +57,16 @@ pub struct CanViewApp {
     pub show_channel_filter_input: bool,
     pub channel_filter_scroll_offset: gpui::Pixels,
     pub channel_filter_scroll_handle: gpui::UniformListScrollHandle,
+
+    // Library management state
+    pub library_manager: LibraryManager,
+    pub selected_library_id: Option<String>,
+    pub show_library_dialog: bool,
+    pub new_library_name: SharedString,
+    pub new_library_type: ChannelType,
+    pub new_version_name: SharedString,
+    pub new_version_description: SharedString,
+    pub new_version_path: SharedString,
 }
 
 impl CanViewApp {
@@ -93,6 +104,16 @@ impl CanViewApp {
             show_channel_filter_input: false,
             channel_filter_scroll_offset: px(0.0),
             channel_filter_scroll_handle: gpui::UniformListScrollHandle::new(),
+
+            // Library management state
+            library_manager: LibraryManager::new(),
+            selected_library_id: None,
+            show_library_dialog: false,
+            new_library_name: "".into(),
+            new_library_type: ChannelType::CAN,
+            new_version_name: "".into(),
+            new_version_description: "".into(),
+            new_version_path: "".into(),
         };
 
         // Load startup config
@@ -164,6 +185,274 @@ impl CanViewApp {
             self.list_container_height = container_height;
         }
     }
+
+    // ==================== Library Management Methods ====================
+
+    /// Create a new library
+    pub fn create_library(&mut self, name: String, channel_type: ChannelType, cx: &mut Context<Self>) {
+        match self.library_manager.create_library(name.clone(), channel_type) {
+            Ok(_) => {
+                self.status_msg = format!("Created library '{}'", name).into();
+                // Select the newly created library
+                if let Some(lib) = self.library_manager.libraries().iter().find(|l| l.name == name) {
+                    self.selected_library_id = Some(lib.id.clone());
+                }
+                self.save_library_config(cx);
+            }
+            Err(e) => {
+                self.status_msg = format!("Failed to create library: {}", e).into();
+            }
+        }
+        cx.notify();
+    }
+
+    /// Delete a library
+    pub fn delete_library(&mut self, library_id: &str, cx: &mut Context<Self>) {
+        match self.library_manager.delete_library(library_id, &self.app_config.mappings) {
+            Ok(_) => {
+                self.status_msg = "Library deleted successfully".into();
+                if self.selected_library_id.as_ref() == Some(library_id) {
+                    self.selected_library_id = None;
+                }
+                self.save_library_config(cx);
+            }
+            Err(e) => {
+                self.status_msg = format!("Failed to delete library: {}", e).into();
+            }
+        }
+        cx.notify();
+    }
+
+    /// Add a new version to a library
+    pub fn add_library_version(
+        &mut self,
+        library_id: &str,
+        name: String,
+        path: String,
+        description: String,
+        cx: &mut Context<Self>
+    ) {
+        match self.library_manager.add_version(library_id, name.clone(), path.clone(), description.clone()) {
+            Ok(_) => {
+                // Validate the database
+                let validation_msg = match self.library_manager.validate_database(&path) {
+                    Ok(validation) => {
+                        if validation.is_valid {
+                            format!(
+                                "Added version {} - {} messages, {} signals",
+                                name, validation.message_count, validation.signal_count
+                            )
+                        } else {
+                            format!("Added version {} (with warnings: {:?})", name, validation.error)
+                        }
+                    }
+                    Err(e) => {
+                        format!("Added version {} (validation failed: {})", name, e)
+                    }
+                };
+                self.status_msg = validation_msg.into();
+                self.save_library_config(cx);
+            }
+            Err(e) => {
+                self.status_msg = format!("Failed to add version: {}", e).into();
+            }
+        }
+        cx.notify();
+    }
+
+    /// Delete a version from a library
+    pub fn delete_library_version(&mut self, library_id: &str, version_name: &str, cx: &mut Context<Self>) {
+        match self.library_manager.remove_version(library_id, version_name, &self.app_config.mappings) {
+            Ok(_) => {
+                self.status_msg = format!("Deleted version {}", version_name).into();
+                self.save_library_config(cx);
+            }
+            Err(e) => {
+                self.status_msg = format!("Failed to delete version: {}", e).into();
+            }
+        }
+        cx.notify();
+    }
+
+    /// Load and activate a library version
+    pub fn load_library_version(&mut self, library_id: &str, version_name: &str, cx: &mut Context<Self>) {
+        // Find library and version
+        let library = match self.library_manager.find_library(library_id) {
+            Some(lib) => lib,
+            None => {
+                self.status_msg = "Library not found".into();
+                cx.notify();
+                return;
+            }
+        };
+
+        let version = match library.get_version(version_name) {
+            Some(ver) => ver,
+            None => {
+                self.status_msg = "Version not found".into();
+                cx.notify();
+                return;
+            }
+        };
+
+        // Load database
+        match self.library_manager.load_database(&version.path, library.channel_type) {
+            Ok(db) => {
+                match db {
+                    crate::library::Database::Dbc(dbc_db) => {
+                        // Load to all CAN channels
+                        for channel in 1..=16u16 {
+                            self.dbc_channels.insert(channel, dbc_db.clone());
+                        }
+                    }
+                    crate::library::Database::Ldf(ldf_db) => {
+                        // Load to all LIN channels
+                        for channel in 1..=16u16 {
+                            self.ldf_channels.insert(channel, ldf_db.clone());
+                        }
+                    }
+                }
+
+                // Update active state
+                self.app_config.active_library_id = Some(library_id.to_string());
+                self.app_config.active_version_name = Some(version_name.to_string());
+
+                self.status_msg = format!(
+                    "Loaded {} v{}",
+                    library.name,
+                    version_name
+                ).into();
+
+                self.save_library_config(cx);
+            }
+            Err(e) => {
+                self.status_msg = format!("Failed to load database: {}", e).into();
+            }
+        }
+        cx.notify();
+    }
+
+    /// Validate a database file
+    pub fn validate_database_file(&mut self, path: String) {
+        match self.library_manager.validate_database(&path) {
+            Ok(validation) => {
+                if validation.is_valid {
+                    self.status_msg = format!(
+                        "Valid - {} messages, {} signals",
+                        validation.message_count,
+                        validation.signal_count
+                    ).into();
+                } else {
+                    self.status_msg = format!("Invalid: {:?}", validation.error).into();
+                }
+            }
+            Err(e) => {
+                self.status_msg = format!("Validation error: {}", e).into();
+            }
+        }
+    }
+
+    /// Import database file and add as version
+    pub fn import_database_as_version(&mut self, cx: &mut Context<Self>) {
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("Database Files", &["dbc", "ldf"])
+            .pick_file()
+        {
+            let path_str = path.to_string_lossy().to_string();
+
+            // If a library is selected, add version directly
+            if let Some(lib_id) = &self.selected_library_id {
+                use crate::library::extract_version_from_path;
+                let version_name = extract_version_from_path(&path);
+
+                self.add_library_version(
+                    lib_id,
+                    version_name,
+                    path_str,
+                    "Imported from file".to_string(),
+                    cx
+                );
+            } else {
+                self.status_msg = "Please select a library first".into();
+                cx.notify();
+            }
+        }
+    }
+
+    /// Save library configuration
+    fn save_library_config(&self, cx: &mut Context<Self>) {
+        // Sync library manager state to app_config
+        self.app_config.libraries = self.library_manager.libraries().to_vec();
+        self.save_config(cx);
+    }
+
+    /// Load library configuration
+    fn load_library_config(&mut self) {
+        // Load from app_config to library manager
+        self.library_manager = LibraryManager::from_libraries(
+            self.app_config.libraries.clone()
+        );
+    }
+
+    /// Select a library
+    pub fn select_library(&mut self, library_id: String, cx: &mut Context<Self>) {
+        self.selected_library_id = Some(library_id);
+        cx.notify();
+    }
+
+    /// Open create library dialog
+    pub fn open_create_library_dialog(&mut self, cx: &mut Context<Self>) {
+        self.show_library_dialog = true;
+        self.new_library_name = "".into();
+        self.new_library_type = ChannelType::CAN;
+        cx.notify();
+    }
+
+    /// Open add version dialog
+    pub fn open_add_version_dialog(&mut self, cx: &mut Context<Self>) {
+        if self.selected_library_id.is_none() {
+            self.status_msg = "Please select a library first".into();
+            cx.notify();
+            return;
+        }
+
+        // Auto-fill version name from current date
+        self.new_version_name = format!("v{}", chrono::Utc::now().format("%Y%m%d")).into();
+        self.new_version_description = "".into();
+        self.new_version_path = "".into();
+        self.show_library_dialog = true;
+        cx.notify();
+    }
+
+    /// Close library dialog
+    pub fn close_library_dialog(&mut self, cx: &mut Context<Self>) {
+        self.show_library_dialog = false;
+        self.new_library_name = "".into();
+        self.new_version_description = "".into();
+        self.new_version_path = "".into();
+        cx.notify();
+    }
+
+    /// Browse for database file
+    pub fn browse_database_file(&mut self, cx: &mut Context<Self>) {
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("Database Files", &["dbc", "ldf"])
+            .pick_file()
+        {
+            self.new_version_path = path.to_string_lossy().to_string().into();
+
+            // Auto-extract version name from path if empty
+            if self.new_version_name.is_empty() {
+                use crate::library::extract_version_from_path;
+                let version_name = extract_version_from_path(&path);
+                self.new_version_name = version_name.into();
+            }
+
+            // Validate the file
+            self.validate_database_file(self.new_version_name.to_string());
+            cx.notify();
+        }
+    }
 }
 
 impl ConfigManager for CanViewApp {
@@ -214,15 +503,51 @@ impl ConfigManager for CanViewApp {
                     );
                     self.config_file_path = Some(path);
                     self.status_msg = "Configuration loaded.".into();
+
+                    // Load library configuration
+                    self.load_library_config();
+
+                    // Auto-activate library version if specified
+                    if let (Some(lib_id), Some(ver_name)) =
+                        (&self.app_config.active_library_id, &self.app_config.active_version_name)
+                    {
+                        // Note: We can't call cx.notify here as we don't have cx
+                        // Just update the channels
+                        self.load_library_version_silent(lib_id, ver_name);
+                    }
                 }
                 Err(e) => {
                     self.status_msg =
                         format!("Config load error: {}. Using default config.", e).into();
                     self.app_config = AppConfig::default();
+                    self.load_library_config();
                 }
             }
         } else {
             self.status_msg = "Ready - GPUI version initialized".into();
+            self.load_library_config();
+        }
+    }
+
+    /// Load library version without UI notification (for startup)
+    fn load_library_version_silent(&mut self, library_id: &str, version_name: &str) {
+        if let Some(library) = self.library_manager.find_library(library_id) {
+            if let Some(version) = library.get_version(version_name) {
+                if let Ok(db) = self.library_manager.load_database(&version.path, library.channel_type) {
+                    match db {
+                        crate::library::Database::Dbc(dbc_db) => {
+                            for channel in 1..=16u16 {
+                                self.dbc_channels.insert(channel, dbc_db.clone());
+                            }
+                        }
+                        crate::library::Database::Ldf(ldf_db) => {
+                            for channel in 1..=16u16 {
+                                self.ldf_channels.insert(channel, ldf_db.clone());
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
