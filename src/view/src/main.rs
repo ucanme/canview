@@ -6,8 +6,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-mod playback;
-
 // 定义枚举和结构体
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Copy)]
 enum ChannelType {
@@ -259,10 +257,11 @@ impl CanViewApp {
             LogObject::CanMessage(can_msg) => {
                 let timestamp = can_msg.header.object_time_stamp;
                 let time_str = self.get_timestamp_string(timestamp);
+                let actual_data_len = can_msg.data.len().min(can_msg.dlc as usize);
                 let data_hex = can_msg
                     .data
                     .iter()
-                    .take(can_msg.dlc as usize)
+                    .take(actual_data_len)
                     .map(|b| format!("{:02X}", b))
                     .collect::<Vec<_>>()
                     .join(" ");
@@ -289,7 +288,7 @@ impl CanViewApp {
                     can_msg.channel,
                     "CAN".to_string(),
                     format!("0x{:03X}", can_msg.id),
-                    can_msg.dlc.to_string(),
+                    actual_data_len.to_string(),
                     data_hex,
                     signals,
                 )
@@ -297,10 +296,11 @@ impl CanViewApp {
             LogObject::LinMessage(lin_msg) => {
                 let timestamp = lin_msg.header.object_time_stamp;
                 let time_str = self.get_timestamp_string(timestamp);
+                let actual_data_len = lin_msg.data.len().min(lin_msg.dlc as usize);
                 let data_hex = lin_msg
                     .data
                     .iter()
-                    .take(lin_msg.dlc as usize)
+                    .take(actual_data_len)
                     .map(|b| format!("{:02X}", b))
                     .collect::<Vec<_>>()
                     .join(" ");
@@ -334,7 +334,7 @@ impl CanViewApp {
                     lin_msg.channel,
                     "LIN".to_string(),
                     format!("0x{:02X}", lin_msg.id),
-                    lin_msg.dlc.to_string(),
+                    actual_data_len.to_string(),
                     data_hex,
                     signals,
                 )
@@ -351,29 +351,29 @@ impl CanViewApp {
         };
 
         let bg_color = if index.is_multiple_of(2) {
-            rgb(0x181818)
+            rgb(0x09090b)  // Zed's dark background (zebra)
         } else {
-            rgb(0x1a1a1a)
+            rgb(0x0c0c0e)  // Zed's dark background (base)
         };
 
         div()
             .flex()
             .w_full()
-            .min_h(px(22.))
+            .min_h(px(24.))  // Slightly taller for better readability
             .bg(bg_color)
             .border_b_1()
-            .border_color(rgb(0x2a2a2a))
+            .border_color(rgb(0x2a2a2a))  // Semi-transparent border like Zed
             .items_center()
-            .text_xs()
-            .text_color(rgb(0xd1d5db))
-            .hover(|style| style.bg(rgb(0x1f2937)))
+            .text_sm()  // Slightly larger text like Zed
+            .text_color(rgb(0xcdd6f4))  // Zed's default text color
+            .hover(|style| style.bg(rgb(0x1f1f1f)))  // Subtle hover like Zed
             .cursor_pointer()
             .child(
                 div()
                     .w(px(100.))
                     .px_3()
                     .py_1()
-                    .text_color(rgb(0x9ca3af))
+                    .text_color(rgb(0x646473))  // Zed's muted color
                     .child(time_str),
             )
             .child(
@@ -381,7 +381,7 @@ impl CanViewApp {
                     .w(px(40.))
                     .px_2()
                     .py_1()
-                    .text_color(rgb(0x60a5fa))
+                    .text_color(rgb(0x7dcfff))  // Zed's blue
                     .child(channel_id.to_string()),
             )
             .child(
@@ -389,7 +389,7 @@ impl CanViewApp {
                     .w(px(50.))
                     .px_2()
                     .py_1()
-                    .text_color(rgb(0x34d399))
+                    .text_color(rgb(0xa6e3a1))  // Zed's green
                     .child(msg_type),
             )
             .child(
@@ -397,7 +397,7 @@ impl CanViewApp {
                     .w(px(70.))
                     .px_2()
                     .py_1()
-                    .text_color(rgb(0xfbbf24))
+                    .text_color(rgb(0xf9e2af))  // Zed's yellow
                     .child(id_str),
             )
             .child(div().w(px(40.)).px_2().py_1().child(dlc_str))
@@ -406,7 +406,7 @@ impl CanViewApp {
                     .w(px(150.))
                     .px_2()
                     .py_1()
-                    .text_color(rgb(0xa78bfa))
+                    .text_color(rgb(0xb4befe))  // Zed's purple
                     .child(data_str),
             )
             .child(
@@ -414,7 +414,7 @@ impl CanViewApp {
                     .flex_1()
                     .px_2()
                     .py_1()
-                    .text_color(rgb(0x9ca3af))
+                    .text_color(rgb(0x9399b2))  // Zed's comment color
                     .child(signals_str),
             )
     }
@@ -525,16 +525,16 @@ impl Render for CanViewApp {
                 }
             })
             .child(
-                // Unified top bar with all options
+                // Unified top bar with all options - Zed style
                 div()
-                    .h(px(56.))
-                    .bg(rgb(0x181818))
+                    .h(px(48.))  // Slightly shorter, more like Zed
+                    .bg(rgb(0x0c0c0e))  // Zed's panel background
                     .flex()
                     .items_center()
                     .justify_between()
                     .px_4()
                     .border_b_1()
-                    .border_color(rgb(0x2a2a2a))
+                    .border_color(rgb(0x1a1a1a))  // Very subtle border
                     .window_control_area(WindowControlArea::Drag)
                     .child(
                         // Left: App branding and navigation tabs (draggable area)
@@ -542,12 +542,8 @@ impl Render for CanViewApp {
                             .flex()
                             .items_center()
                             .h_full()
-                            .gap_6()
+                            .gap_4()
                             .window_control_area(WindowControlArea::Drag)
-                            .bg(rgb(0x151515))
-                            .rounded(px(6.))
-                            .px_2()
-                            .py_1()
                             .child(
                                 div()
                                     .flex()
@@ -556,55 +552,55 @@ impl Render for CanViewApp {
                                     .child(
                                         // App logo icon - simplified CAN bus waveform
                                         div()
-                                            .w(px(24.))
-                                            .h(px(24.))
-                                            .rounded(px(6.))
-                                            .bg(rgb(0x1e293b))
+                                            .w(px(20.))
+                                            .h(px(20.))
+                                            .rounded(px(4.))
+                                            .bg(rgb(0x1e1e2e))  // Zed-style subtle background
                                             .flex()
                                             .items_center()
                                             .justify_center()
-                                            .gap(px(2.))
+                                            .gap(px(1.5))
                                             .child(
                                                 div()
-                                                    .w(px(3.))
-                                                    .h(px(3.))
-                                                    .rounded(px(1.5))
-                                                    .bg(rgb(0x34d399)),
+                                                    .w(px(2.5))
+                                                    .h(px(2.5))
+                                                    .rounded(px(1.))
+                                                    .bg(rgb(0xa6e3a1)),  // Zed green
+                                            )
+                                            .child(
+                                                div()
+                                                    .w(px(2.5))
+                                                    .h(px(2.5))
+                                                    .rounded(px(1.))
+                                                    .bg(rgb(0x7dcfff)),  // Zed blue
                                             )
                                             .child(
                                                 div()
                                                     .w(px(3.))
                                                     .h(px(3.))
                                                     .rounded(px(1.5))
-                                                    .bg(rgb(0x60a5fa)),
+                                                    .bg(rgb(0xb4befe)),  // Zed purple
                                             )
                                             .child(
                                                 div()
-                                                    .w(px(4.))
-                                                    .h(px(4.))
-                                                    .rounded(px(2.))
-                                                    .bg(rgb(0x818cf8)),
+                                                    .w(px(2.5))
+                                                    .h(px(2.5))
+                                                    .rounded(px(1.))
+                                                    .bg(rgb(0x7dcfff)),
                                             )
                                             .child(
                                                 div()
-                                                    .w(px(3.))
-                                                    .h(px(3.))
-                                                    .rounded(px(1.5))
-                                                    .bg(rgb(0x60a5fa)),
-                                            )
-                                            .child(
-                                                div()
-                                                    .w(px(3.))
-                                                    .h(px(3.))
-                                                    .rounded(px(1.5))
-                                                    .bg(rgb(0x34d399)),
+                                                    .w(px(2.5))
+                                                    .h(px(2.5))
+                                                    .rounded(px(1.))
+                                                    .bg(rgb(0xa6e3a1)),
                                             ),
                                     )
                                     .child(
                                         div()
-                                            .text_color(rgb(0xffffff))
-                                            .font_weight(FontWeight::BOLD)
-                                            .text_base()
+                                            .text_color(rgb(0xcdd6f4))  // Zed's default text
+                                            .font_weight(FontWeight::SEMIBOLD)
+                                            .text_sm()  // Smaller, more refined
                                             .child("CANVIEW"),
                                     ),
                             )
@@ -612,30 +608,30 @@ impl Render for CanViewApp {
                                 div()
                                     .flex()
                                     .items_center()
-                                    .gap_1()
+                                    .gap_0()  // Tighter spacing like Zed
                                     .child(
                                         div()
                                             .px_3()
-                                            .py_1()
+                                            .py(px(1.5))
                                             .text_xs()
                                             .font_weight(FontWeight::MEDIUM)
                                             .cursor_pointer()
-                                            .rounded(px(4.))
+                                            .rounded(px(3.))  // Smaller radius like Zed
                                             .bg(if self.current_view == AppView::LogView {
-                                                rgb(0x3b82f6)
+                                                rgb(0x1e1e2e)  // Zed-style active tab
                                             } else {
-                                                rgb(0x2a2a2a)
+                                                rgb(0x0c0c0e)  // Transparent
                                             })
                                             .text_color(if self.current_view == AppView::LogView {
-                                                rgb(0xffffff)
+                                                rgb(0xcdd6f4)  // Zed's text
                                             } else {
-                                                rgb(0x9ca3af)
+                                                rgb(0x646473)  // Zed's muted
                                             })
                                             .hover(|style| {
                                                 if self.current_view != AppView::LogView {
                                                     style
-                                                        .bg(rgb(0x374151))
-                                                        .text_color(rgb(0xd1d5db))
+                                                        .bg(rgb(0x151515))  // Very subtle hover
+                                                        .text_color(rgb(0x9399b2))
                                                 } else {
                                                     style
                                                 }
@@ -653,28 +649,28 @@ impl Render for CanViewApp {
                                     .child(
                                         div()
                                             .px_3()
-                                            .py_1()
+                                            .py(px(1.5))
                                             .text_xs()
                                             .font_weight(FontWeight::MEDIUM)
                                             .cursor_pointer()
-                                            .rounded(px(4.))
+                                            .rounded(px(3.))  // Smaller radius like Zed
                                             .bg(if self.current_view == AppView::ConfigView {
-                                                rgb(0x3b82f6)
+                                                rgb(0x1e1e2e)  // Zed-style active tab (yellow)
                                             } else {
-                                                rgb(0x2a2a2a)
+                                                rgb(0x0c0c0e)  // Transparent
                                             })
                                             .text_color(
                                                 if self.current_view == AppView::ConfigView {
-                                                    rgb(0xffffff)
+                                                    rgb(0xcdd6f4)  // Zed's text
                                                 } else {
-                                                    rgb(0x9ca3af)
+                                                    rgb(0x646473)  // Zed's muted
                                                 },
                                             )
                                             .hover(|style| {
                                                 if self.current_view != AppView::ConfigView {
                                                     style
-                                                        .bg(rgb(0x374151))
-                                                        .text_color(rgb(0xd1d5db))
+                                                        .bg(rgb(0x151515))  // Very subtle hover
+                                                        .text_color(rgb(0x9399b2))
                                                 } else {
                                                     style
                                                 }
@@ -692,28 +688,28 @@ impl Render for CanViewApp {
                                     .child(
                                         div()
                                             .px_3()
-                                            .py_1()
+                                            .py(px(1.5))
                                             .text_xs()
                                             .font_weight(FontWeight::MEDIUM)
                                             .cursor_pointer()
-                                            .rounded(px(4.))
+                                            .rounded(px(3.))  // Smaller radius like Zed
                                             .bg(if self.current_view == AppView::ChartView {
-                                                rgb(0x3b82f6)
+                                                rgb(0x1e1e2e)  // Zed-style active tab (green)
                                             } else {
-                                                rgb(0x2a2a2a)
+                                                rgb(0x0c0c0e)  // Transparent
                                             })
                                             .text_color(
                                                 if self.current_view == AppView::ChartView {
-                                                    rgb(0xffffff)
+                                                    rgb(0xcdd6f4)  // Zed's text
                                                 } else {
-                                                    rgb(0x9ca3af)
+                                                    rgb(0x646473)  // Zed's muted
                                                 },
                                             )
                                             .hover(|style| {
                                                 if self.current_view != AppView::ChartView {
                                                     style
-                                                        .bg(rgb(0x374151))
-                                                        .text_color(rgb(0xd1d5db))
+                                                        .bg(rgb(0x151515))  // Very subtle hover
+                                                        .text_color(rgb(0x9399b2))
                                                 } else {
                                                     style
                                                 }
@@ -731,7 +727,7 @@ impl Render for CanViewApp {
                             ),
                     )
                     .child(
-                        // Center: Status and stats
+                        // Center: Status and stats - Zed style
                         div()
                             .flex()
                             .items_center()
@@ -741,15 +737,15 @@ impl Render for CanViewApp {
                             .child(
                                 div()
                                     .text_xs()
-                                    .text_color(rgb(0x6b7280))
+                                    .text_color(rgb(0x646473))  // Zed's muted
                                     .child(self.status_msg.clone()),
                             )
-                            .child(div().w(px(1.)).h(px(16.)).bg(rgb(0x374151)))
+                            .child(div().w(px(1.0)).h(px(12.0)).bg(rgb(0x1a1a1a)))  // Subtle divider
                             .child(
                                 div()
                                     .flex()
                                     .items_center()
-                                    .gap_3()
+                                    .gap_2()  // Tighter spacing
                                     .text_xs()
                                     .text_color(rgb(0x9ca3af))
                                     .child(format!("{} msgs", self.messages.len()))
@@ -768,14 +764,14 @@ impl Render for CanViewApp {
                             .child(
                                 div()
                                     .px_3()
-                                    .py_1()
+                                    .py(px(1.5))
                                     .text_xs()
                                     .font_weight(FontWeight::MEDIUM)
-                                    .text_color(rgb(0xffffff))
-                                    .bg(rgb(0x059669))
-                                    .rounded(px(4.))
+                                    .text_color(rgb(0xcdd6f4))  // Zed's text
+                                    .bg(rgb(0x1a1f2e))  // Zed-style subtle green
+                                    .rounded(px(3.))  // Smaller radius
                                     .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0x047857)))
+                                    .hover(|style| style.bg(rgb(0x252f3a)))  // Subtle hover
                                     .on_mouse_down(gpui::MouseButton::Left, {
                                         let view = view.clone();
                                         move |_, _, app| {
@@ -819,57 +815,57 @@ impl Render for CanViewApp {
                                             .detach();
                                         }
                                     })
-                                    .child("📂 Open BLF"),
+                                    .child("Open BLF"),
                             )
                             .child(
                                 div()
                                     .px_3()
-                                    .py_1()
+                                    .py(px(1.5))
                                     .text_xs()
                                     .font_weight(FontWeight::MEDIUM)
-                                    .text_color(rgb(0xffffff))
-                                    .bg(rgb(0xd97706))
-                                    .rounded(px(4.))
+                                    .text_color(rgb(0xcdd6f4))  // Zed's text
+                                    .bg(rgb(0x1e2a1e))  // Zed-style subtle yellow
+                                    .rounded(px(3.))  // Smaller radius
                                     .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0xb45309)))
+                                    .hover(|style| style.bg(rgb(0x2a3a2e)))  // Subtle hover
                                     .on_mouse_down(gpui::MouseButton::Left, {
                                         let view = view.clone();
                                         move |_, _, cx| {
                                             view.update(cx, |view, cx| view.load_config(cx));
                                         }
                                     })
-                                    .child("⚙️ Load Config"),
+                                    .child("Load Config"),
                             )
                             .child(
                                 div()
                                     .px_3()
-                                    .py_1()
+                                    .py(px(1.5))
                                     .text_xs()
                                     .font_weight(FontWeight::MEDIUM)
-                                    .text_color(rgb(0x9ca3af))
-                                    .bg(rgb(0x374151))
-                                    .rounded(px(4.))
+                                    .text_color(rgb(0x646473))  // Zed's muted
+                                    .bg(rgb(0x151515))  // Very subtle
+                                    .rounded(px(3.))  // Smaller radius
                                     .cursor_pointer()
                                     .hover(|style| {
-                                        style.bg(rgb(0x4b5563)).text_color(rgb(0xd1d5db))
+                                        style.bg(rgb(0x1c1c1c)).text_color(rgb(0x9399b2))
                                     })
-                                    .child("💾 Export"),
+                                    .child("Export"),
                             )
                             .child(
                                 // Window controls separator
-                                div().w(px(16.)),
+                                div().w(px(12.)),  // Smaller separator
                             )
                             .child(
-                                // Minimize button
+                                // Minimize button - Zed style
                                 div()
-                                    .w(px(32.))
-                                    .h(px(32.))
+                                    .w(px(28.))  // Slightly smaller
+                                    .h(px(28.))
                                     .flex()
                                     .items_center()
                                     .justify_center()
                                     .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0x374151)))
-                                    .child(div().w(px(12.)).h(px(1.)).bg(rgb(0x9ca3af)))
+                                    .hover(|style| style.bg(rgb(0x121212)))  // Very subtle hover
+                                    .child(div().w(px(10.)).h(px(1.)).bg(rgb(0x646473)))  // Zed's muted
                                     .on_mouse_down(
                                         gpui::MouseButton::Left,
                                         |_event, window, _app| {
@@ -878,21 +874,21 @@ impl Render for CanViewApp {
                                     ),
                             )
                             .child(
-                                // Maximize/Restore button
+                                // Maximize/Restore button - Zed style
                                 div()
-                                    .w(px(32.))
-                                    .h(px(32.))
+                                    .w(px(28.))  // Slightly smaller
+                                    .h(px(28.))
                                     .flex()
                                     .items_center()
                                     .justify_center()
                                     .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0x374151)))
+                                    .hover(|style| style.bg(rgb(0x121212)))  // Very subtle hover
                                     .child(
                                         div()
-                                            .w(px(10.))
-                                            .h(px(10.))
+                                            .w(px(9.))
+                                            .h(px(9.))
                                             .border_1()
-                                            .border_color(rgb(0x9ca3af)),
+                                            .border_color(rgb(0x646473)),  // Zed's muted
                                     )
                                     .on_mouse_down(gpui::MouseButton::Left, {
                                         let view = view.clone();
@@ -905,16 +901,16 @@ impl Render for CanViewApp {
                                     }),
                             )
                             .child(
-                                // Close button
+                                // Close button - Zed style
                                 div()
-                                    .w(px(32.))
-                                    .h(px(32.))
+                                    .w(px(28.))  // Slightly smaller
+                                    .h(px(28.))
                                     .flex()
                                     .items_center()
                                     .justify_center()
                                     .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0xdc2626)))
-                                    .child(div().text_sm().text_color(rgb(0x9ca3af)).child("×"))
+                                    .hover(|style| style.bg(rgb(0x3a1a1a)))  // Subtle red hover
+                                    .child(div().text_sm().text_color(rgb(0x646473)).child("×"))  // Zed's muted
                                     .on_mouse_down(
                                         gpui::MouseButton::Left,
                                         |_event, window, _app| {
@@ -925,10 +921,10 @@ impl Render for CanViewApp {
                     ),
             )
             .child(
-                // Content area
+                // Content area - Zed style
                 div()
                     .flex_1()
-                    .bg(rgb(0x181818))
+                    .bg(rgb(0x0c0c0e))  // Zed's main background
                     .overflow_hidden()
                     .child(match self.current_view {
                         AppView::LogView => {
@@ -1830,7 +1826,7 @@ impl CanViewApp {
                         let total_height = filtered_count as f32 * row_height;
                         let container_height = self.list_container_height;
 
-                        // Smooth thumb height calculation with better minimum visibility
+                        // Smooth thumb height calculation - thumb represents proportion of visible content
                         let thumb_height_ratio = if total_height > 0.0 {
                             (container_height / total_height).min(1.0)
                         } else {
@@ -1839,16 +1835,23 @@ impl CanViewApp {
 
                         let max_scroll = (total_height - container_height).max(0.0);
 
-                        // Dynamic minimum thumb size - smaller when there are many messages
-                        let min_thumb_size = if filtered_count > 100 {
-                            15.0  // Smaller for large datasets
-                        } else if filtered_count > 50 {
-                            20.0  // Medium for medium datasets
+                        // Improved dynamic minimum thumb size - scales smoothly with content
+                        // Use a logarithmic scale for better UX across all dataset sizes
+                        let min_thumb_size = if filtered_count <= 10 {
+                            container_height  // Show full height for very small lists
+                        } else if filtered_count <= 50 {
+                            container_height * 0.5  // At least half visible for small lists
+                        } else if filtered_count <= 200 {
+                            40.0  // Reasonable minimum for medium lists
+                        } else if filtered_count <= 1000 {
+                            25.0  // Smaller for large lists
                         } else {
-                            30.0  // Larger for small datasets
+                            15.0  // Minimum for very large lists (still usable)
                         };
 
-                        let thumb_height = (thumb_height_ratio * container_height).max(min_thumb_size);
+                        // Calculate thumb height with smooth transition
+                        let ideal_thumb_height = thumb_height_ratio * container_height;
+                        let thumb_height = ideal_thumb_height.max(min_thumb_size).min(container_height);
                         let thumb_height_px = px(thumb_height);
 
                         // Calculate scrollable track height (container minus thumb)
@@ -1914,16 +1917,20 @@ impl CanViewApp {
                                         let total_content_height = filtered_count as f32 * row_h;
                                         let thumb_ratio = (container_h / total_content_height).min(1.0);
 
-                                        // Use same dynamic minimum thumb size as main scrollbar
-                                        let min_thumb_size = if filtered_count > 100 {
-                                            15.0
-                                        } else if filtered_count > 50 {
-                                            20.0
+                                        // Use same improved minimum thumb size calculation as rendering
+                                        let min_thumb_size = if filtered_count <= 10 {
+                                            container_h
+                                        } else if filtered_count <= 50 {
+                                            container_h * 0.5
+                                        } else if filtered_count <= 200 {
+                                            40.0
+                                        } else if filtered_count <= 1000 {
+                                            25.0
                                         } else {
-                                            30.0
+                                            15.0
                                         };
 
-                                        let thumb_h = (thumb_ratio * container_h).max(min_thumb_size);
+                                        let thumb_h = (thumb_ratio * container_h).max(min_thumb_size).min(container_h);
                                         let track_h = (container_h - thumb_h).max(0.0);
 
                                         // Adjust click position to be relative to container
@@ -2634,10 +2641,11 @@ impl CanViewApp {
                     format!("{:.6}", seconds)
                 };
 
+                let actual_data_len = can_msg.data.len().min(can_msg.dlc as usize);
                 let data_hex = can_msg
                     .data
                     .iter()
-                    .take(can_msg.dlc as usize)
+                    .take(actual_data_len)
                     .map(|b| format!("{:02X}", b))
                     .collect::<Vec<_>>()
                     .join(" ");
@@ -2647,7 +2655,7 @@ impl CanViewApp {
                     can_msg.channel,
                     "CAN".to_string(),
                     format_id(can_msg.id),
-                    can_msg.dlc.to_string(),
+                    actual_data_len.to_string(),
                     data_hex,
                 )
             }
@@ -2661,10 +2669,11 @@ impl CanViewApp {
                     format!("{:.6}", seconds)
                 };
 
+                let actual_data_len = can_msg.data.len().min(can_msg.dlc as usize);
                 let data_hex = can_msg
                     .data
                     .iter()
-                    .take(can_msg.dlc as usize)
+                    .take(actual_data_len)
                     .map(|b| format!("{:02X}", b))
                     .collect::<Vec<_>>()
                     .join(" ");
@@ -2674,7 +2683,7 @@ impl CanViewApp {
                     can_msg.channel,
                     "CAN2".to_string(),
                     format_id(can_msg.id),
-                    can_msg.dlc.to_string(),
+                    actual_data_len.to_string(),
                     data_hex,
                 )
             }
@@ -2707,10 +2716,11 @@ impl CanViewApp {
                     format!("{:.6}", seconds)
                 };
 
+                let actual_data_len = fd_msg.data.len().min(fd_msg.dlc as usize);
                 let data_hex = fd_msg
                     .data
                     .iter()
-                    .take(fd_msg.dlc as usize)
+                    .take(actual_data_len)
                     .map(|b| format!("{:02X}", b))
                     .collect::<Vec<_>>()
                     .join(" ");
@@ -2720,7 +2730,7 @@ impl CanViewApp {
                     fd_msg.channel,
                     "CAN_FD".to_string(),
                     format_id(fd_msg.id),
-                    fd_msg.dlc.to_string(),
+                    actual_data_len.to_string(),
                     data_hex,
                 )
             }
@@ -2734,10 +2744,11 @@ impl CanViewApp {
                     format!("{:.6}", seconds)
                 };
 
+                let actual_data_len = fd_msg.data.len().min(fd_msg.valid_data_bytes as usize);
                 let data_hex = fd_msg
                     .data
                     .iter()
-                    .take(fd_msg.valid_data_bytes as usize)
+                    .take(actual_data_len)
                     .map(|b| format!("{:02X}", b))
                     .collect::<Vec<_>>()
                     .join(" ");
@@ -2747,7 +2758,7 @@ impl CanViewApp {
                     fd_msg.channel as u16,
                     "CAN_FD64".to_string(),
                     format_id(fd_msg.id),
-                    fd_msg.dlc.to_string(),
+                    actual_data_len.to_string(),
                     data_hex,
                 )
             }
@@ -2780,10 +2791,11 @@ impl CanViewApp {
                     format!("{:.6}", timestamp as f64 / 1_000_000_000.0)
                 };
 
+                let actual_data_len = lin_msg.data.len().min(lin_msg.dlc as usize);
                 let data_hex = lin_msg
                     .data
                     .iter()
-                    .take(lin_msg.dlc as usize)
+                    .take(actual_data_len)
                     .map(|b| format!("{:02X}", b))
                     .collect::<Vec<_>>()
                     .join(" ");
@@ -2793,7 +2805,7 @@ impl CanViewApp {
                     lin_msg.channel,
                     "LIN".to_string(),
                     format_id(lin_msg.id as u32),
-                    lin_msg.dlc.to_string(),
+                    actual_data_len.to_string(),
                     data_hex,
                 )
             }
@@ -2807,6 +2819,7 @@ impl CanViewApp {
                     format!("{:.6}", seconds)
                 };
 
+                let actual_data_len = lin_msg.data.len();
                 let data_hex = lin_msg
                     .data
                     .iter()
@@ -2819,7 +2832,7 @@ impl CanViewApp {
                     0_u16,
                     "LIN2".to_string(),
                     "-".to_string(),
-                    "8".to_string(),
+                    actual_data_len.to_string(),
                     data_hex,
                 )
             }
@@ -3010,10 +3023,11 @@ impl CanViewApp {
                 let timestamp = can_msg.header.object_time_stamp;
                 let time_str = Self::format_timestamp_static(timestamp, start_time);
 
+                let actual_data_len = can_msg.data.len().min(can_msg.dlc as usize);
                 let data_hex = can_msg
                     .data
                     .iter()
-                    .take(can_msg.dlc as usize)
+                    .take(actual_data_len)
                     .map(|b| format!("{:02X}", b))
                     .collect::<Vec<_>>()
                     .join(" ");
@@ -3023,7 +3037,7 @@ impl CanViewApp {
                     can_msg.channel,
                     "CAN".to_string(),
                     format!("0x{:03X}", can_msg.id),
-                    can_msg.dlc.to_string(),
+                    actual_data_len.to_string(),
                     data_hex,
                 )
             }
@@ -3031,10 +3045,11 @@ impl CanViewApp {
                 let timestamp = can_msg.header.object_time_stamp;
                 let time_str = Self::format_timestamp_static(timestamp, start_time);
 
+                let actual_data_len = can_msg.data.len().min(can_msg.dlc as usize);
                 let data_hex = can_msg
                     .data
                     .iter()
-                    .take(can_msg.dlc as usize)
+                    .take(actual_data_len)
                     .map(|b| format!("{:02X}", b))
                     .collect::<Vec<_>>()
                     .join(" ");
@@ -3044,7 +3059,7 @@ impl CanViewApp {
                     can_msg.channel,
                     "CAN2".to_string(),
                     format!("0x{:03X}", can_msg.id),
-                    can_msg.dlc.to_string(),
+                    actual_data_len.to_string(),
                     data_hex,
                 )
             }
@@ -3065,10 +3080,11 @@ impl CanViewApp {
                 let timestamp = fd_msg.header.object_time_stamp;
                 let time_str = Self::format_timestamp_static(timestamp, start_time);
 
+                let actual_data_len = fd_msg.data.len().min(fd_msg.dlc as usize);
                 let data_hex = fd_msg
                     .data
                     .iter()
-                    .take(fd_msg.dlc as usize)
+                    .take(actual_data_len)
                     .map(|b| format!("{:02X}", b))
                     .collect::<Vec<_>>()
                     .join(" ");
@@ -3078,7 +3094,7 @@ impl CanViewApp {
                     fd_msg.channel, // Convert u8 to u16
                     "CAN_FD".to_string(),
                     format!("0x{:03X}", fd_msg.id),
-                    fd_msg.dlc.to_string(),
+                    actual_data_len.to_string(),
                     data_hex,
                 )
             }
@@ -3086,10 +3102,11 @@ impl CanViewApp {
                 let timestamp = fd_msg.header.object_time_stamp;
                 let time_str = Self::format_timestamp_static(timestamp, start_time);
 
+                let actual_data_len = fd_msg.data.len().min(fd_msg.valid_data_bytes as usize);
                 let data_hex = fd_msg
                     .data
                     .iter()
-                    .take(fd_msg.dlc as usize)
+                    .take(actual_data_len)
                     .map(|b| format!("{:02X}", b))
                     .collect::<Vec<_>>()
                     .join(" ");
@@ -3099,7 +3116,7 @@ impl CanViewApp {
                     fd_msg.channel as u16, // Convert u8 to u16
                     "CAN_FD64".to_string(),
                     format!("0x{:03X}", fd_msg.id),
-                    fd_msg.dlc.to_string(),
+                    actual_data_len.to_string(),
                     data_hex,
                 )
             }
@@ -3128,10 +3145,11 @@ impl CanViewApp {
                     format!("{:.6}", timestamp as f64 / 1_000_000_000.0)
                 };
 
+                let actual_data_len = lin_msg.data.len().min(lin_msg.dlc as usize);
                 let data_hex = lin_msg
                     .data
                     .iter()
-                    .take(lin_msg.dlc as usize)
+                    .take(actual_data_len)
                     .map(|b| format!("{:02X}", b))
                     .collect::<Vec<_>>()
                     .join(" ");
@@ -3141,7 +3159,7 @@ impl CanViewApp {
                     lin_msg.channel,
                     "LIN".to_string(),
                     format!("0x{:02X}", lin_msg.id),
-                    lin_msg.dlc.to_string(),
+                    actual_data_len.to_string(),
                     data_hex,
                 )
             }
@@ -3149,13 +3167,21 @@ impl CanViewApp {
                 let timestamp = lin_msg.header.object_time_stamp;
                 let time_str = Self::format_timestamp_static(timestamp, start_time);
 
+                let actual_data_len = lin_msg.data.len();
+                let data_hex = lin_msg
+                    .data
+                    .iter()
+                    .map(|b| format!("{:02X}", b))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
                 (
                     time_str,
                     0_u16,
                     "LIN2".to_string(),
                     "-".to_string(),
-                    "-".to_string(),
-                    "-".to_string(),
+                    actual_data_len.to_string(),
+                    data_hex,
                 )
             }
 
