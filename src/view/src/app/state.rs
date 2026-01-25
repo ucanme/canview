@@ -26,7 +26,6 @@ use gpui_component::input::InputState;
 pub enum AppView {
     LogView,
     ConfigView,
-    ChartView,
     LibraryView,
 }
 
@@ -137,9 +136,6 @@ pub struct CanViewApp {
     pub library_focus_handle: Option<gpui::FocusHandle>,
     #[deprecated(note = "Not needed with gpui-component Input")]
     pub ime_handler_registered: bool,
-    
-    // Chart state
-    pub chart_series: Vec<crate::chart::data::SignalSeries>,
 }
 
 /// Library dialog type
@@ -220,8 +216,6 @@ impl CanViewApp {
             library_input_state: crate::ui::components::ime_text_input::ImeTextInputState::default(),
             library_focus_handle: None,
             ime_handler_registered: false,
-            // Chart state
-            chart_series: Vec::new(),
         }
     }
 }

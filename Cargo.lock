@@ -8725,21 +8725,6 @@ version = "0.13.0"
 source = "git+https://github.com/bilelmoussaoui/ashpd?branch=master#220045bf7a7472c6e8c7033d7c13895f30a96e31"
 
 [[patch.unused]]
-name = "core-foundation"
-version = "0.10.1"
-source = "git+https://github.com/servo/core-foundation-rs?rev=6f844cf1#6f844cf1a1a18e25b70fcdf1bcdc458555bd2eff"
-
-[[patch.unused]]
-name = "core-graphics"
-version = "0.13.0"
-source = "git+https://github.com/servo/core-graphics-rs?rev=87a3ea0d#87a3ea0de92e06b20982ef5f77106c637d5eb7dc"
-
-[[patch.unused]]
-name = "core-text"
-version = "9.2.0"
-source = "git+https://github.com/servo/core-text-rs?rev=91ac7127#91ac7127a3b3ce13dcab916fd6b05f546769caf6"
-
-[[patch.unused]]
 name = "font-kit"
 version = "0.14.2"
 source = "git+https://github.com/zed-industries/font-kit?branch=master#13dd2eae3b07045d0f51df9a3ff93070b92e2693"

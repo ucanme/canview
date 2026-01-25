@@ -96,14 +96,10 @@ impl CanViewApp {
             library_input_state: crate::ui::components::ime_text_input::ImeTextInputState::default(),
             library_focus_handle: None,
             ime_handler_registered: false,
-            chart_series: Vec::new(),
         };
         
         // 🔧 启动时加载配置
         app.load_startup_config();
-        
-        // 📊 生成默认图表测试数据
-        app.generate_test_chart_data();
         
         app
     }
@@ -655,7 +651,6 @@ impl CanViewApp {
             library_input_state: crate::ui::components::ime_text_input::ImeTextInputState::default(),
             library_focus_handle: None,
             ime_handler_registered: false,
-            chart_series: Vec::new(), // Chart state
         };
 
         // Load startup config (this will reset some state, so do it carefully)
@@ -682,44 +677,7 @@ impl CanViewApp {
         }
     }
 
-    pub fn generate_test_chart_data(&mut self) {
-        use crate::chart::data::SignalSeries;
-        use gpui::rgb;
-        
-        let mut series = SignalSeries::new(
-            "Sine Wave (Test)".into(),
-            "V".into(),
-            rgb(0xff5555) // Reddish
-        );
-        
-        for i in 0..200 {
-            let t = i as f64 * 0.05;
-            let v = (t * 2.0).sin() * 5.0 + 5.0; // 0-10 sine
-            series.add_point(t, v);
-        }
-        
-        self.chart_series.push(series);
-        
-        let mut series2 = SignalSeries::new(
-            "Cosine (Test)".into(),
-            "A".into(),
-            rgb(0x55ff55) // Greenish
-        );
-        
-        for i in 0..200 {
-            let t = i as f64 * 0.05;
-            let v = (t * 3.0).cos() * 3.0; // -3 to 3 cosine
-            series2.add_point(t, v);
-        }
-         self.chart_series.push(series2);
-    }
 
-    fn render_chart_view(&self) -> impl IntoElement {
-        use crate::chart::renderer::ChartRenderer;
-        
-        let renderer = ChartRenderer::new(self.chart_series.clone());
-        renderer.render()
-    }
 
     fn render_library_view(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
         use crate::ui::views::library_management::render_library_management_view;
@@ -3204,41 +3162,7 @@ impl Render for CanViewApp {
                                             })
                                             .child("Logs"),
                                     )
-                                    .child(
-                                        div()
-                                            .px_3()
-                                            .py(px(1.5))
-                                            .text_xs()
-                                            .font_weight(FontWeight::MEDIUM)
-                                            .cursor_pointer()
-                                            .rounded(px(3.))
-                                            .bg(if self.current_view == AppView::ChartView {
-                                                rgb(0x1e1e2e)
-                                            } else {
-                                                rgb(0x0c0c0e)
-                                            })
-                                            .text_color(if self.current_view == AppView::ChartView {
-                                                rgb(0xcdd6f4)
-                                            } else {
-                                                rgb(0x646473)
-                                            })
-                                            .hover(|style| {
-                                                if self.current_view != AppView::ChartView {
-                                                    style.bg(rgb(0x151515)).text_color(rgb(0x9399b2))
-                                                } else {
-                                                    style
-                                                }
-                                            })
-                                            .on_mouse_down(gpui::MouseButton::Left, {
-                                                let view = view.clone();
-                                                move |_, _, cx| {
-                                                    view.update(cx, |view, _| {
-                                                        view.current_view = AppView::ChartView
-                                                    });
-                                                }
-                                            })
-                                            .child("Chart"),
-                                    )
+
                                     .child(
                                         div()
                                             .px_3()
@@ -3278,45 +3202,7 @@ impl Render for CanViewApp {
                                             })
                                             .child("Config"),
                                     )
-                                    .child(
-                                        div()
-                                            .px_3()
-                                            .py(px(1.5))
-                                            .text_xs()
-                                            .font_weight(FontWeight::MEDIUM)
-                                            .cursor_pointer()
-                                            .rounded(px(3.))  // Smaller radius like Zed
-                                            .bg(if self.current_view == AppView::ChartView {
-                                                rgb(0x1e1e2e)  // Zed-style active tab (green)
-                                            } else {
-                                                rgb(0x0c0c0e)  // Transparent
-                                            })
-                                            .text_color(
-                                                if self.current_view == AppView::ChartView {
-                                                    rgb(0xcdd6f4)  // Zed's text
-                                                } else {
-                                                    rgb(0x646473)  // Zed's muted
-                                                },
-                                            )
-                                            .hover(|style| {
-                                                if self.current_view != AppView::ChartView {
-                                                    style
-                                                        .bg(rgb(0x151515))  // Very subtle hover
-                                                        .text_color(rgb(0x9399b2))
-                                                } else {
-                                                    style
-                                                }
-                                            })
-                                            .on_mouse_down(gpui::MouseButton::Left, {
-                                                let view = view.clone();
-                                                move |_, _, cx| {
-                                                    view.update(cx, |view, _| {
-                                                        view.current_view = AppView::ChartView
-                                                    });
-                                                }
-                                            })
-                                            .child("Analytics"),
-                                    )
+
                                     .child(
                                         div()
                                             .px_3()
@@ -3529,7 +3415,7 @@ impl Render for CanViewApp {
                             self.render_log_view(cx.entity().clone()).into_any_element()
                         }
                         AppView::ConfigView => self.render_config_view(cx).into_any_element(),
-                        AppView::ChartView => self.render_chart_view().into_any_element(),
+
                         AppView::LibraryView => self.render_library_view(cx).into_any_element(),
                     }),
             )

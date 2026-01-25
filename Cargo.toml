@@ -40,6 +40,3 @@ font-kit = { version = "0.14", default-features = false }
 [patch.crates-io]
 ashpd = { git = "https://github.com/bilelmoussaoui/ashpd", branch = "master" }
 font-kit = { git = "https://github.com/zed-industries/font-kit", branch = "master" }
-core-graphics = { git = "https://github.com/servo/core-graphics-rs", rev = "87a3ea0d" }
-core-text = { git = "https://github.com/servo/core-text-rs", rev = "91ac7127" }
-core-foundation = { git = "https://github.com/servo/core-foundation-rs", rev = "6f844cf1" }
