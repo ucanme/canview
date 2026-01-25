@@ -102,6 +102,9 @@ impl CanViewApp {
         // 🔧 启动时加载配置
         app.load_startup_config();
         
+        // 📊 生成默认图表测试数据
+        app.generate_test_chart_data();
+        
         app
     }
 
@@ -677,6 +680,38 @@ impl CanViewApp {
         if (container_height - self.list_container_height).abs() > 10.0 {
             self.list_container_height = container_height;
         }
+    }
+
+    pub fn generate_test_chart_data(&mut self) {
+        use crate::chart::data::SignalSeries;
+        use gpui::rgb;
+        
+        let mut series = SignalSeries::new(
+            "Sine Wave (Test)".into(),
+            "V".into(),
+            rgb(0xff5555) // Reddish
+        );
+        
+        for i in 0..200 {
+            let t = i as f64 * 0.05;
+            let v = (t * 2.0).sin() * 5.0 + 5.0; // 0-10 sine
+            series.add_point(t, v);
+        }
+        
+        self.chart_series.push(series);
+        
+        let mut series2 = SignalSeries::new(
+            "Cosine (Test)".into(),
+            "A".into(),
+            rgb(0x55ff55) // Greenish
+        );
+        
+        for i in 0..200 {
+            let t = i as f64 * 0.05;
+            let v = (t * 3.0).cos() * 3.0; // -3 to 3 cosine
+            series2.add_point(t, v);
+        }
+         self.chart_series.push(series2);
     }
 
     fn render_chart_view(&self) -> impl IntoElement {
