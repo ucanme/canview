@@ -2597,43 +2597,6 @@ dependencies = [
 [[package]]
 name = "gpui-component"
 version = "0.5.0"
-dependencies = [
- "aho-corasick",
- "anyhow",
- "chrono",
- "enum-iterator",
- "gpui 0.2.2 (git+https://github.com/zed-industries/zed)",
- "gpui-component-macros 0.5.0",
- "gpui-macros",
- "html5ever",
- "itertools 0.13.0",
- "lsp-types",
- "markdown",
- "markup5ever_rcdom",
- "notify",
- "num-traits",
- "once_cell",
- "paste",
- "regex",
- "ropey",
- "rust-i18n",
- "schemars",
- "serde",
- "serde_json",
- "serde_repr",
- "smallvec 1.15.1",
- "smol",
- "tracing",
- "tree-sitter",
- "tree-sitter-json",
- "unicode-segmentation",
- "uuid",
- "zed-sum-tree",
-]
-
-[[package]]
-name = "gpui-component"
-version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dda822a7bab4e0a08a4276ba68e2f82cc5855bf0b377d7b195c58c8061dc7d1"
 dependencies = [
@@ -2671,8 +2634,48 @@ dependencies = [
 ]
 
 [[package]]
+name = "gpui-component"
+version = "0.5.0"
+source = "git+https://github.com/longbridge/gpui-component#35f55766f71ef30ef8dfbbcf4f647fef49a99a83"
+dependencies = [
+ "aho-corasick",
+ "anyhow",
+ "chrono",
+ "enum-iterator",
+ "gpui 0.2.2 (git+https://github.com/zed-industries/zed)",
+ "gpui-component-macros 0.5.0 (git+https://github.com/longbridge/gpui-component)",
+ "gpui-macros",
+ "html5ever",
+ "itertools 0.13.0",
+ "lsp-types",
+ "markdown",
+ "markup5ever_rcdom",
+ "notify",
+ "num-traits",
+ "once_cell",
+ "paste",
+ "regex",
+ "ropey",
+ "rust-i18n",
+ "schemars",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "smallvec 1.15.1",
+ "smol",
+ "tracing",
+ "tree-sitter",
+ "tree-sitter-json",
+ "unicode-segmentation",
+ "uuid",
+ "zed-sum-tree",
+]
+
+[[package]]
 name = "gpui-component-macros"
 version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "581a8cd1e38b2fd86d1029dd56a3296ffd1388fda295054104d89923755de902"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2682,8 +2685,7 @@ dependencies = [
 [[package]]
 name = "gpui-component-macros"
 version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "581a8cd1e38b2fd86d1029dd56a3296ffd1388fda295054104d89923755de902"
+source = "git+https://github.com/longbridge/gpui-component#35f55766f71ef30ef8dfbbcf4f647fef49a99a83"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7115,7 +7117,7 @@ dependencies = [
  "chrono",
  "env_logger",
  "gpui 0.2.2 (git+https://github.com/zed-industries/zed)",
- "gpui-component 0.5.0",
+ "gpui-component 0.5.0 (git+https://github.com/longbridge/gpui-component)",
  "log",
  "parser",
  "plotters",
