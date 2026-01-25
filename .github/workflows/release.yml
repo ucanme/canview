@@ -25,10 +25,14 @@ jobs:
             platform: linux
             artifact_name: canview
             asset_extension: tar.gz
-          - os: macos-latest
-            platform: macos
-            artifact_name: canview
-            asset_extension: zip
+          # macOS 构建暂时禁用，原因：
+          # core-graphics 依赖版本冲突 (0.24.0 vs 0.25.0)
+          # 这是 GPUI 框架的已知问题，等待上游修复
+          # TODO: 在 GPUI 修复依赖冲突后重新启用
+          # - os: macos-latest
+          #   platform: macos
+          #   artifact_name: canview
+          #   asset_extension: zip
           - os: windows-latest
             platform: windows
             artifact_name: canview.exe
@@ -94,11 +98,12 @@ jobs:
           chmod +x package.sh
           ./package.sh ${{ steps.get_version.outputs.version }}
 
-      - name: Package (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          chmod +x package.sh
-          ./package.sh ${{ steps.get_version.outputs.version }}
+      # macOS 打包暂时禁用
+      # - name: Package (macOS)
+      #   if: matrix.os == 'macos-latest'
+      #   run: |
+      #     chmod +x package.sh
+      #     ./package.sh ${{ steps.get_version.outputs.version }}
 
       - name: Package (Windows)
         if: matrix.os == 'windows-latest'
@@ -113,12 +118,13 @@ jobs:
           name: CANVIEW-v${{ steps.get_version.outputs.version }}-linux
           path: release-package/CANVIEW-v${{ steps.get_version.outputs.version }}-linux.tar.gz
 
-      - name: Upload artifacts (macOS)
-        if: matrix.os == 'macos-latest'
-        uses: actions/upload-artifact@v3
-        with:
-          name: CANVIEW-v${{ steps.get_version.outputs.version }}-macos
-          path: release-package/CANVIEW-v${{ steps.get_version.outputs.version }}-macos.zip
+      # macOS 构建产物上传暂时禁用
+      # - name: Upload artifacts (macOS)
+      #   if: matrix.os == 'macos-latest'
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: CANVIEW-v${{ steps.get_version.outputs.version }}-macos
+      #     path: release-package/CANVIEW-v${{ steps.get_version.outputs.version }}-macos.zip
 
       - name: Upload artifacts (Windows)
         if: matrix.os == 'windows-latest'
@@ -162,8 +168,9 @@ jobs:
             ### 下载
             
             - **Windows**: CANVIEW-v${{ steps.get_version.outputs.version }}.zip
-            - **macOS**: CANVIEW-v${{ steps.get_version.outputs.version }}-macos.zip
             - **Linux**: CANVIEW-v${{ steps.get_version.outputs.version }}-linux.tar.gz
+            
+            **注意**: macOS 版本暂时不可用，由于 GPUI 框架的依赖冲突问题。
             
             ### 安装说明
             
@@ -185,15 +192,16 @@ jobs:
           asset_name: CANVIEW-v${{ steps.get_version.outputs.version }}-linux.tar.gz
           asset_content_type: application/gzip
 
-      - name: Upload macOS Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./artifacts/CANVIEW-v${{ steps.get_version.outputs.version }}-macos/CANVIEW-v${{ steps.get_version.outputs.version }}-macos.zip
-          asset_name: CANVIEW-v${{ steps.get_version.outputs.version }}-macos.zip
-          asset_content_type: application/zip
+      # macOS 发布资产上传暂时禁用
+      # - name: Upload macOS Release Asset
+      #   uses: actions/upload-release-asset@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+      #     asset_path: ./artifacts/CANVIEW-v${{ steps.get_version.outputs.version }}-macos/CANVIEW-v${{ steps.get_version.outputs.version }}-macos.zip
+      #     asset_name: CANVIEW-v${{ steps.get_version.outputs.version }}-macos.zip
+      #     asset_content_type: application/zip
 
       - name: Upload Windows Release Asset
         uses: actions/upload-release-asset@v1
