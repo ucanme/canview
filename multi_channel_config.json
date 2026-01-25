@@ -1,15 +1,15 @@
 {
   "libraries": [
     {
-      "id": "lib_aeaeb6346d324d62",
-      "name": "123",
+      "id": "lib_ce686878cc271bea",
+      "name": "11",
       "channel_type": "CAN",
       "versions": [
         {
-          "name": "123",
+          "name": "12",
           "path": "",
           "date": "2026-01-25",
-          "description": "Created version '123' (database file to be added)",
+          "description": "Created version '12' (database file to be added)",
           "channel_databases": []
         }
       ]

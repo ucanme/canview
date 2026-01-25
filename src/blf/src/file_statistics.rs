@@ -41,6 +41,72 @@ impl SystemTime {
             milliseconds: cursor.read_u16::<LittleEndian>()?,
         })
     }
+    
+    /// 转换为 Unix 时间戳（纳秒）
+    /// 
+    /// 返回自 1970-01-01 00:00:00 UTC 以来的纳秒数
+    pub fn to_timestamp_nanos(&self) -> i64 {
+        use chrono::{TimeZone, Utc};
+        
+        if let Some(dt) = Utc.with_ymd_and_hms(
+            self.year as i32,
+            self.month as u32,
+            self.day as u32,
+            self.hour as u32,
+            self.minute as u32,
+            self.second as u32,
+        ).single() {
+            dt.timestamp_nanos_opt().unwrap_or(0) + (self.milliseconds as i64) * 1_000_000
+        } else {
+            0
+        }
+    }
+    
+    /// 添加纳秒偏移，返回新的时间戳（纳秒）
+    /// 
+    /// # 参数
+    /// - `offset_ns`: 偏移量（纳秒）
+    /// 
+    /// # 返回
+    /// 绝对时间戳（纳秒）
+    pub fn add_nanoseconds(&self, offset_ns: u64) -> i64 {
+        self.to_timestamp_nanos() + offset_ns as i64
+    }
+    
+    /// 格式化为字符串
+    /// 
+    /// # 格式
+    /// `YYYY-MM-DD HH:MM:SS.mmm`
+    pub fn format(&self) -> String {
+        format!(
+            "{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:03}",
+            self.year, self.month, self.day,
+            self.hour, self.minute, self.second, self.milliseconds
+        )
+    }
+    
+    /// 格式化绝对时间（基准时间 + 偏移）
+    /// 
+    /// # 参数
+    /// - `offset_ns`: 偏移量（纳秒）
+    /// 
+    /// # 返回
+    /// 格式化的时间字符串
+    pub fn format_with_offset(&self, offset_ns: u64) -> String {
+        use chrono::DateTime;
+        
+        let absolute_ns = self.add_nanoseconds(offset_ns);
+        
+        // 转换为 DateTime
+        if let Some(dt) = DateTime::from_timestamp(
+            absolute_ns / 1_000_000_000,
+            (absolute_ns % 1_000_000_000) as u32
+        ) {
+            dt.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
+        } else {
+            format!("Invalid time (offset: {} ns)", offset_ns)
+        }
+    }
 }
 
 /// Represents the file statistics header at the beginning of a BLF file.

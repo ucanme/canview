@@ -801,6 +801,7 @@ name = "blf"
 version = "0.1.0"
 dependencies = [
  "byteorder",
+ "chrono",
  "flate2",
  "tempfile",
 ]

@@ -33,3 +33,13 @@ winres = "0.1"
 [[bin]]
 name = "view"
 path = "src/main.rs"
+
+# Windows 配置：隐藏控制台窗口
+[profile.release]
+strip = true  # 减小文件大小
+
+# Windows 特定配置
+[package.metadata.winres]
+OriginalFilename = "canview.exe"
+ProductName = "CANVIEW"
+FileDescription = "CAN/LIN Bus Analysis Tool"

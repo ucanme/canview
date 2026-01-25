@@ -1,156 +1,266 @@
-name: Build and Release
+name: Release Build
 
 on:
   push:
     tags:
-      - 'v*'  # 当推送 v* 标签时触发，例如 v1.0.0
+      - 'v*'  # 当推送 v* 标签时触发（如 v1.0.0）
   workflow_dispatch:  # 允许手动触发
-    inputs:
-      version:
-        description: 'Version number'
-        required: true
-        default: '1.0.0'
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    name: Build on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            platform: linux
-            artifact_name: canview
-            asset_extension: tar.gz
-          # macOS 构建暂时禁用，原因：
-          # core-graphics 依赖版本冲突 (0.24.0 vs 0.25.0)
-          # 这是 GPUI 框架的已知问题，等待上游修复
-          # TODO: 在 GPUI 修复依赖冲突后重新启用
-          # - os: macos-latest
-          #   platform: macos
-          #   artifact_name: canview
-          #   asset_extension: zip
-          - os: windows-latest
-            platform: windows
-            artifact_name: canview.exe
-            asset_extension: zip
-
+  # Windows 打包
+  build-windows:
+    runs-on: windows-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          submodules: recursive  # 检出所有子模块
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+          profile: minimal
+          override: true
 
       - name: Cache cargo registry
         uses: actions/cache@v3
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-registry-
 
       - name: Cache cargo index
         uses: actions/cache@v3
         with:
           path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-git-
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Cache cargo build
         uses: actions/cache@v3
         with:
           path: target
-          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-build-
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev
-
-      - name: Build release
+      - name: Build Release
         run: cargo build --release -p view
 
-      - name: Get version
+      - name: Get version from tag
         id: get_version
         shell: bash
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
           else
-            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+            VERSION="dev"
           fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
 
-      - name: Package (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          chmod +x package.sh
-          ./package.sh ${{ steps.get_version.outputs.version }}
-
-      # macOS 打包暂时禁用
-      # - name: Package (macOS)
-      #   if: matrix.os == 'macos-latest'
-      #   run: |
-      #     chmod +x package.sh
-      #     ./package.sh ${{ steps.get_version.outputs.version }}
-
-      - name: Package (Windows)
-        if: matrix.os == 'windows-latest'
+      - name: Create ZIP package
         shell: pwsh
         run: |
-          .\package.ps1 -Version "${{ steps.get_version.outputs.version }}"
+          $VERSION = "${{ steps.get_version.outputs.VERSION }}"
+          .\package.ps1 -Version $VERSION
 
-      - name: Upload artifacts (Linux)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Install Inno Setup
+        run: |
+          choco install innosetup -y
+
+      - name: Create installer
+        shell: pwsh
+        run: |
+          $VERSION = "${{ steps.get_version.outputs.VERSION }}"
+          # 等待 Inno Setup 安装完成
+          Start-Sleep -Seconds 10
+          $env:PATH += ";C:\Program Files (x86)\Inno Setup 6"
+          .\build-installer.ps1 -Version $VERSION -InnoSetupPath "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+
+      - name: Upload Windows ZIP
         uses: actions/upload-artifact@v3
         with:
-          name: CANVIEW-v${{ steps.get_version.outputs.version }}-linux
-          path: release-package/CANVIEW-v${{ steps.get_version.outputs.version }}-linux.tar.gz
+          name: windows-zip
+          path: release-package/*.zip
 
-      # macOS 构建产物上传暂时禁用
-      # - name: Upload artifacts (macOS)
-      #   if: matrix.os == 'macos-latest'
-      #   uses: actions/upload-artifact@v3
-      #   with:
-      #     name: CANVIEW-v${{ steps.get_version.outputs.version }}-macos
-      #     path: release-package/CANVIEW-v${{ steps.get_version.outputs.version }}-macos.zip
-
-      - name: Upload artifacts (Windows)
-        if: matrix.os == 'windows-latest'
+      - name: Upload Windows Installer
         uses: actions/upload-artifact@v3
         with:
-          name: CANVIEW-v${{ steps.get_version.outputs.version }}-windows
-          path: release-package/CANVIEW-v${{ steps.get_version.outputs.version }}.zip
+          name: windows-installer
+          path: installer-output/*.exe
 
-  release:
-    name: Create Release
-    needs: build
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    
+  # macOS 打包
+  build-macos:
+    runs-on: macos-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Get version
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v3
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Get version from tag
         id: get_version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION="dev"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Build and Package
+        run: |
+          chmod +x package-macos.sh
+          ./package-macos.sh ${{ steps.get_version.outputs.VERSION }}
+
+      - name: Upload macOS DMG
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-dmg
+          path: release-package/*.dmg
+        continue-on-error: true
+
+      - name: Upload macOS tar.gz
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-tarball
+          path: release-package/*-macos.tar.gz
+
+  # Linux 打包
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v3
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev rpm libgtk-3-dev
+
+      - name: Install AppImage tools
+        run: |
+          wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+          sudo mv appimagetool-x86_64.AppImage /usr/local/bin/appimagetool
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION="dev"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Build and Package
+        run: |
+          chmod +x package-linux.sh
+          ./package-linux.sh ${{ steps.get_version.outputs.VERSION }}
+
+      - name: Upload Linux DEB
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-deb
+          path: release-package/*.deb
+        continue-on-error: true
+
+      - name: Upload Linux RPM
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-rpm
+          path: release-package/*.rpm
+        continue-on-error: true
+
+      - name: Upload Linux tar.gz
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-tarball
+          path: release-package/*-linux-*.tar.gz
+
+      - name: Upload Linux AppImage
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-appimage
+          path: release-package/*.AppImage
+        continue-on-error: true
+
+  # 创建 GitHub Release
+  create-release:
+    needs: [build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
 
       - name: Download all artifacts
         uses: actions/download-artifact@v3
         with:
           path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
 
       - name: Create Release
         id: create_release
@@ -159,56 +269,135 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
-          release_name: CANVIEW v${{ steps.get_version.outputs.version }}
+          release_name: CANVIEW v${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## CANVIEW v${{ steps.get_version.outputs.VERSION }}
+
+            ### 下载
+
+            #### Windows
+            - **安装程序**: `CANVIEW-Setup-v${{ steps.get_version.outputs.VERSION }}.exe` - 推荐，图形化安装
+            - **便携版**: `CANVIEW-v${{ steps.get_version.outputs.VERSION }}.zip` - 解压即用
+
+            #### macOS
+            - **DMG 镜像**: `CANVIEW-v${{ steps.get_version.outputs.VERSION }}.dmg` - 推荐，拖拽安装
+            - **压缩包**: `CANVIEW-v${{ steps.get_version.outputs.VERSION }}-macos.tar.gz` - 解压到 Applications
+
+            #### Linux
+            - **Debian/Ubuntu**: `canview_${{ steps.get_version.outputs.VERSION }}_amd64.deb` - 使用 apt 安装
+            - **Fedora/RHEL**: `canview-${{ steps.get_version.outputs.VERSION }}-1.*.rpm` - 使用 dnf/yum 安装
+            - **AppImage**: `canview-v${{ steps.get_version.outputs.VERSION }}-x86_64.AppImage` - 推荐，无需安装
+            - **通用包**: `canview-v${{ steps.get_version.outputs.VERSION }}-linux-amd64.tar.gz` - 所有发行版
+
+            ### 功能特性
+
+            - ✅ BLF 文件解析和查看
+            - ✅ DBC/LDF 数据库支持
+            - ✅ 信号库本地存储
+            - ✅ 多通道配置管理
+            - ✅ 自动配置保存/加载
+            - ✅ CAN/LIN 类型支持
+
+            ### 安装说明
+
+            详见各平台的安装文档。
+
+            ---
+            **构建时间**: ${{ github.event.head_commit.timestamp }}
+            **提交**: ${{ github.sha }}
           draft: false
           prerelease: false
-          body: |
-            ## CANVIEW v${{ steps.get_version.outputs.version }}
-            
-            ### 下载
-            
-            - **Windows**: CANVIEW-v${{ steps.get_version.outputs.version }}.zip
-            - **Linux**: CANVIEW-v${{ steps.get_version.outputs.version }}-linux.tar.gz
-            
-            **注意**: macOS 版本暂时不可用，由于 GPUI 框架的依赖冲突问题。
-            
-            ### 安装说明
-            
-            1. 下载对应平台的压缩包
-            2. 解压到任意目录
-            3. 运行启动脚本或可执行文件
-            
-            ### 更新内容
-            
-            - 请查看 [CHANGELOG.md](CHANGELOG.md) 了解详细更新内容
 
-      - name: Upload Linux Release Asset
+      # 上传 Windows 文件
+      - name: Upload Windows Installer
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./artifacts/CANVIEW-v${{ steps.get_version.outputs.version }}-linux/CANVIEW-v${{ steps.get_version.outputs.version }}-linux.tar.gz
-          asset_name: CANVIEW-v${{ steps.get_version.outputs.version }}-linux.tar.gz
-          asset_content_type: application/gzip
+          asset_path: artifacts/windows-installer/CANVIEW-Setup-v${{ steps.get_version.outputs.VERSION }}.exe
+          asset_name: CANVIEW-Setup-v${{ steps.get_version.outputs.VERSION }}.exe
+          asset_content_type: application/octet-stream
+        continue-on-error: true
 
-      # macOS 发布资产上传暂时禁用
-      # - name: Upload macOS Release Asset
-      #   uses: actions/upload-release-asset@v1
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     upload_url: ${{ steps.create_release.outputs.upload_url }}
-      #     asset_path: ./artifacts/CANVIEW-v${{ steps.get_version.outputs.version }}-macos/CANVIEW-v${{ steps.get_version.outputs.version }}-macos.zip
-      #     asset_name: CANVIEW-v${{ steps.get_version.outputs.version }}-macos.zip
-      #     asset_content_type: application/zip
-
-      - name: Upload Windows Release Asset
+      - name: Upload Windows ZIP
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./artifacts/CANVIEW-v${{ steps.get_version.outputs.version }}-windows/CANVIEW-v${{ steps.get_version.outputs.version }}.zip
-          asset_name: CANVIEW-v${{ steps.get_version.outputs.version }}-windows.zip
+          asset_path: artifacts/windows-zip/CANVIEW-v${{ steps.get_version.outputs.VERSION }}.zip
+          asset_name: CANVIEW-v${{ steps.get_version.outputs.VERSION }}.zip
           asset_content_type: application/zip
+        continue-on-error: true
+
+      # 上传 macOS 文件
+      - name: Upload macOS DMG
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/macos-dmg/CANVIEW-v${{ steps.get_version.outputs.VERSION }}.dmg
+          asset_name: CANVIEW-v${{ steps.get_version.outputs.VERSION }}.dmg
+          asset_content_type: application/octet-stream
+        continue-on-error: true
+
+      - name: Upload macOS tar.gz
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/macos-tarball/CANVIEW-v${{ steps.get_version.outputs.VERSION }}-macos.tar.gz
+          asset_name: CANVIEW-v${{ steps.get_version.outputs.VERSION }}-macos.tar.gz
+          asset_content_type: application/gzip
+        continue-on-error: true
+
+      # 上传 Linux 文件
+      - name: Find and upload Linux DEB
+        shell: bash
+        run: |
+          DEB_FILE=$(find artifacts/linux-deb -name "*.deb" -type f | head -n 1)
+          if [ -n "$DEB_FILE" ]; then
+            echo "Found DEB: $DEB_FILE"
+            gh release upload ${{ github.ref_name }} "$DEB_FILE" --clobber
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Find and upload Linux RPM
+        shell: bash
+        run: |
+          RPM_FILE=$(find artifacts/linux-rpm -name "*.rpm" -type f | head -n 1)
+          if [ -n "$RPM_FILE" ]; then
+            echo "Found RPM: $RPM_FILE"
+            gh release upload ${{ github.ref_name }} "$RPM_FILE" --clobber
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Upload Linux tar.gz
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/linux-tarball/canview-v${{ steps.get_version.outputs.VERSION }}-linux-amd64.tar.gz
+          asset_name: canview-v${{ steps.get_version.outputs.VERSION }}-linux-amd64.tar.gz
+          asset_content_type: application/gzip
+        continue-on-error: true
+
+      - name: Find and upload Linux AppImage
+        shell: bash
+        run: |
+          APPIMAGE_FILE=$(find artifacts/linux-appimage -name "*.AppImage" -type f | head -n 1)
+          if [ -n "$APPIMAGE_FILE" ]; then
+            echo "Found AppImage: $APPIMAGE_FILE"
+            gh release upload ${{ github.ref_name }} "$APPIMAGE_FILE" --clobber
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true

@@ -16,8 +16,7 @@ use crate::rendering::calculate_column_widths;
 
 impl CanViewApp {
     pub fn new() -> Self {
-        // 启动时加载配�?        app.load_startup_config();
-        Self {
+        let mut app = Self {
             current_view: AppView::LogView,
             messages: Vec::new(),
             status_msg: "Ready".into(),
@@ -28,6 +27,7 @@ impl CanViewApp {
             start_time: None,
             config_dir: None,
             config_file_path: None,
+            signal_storage: crate::library::SignalLibraryStorage::new().ok(),
             // Default window/app states
             is_maximized: false,
             is_streaming_mode: false,
@@ -96,7 +96,12 @@ impl CanViewApp {
             library_input_state: crate::ui::components::ime_text_input::ImeTextInputState::default(),
             library_focus_handle: None,
             ime_handler_registered: false,
-        }
+        };
+        
+        // 🔧 启动时加载配置
+        app.load_startup_config();
+        
+        app
     }
 
     fn load_startup_config(&mut self) {
@@ -106,6 +111,7 @@ impl CanViewApp {
             if let Ok(content) = std::fs::read_to_string(&path) {
                 match serde_json::from_str::<AppConfig>(&content) {
                     Ok(config) => {
+                        // 保存配置
                         self.app_config = config.clone();
                         self.config_dir = Some(
                             path.parent()
@@ -113,18 +119,58 @@ impl CanViewApp {
                                 .to_path_buf(),
                         );
                         self.config_file_path = Some(path);
-                        self.status_msg = "Configuration loaded.".into();
+                        
+                        // 🔧 加载信号库
+                        if !config.libraries.is_empty() {
+                            eprintln!("📚 加载信号库配置...");
+                            eprintln!("  找到 {} 个信号库", config.libraries.len());
+                            
+                            // 将库加载到 library_manager
+                            self.library_manager = LibraryManager::from_libraries(config.libraries.clone());
+                            
+                            // 统计信息
+                            let total_versions: usize = self.library_manager.libraries()
+                                .iter()
+                                .map(|lib| lib.versions.len())
+                                .sum();
+                            let total_channels: usize = self.library_manager.libraries()
+                                .iter()
+                                .flat_map(|lib| &lib.versions)
+                                .map(|ver| ver.channel_databases.len())
+                                .sum();
+                            
+                            eprintln!("  ✅ 加载完成:");
+                            eprintln!("     - {} 个库", self.library_manager.libraries().len());
+                            eprintln!("     - {} 个版本", total_versions);
+                            eprintln!("     - {} 个通道", total_channels);
+                            
+                            // 显示库列表
+                            for library in self.library_manager.libraries() {
+                                eprintln!("     📦 {}: {} 个版本", library.name, library.versions.len());
+                            }
+                            
+                            self.status_msg = format!(
+                                "Configuration loaded: {} libraries, {} versions, {} channels",
+                                self.library_manager.libraries().len(),
+                                total_versions,
+                                total_channels
+                            ).into();
+                        } else {
+                            self.status_msg = "Configuration loaded (no libraries configured).".into();
+                        }
                     }
                     Err(e) => {
                         self.status_msg =
                             format!("Config load error: {}. Using default config.", e).into();
                         // Initialize with empty config instead of failing
                         self.app_config = AppConfig::default();
+                        eprintln!("❌ 配置加载失败: {}", e);
                     }
                 }
             }
         } else {
             self.status_msg = "Ready - GPUI version initialized".into();
+            eprintln!("ℹ️  未找到配置文件，使用默认配置");
         }
     }
 
@@ -132,6 +178,38 @@ impl CanViewApp {
         match result {
             Ok(result) => {
                 self.status_msg = format!("Loaded BLF: {} objects", result.objects.len()).into();
+
+                // === 调试输出：检查时间戳 ===
+                println!("\n=== BLF 时间戳诊断 ===");
+                println!("基准时间: {:?}", result.file_stats.measurement_start_time);
+                println!("总消息数: {}", result.objects.len());
+                
+                // 检查前 10 条消息的时间戳
+                println!("\n前 10 条消息的时间戳:");
+                for (i, obj) in result.objects.iter().take(10).enumerate() {
+                    let ts = obj.timestamp();
+                    println!("  Message {}: {} ns ({:.9} s)", 
+                        i, ts, ts as f64 / 1_000_000_000.0);
+                }
+                
+                // 检查时间戳是否都相同
+                if result.objects.len() > 1 {
+                    let first_ts = result.objects[0].timestamp();
+                    let last_ts = result.objects.last().unwrap().timestamp();
+                    let time_span = (last_ts - first_ts) as f64 / 1_000_000_000.0;
+                    
+                    println!("\n时间跨度分析:");
+                    println!("  第一条: {} ns", first_ts);
+                    println!("  最后一条: {} ns", last_ts);
+                    println!("  时间跨度: {:.6} 秒", time_span);
+                    
+                    if time_span < 0.000001 {
+                        println!("  ⚠️  警告: 所有消息的时间戳几乎相同!");
+                    } else {
+                        println!("  ✅ 时间戳正常变化");
+                    }
+                }
+                println!("===================\n");
 
                 // Parse start time
                 let st = result.file_stats.measurement_start_time.clone();
@@ -515,6 +593,7 @@ impl CanViewApp {
             start_time,
             config_dir,
             config_file_path,
+            signal_storage: crate::library::SignalLibraryStorage::new().ok(),
             is_maximized,
             is_streaming_mode: false,
             saved_window_bounds,
@@ -3306,40 +3385,6 @@ impl Render for CanViewApp {
                                     .child("Open BLF"),
                             )
                             .child(
-                                div()
-                                    .px_3()
-                                    .py(px(1.5))
-                                    .text_xs()
-                                    .font_weight(FontWeight::MEDIUM)
-                                    .text_color(rgb(0xcdd6f4))  // Zed's text
-                                    .bg(rgb(0x1e2a1e))  // Zed-style subtle yellow
-                                    .rounded(px(3.))  // Smaller radius
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0x2a3a2e)))  // Subtle hover
-                                    .on_mouse_down(gpui::MouseButton::Left, {
-                                        let view = view.clone();
-                                        move |_, _, cx| {
-                                            view.update(cx, |view, cx| view.load_config(cx));
-                                        }
-                                    })
-                                    .child("Load Config"),
-                            )
-                            .child(
-                                div()
-                                    .px_3()
-                                    .py(px(1.5))
-                                    .text_xs()
-                                    .font_weight(FontWeight::MEDIUM)
-                                    .text_color(rgb(0x646473))  // Zed's muted
-                                    .bg(rgb(0x151515))  // Very subtle
-                                    .rounded(px(3.))  // Smaller radius
-                                    .cursor_pointer()
-                                    .hover(|style| {
-                                        style.bg(rgb(0x1c1c1c)).text_color(rgb(0x9399b2))
-                                    })
-                                    .child("Export"),
-                            )
-                            .child(
                                 // Window controls separator
                                 div().w(px(12.)),  // Smaller separator
                             )
@@ -3797,12 +3842,38 @@ impl CanViewApp {
         }
 
         // Create channel database config
-        let channel_db = crate::models::library::ChannelDatabase::new(
+        let mut channel_db = crate::models::library::ChannelDatabase::new(
             self.new_channel_type,
             channel_id,
             self.new_channel_name.trim().to_string(),
             self.new_channel_db_path.trim().to_string(),
         );
+
+        // 🔧 自动复制文件到本地存储
+        if let Some(ref storage) = self.signal_storage {
+            // 获取库名用于存储路径
+            let library_name = {
+                let library = self.library_manager.find_library(&library_id).unwrap();
+                library.name.clone()
+            };
+            
+            // 复制文件到本地存储
+            let source_path = std::path::Path::new(&self.new_channel_db_path);
+            match storage.copy_database(&library_name, &version_name, source_path) {
+                Ok(local_path) => {
+                    // 使用本地路径更新 channel_db
+                    channel_db.database_path = local_path.to_string_lossy().to_string();
+                    eprintln!("✅ Database file copied to local storage: {:?}", local_path);
+                }
+                Err(e) => {
+                    self.status_msg = format!("Failed to copy database file: {}", e).into();
+                    cx.notify();
+                    return;
+                }
+            }
+        } else {
+            eprintln!("⚠️  Signal storage not available, using original path");
+        }
 
         // Validate the channel config
         if let Err(e) = channel_db.validate() {
@@ -3831,6 +3902,13 @@ impl CanViewApp {
 
                     // Reset type to CAN
                     self.new_channel_type = crate::models::ChannelType::CAN;
+
+                    // 🔄 同步到 app_config
+                    self.app_config.libraries = self.library_manager.libraries().to_vec();
+
+                    // 💾 自动保存配置
+                    self.save_config(cx);
+                    eprintln!("✅ Configuration saved automatically");
 
                     cx.notify();
                 }

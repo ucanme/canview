@@ -54,6 +54,9 @@ pub struct CanViewApp {
     // Configuration
     pub config_dir: Option<PathBuf>,
     pub config_file_path: Option<PathBuf>,
+    
+    // Signal library local storage
+    pub signal_storage: Option<crate::library::SignalLibraryStorage>,
 
     // Window state
     pub is_maximized: bool,
@@ -158,6 +161,7 @@ impl CanViewApp {
             start_time: None,
             config_dir: None,
             config_file_path: None,
+            signal_storage: crate::library::SignalLibraryStorage::new().ok(),
             is_maximized: false,
             is_streaming_mode: false,
             saved_window_bounds: None,

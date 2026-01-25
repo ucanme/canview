@@ -286,18 +286,34 @@ impl ObjectHeader {
         let mut reserved = 0;
 
         if base.header_version == 1 {
-            // V1 header has two variants:
-            // - 16 bytes: compact header (no flags, client_index, object_version, timestamp)
-            // - 32 bytes: full header (flags + clientIndex + objectVersion + timestamp)
-            if base.header_size == 16 {
-                // Compact V1 header - no additional fields
-                // Keep default values (all zeros)
-            } else if base.header_size >= 32 {
-                // Full V1 header
+            // V1 header 解析
+            // 注意：有些 BLF 文件的 header_size 字段不准确
+            // 即使 header_size=16，实际数据中也可能包含完整的 32 字节 header
+            // 我们需要根据实际可用数据来判断
+            
+            if base.header_size >= 32 {
+                // 标准的完整 V1 header (32 字节)
                 object_flags = cursor.read_u32::<LittleEndian>()?;
                 client_index = cursor.read_u16::<LittleEndian>()?;
                 object_version = cursor.read_u16::<LittleEndian>()?;
                 object_time_stamp = cursor.read_u64::<LittleEndian>()?;
+            } else if base.header_size == 16 {
+                // header_size 声称是 16 字节，但我们尝试读取完整数据
+                // 因为很多 BLF 文件的 header_size 字段不准确
+                
+                // 检查是否还有足够的数据（至少 16 字节）
+                let remaining = cursor.get_ref().len() - cursor.position() as usize;
+                
+                if remaining >= 16 {
+                    // 有足够数据，尝试读取完整 header
+                    object_flags = cursor.read_u32::<LittleEndian>()?;
+                    client_index = cursor.read_u16::<LittleEndian>()?;
+                    object_version = cursor.read_u16::<LittleEndian>()?;
+                    object_time_stamp = cursor.read_u64::<LittleEndian>()?;
+                } else {
+                    // 数据不足，这才是真正的紧凑型 header
+                    // 保持默认值（全零）
+                }
             } else {
                 return Err(BlfParseError::UnknownHeaderVersion(base.header_version));
             }
