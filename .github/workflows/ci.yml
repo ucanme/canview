@@ -129,21 +129,21 @@ jobs:
       
       - name: Upload build artifact (Windows)
         if: matrix.os == 'windows-latest'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: canview-windows
           path: target/release/view.exe
       
       - name: Upload build artifact (macOS)
         if: matrix.os == 'macos-latest'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: canview-macos
           path: target/release/view
       
       - name: Upload build artifact (Linux)
         if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: canview-linux
           path: target/release/view

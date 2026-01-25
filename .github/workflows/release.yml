@@ -77,13 +77,13 @@ jobs:
           .\build-installer.ps1 -Version $VERSION -InnoSetupPath "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 
       - name: Upload Windows ZIP
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: windows-zip
           path: release-package/*.zip
 
       - name: Upload Windows Installer
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: windows-installer
           path: installer-output/*.exe
@@ -140,14 +140,14 @@ jobs:
           ./package-macos.sh ${{ steps.get_version.outputs.VERSION }}
 
       - name: Upload macOS DMG
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: macos-dmg
           path: release-package/*.dmg
         continue-on-error: true
 
       - name: Upload macOS tar.gz
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: macos-tarball
           path: release-package/*-macos.tar.gz
@@ -212,27 +212,27 @@ jobs:
           ./package-linux.sh ${{ steps.get_version.outputs.VERSION }}
 
       - name: Upload Linux DEB
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: linux-deb
           path: release-package/*.deb
         continue-on-error: true
 
       - name: Upload Linux RPM
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: linux-rpm
           path: release-package/*.rpm
         continue-on-error: true
 
       - name: Upload Linux tar.gz
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: linux-tarball
           path: release-package/*-linux-*.tar.gz
 
       - name: Upload Linux AppImage
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: linux-appimage
           path: release-package/*.AppImage
@@ -255,7 +255,7 @@ jobs:
           echo "Version: $VERSION"
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
 
