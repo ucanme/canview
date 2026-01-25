@@ -1,6 +1,8 @@
 //! Library management UI components
 
+use gpui::prelude::*;
 use gpui::*;
+use gpui_component::input::Input;
 use crate::models::{SignalLibrary, LibraryVersion, DatabaseType, ChannelType};
 use crate::library::LibraryManager;
 use crate::CanViewApp;
@@ -46,6 +48,7 @@ pub fn render_library_list(
         let lib_name = library.name.clone();
         let version_count = library.versions.len();
         let db_type = library.database_type();
+        let db_icon = db_type.icon().to_string();
         let is_used = library.is_used(mappings);
 
         list = list.child(
@@ -54,8 +57,8 @@ pub fn render_library_list(
                 .py_2()
                 .cursor_pointer()
                 .hover(|style| style.bg(rgb(0x374151)))
-                .when(is_selected, |div| {
-                    div.bg(rgb(0x3b82f6))
+                .when(is_selected, |el| {
+                    el.bg(rgb(0x3b82f6))
                 })
                 .rounded(px(4.))
                 .flex()
@@ -70,7 +73,7 @@ pub fn render_library_list(
                             div()
                                 .text_sm()
                                 .text_color(rgb(0xffffff))
-                                .child(db_type.icon())
+                                .child(db_icon)
                         )
                         .child(
                             div()
@@ -92,8 +95,8 @@ pub fn render_library_list(
                                 )
                         )
                 )
-                .when(is_used, |div| {
-                    div.child(
+                .when(is_used, |el| {
+                    el.child(
                         div()
                             .px_2()
                             .py_1()
@@ -104,7 +107,7 @@ pub fn render_library_list(
                             .child("In Use")
                     )
                 })
-                .on_click(cx.listener(move |this, _event, cx| {
+                .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _event, _window, cx| {
                     this.selected_library_id = Some(lib_id.clone());
                     cx.notify();
                 }))
@@ -152,8 +155,8 @@ pub fn render_version_details(
                 .border_1()
                 .border_color(rgb(0x2a2a2a))
                 .rounded(px(8.))
-                .when(is_active, |div| {
-                    div.border_2().border_color(rgb(0x10b981))
+                .when(is_active, |el| {
+                    el.border_2().border_color(rgb(0x10b981))
                 })
                 .flex()
                 .flex_col()
@@ -175,8 +178,8 @@ pub fn render_version_details(
                                         .text_color(rgb(0xffffff))
                                         .child(version.name.clone())
                                 )
-                                .when(is_active, |div| {
-                                    div.child(
+                                .when(is_active, |el| {
+                                    el.child(
                                         div()
                                             .px_2()
                                             .py_1()
@@ -201,8 +204,8 @@ pub fn render_version_details(
                         .text_color(rgb(0x9ca3af))
                         .child(format!("Path: {}", version.path))
                 )
-                .when(!version.description.is_empty(), |div| {
-                    div.child(
+                .when(!version.description.is_empty(), |el| {
+                    el.child(
                         div()
                             .text_sm()
                             .text_color(rgb(0x9ca3af))
@@ -213,7 +216,9 @@ pub fn render_version_details(
                     div()
                         .flex()
                         .gap_2()
-                        .child(
+                        .child({
+                            let lib_id_clone = lib_id.clone();
+                            let version_name_clone = version_name.clone();
                             div()
                                 .px_3()
                                 .py_1()
@@ -224,11 +229,13 @@ pub fn render_version_details(
                                 .text_color(rgb(0xffffff))
                                 .text_sm()
                                 .child("Load")
-                                .on_click(cx.listener(move |this, _event, cx| {
-                                    this.load_library_version(&lib_id, &version_name, cx);
+                                .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _event, _window, cx| {
+                                    this.load_library_version(&lib_id_clone, &version_name_clone, cx);
                                 }))
-                        )
-                        .child(
+                        })
+                        .child({
+                            let lib_id_clone = lib_id.clone();
+                            let version_name_clone = version_name.clone();
                             div()
                                 .px_3()
                                 .py_1()
@@ -239,10 +246,10 @@ pub fn render_version_details(
                                 .text_color(rgb(0xffffff))
                                 .text_sm()
                                 .child("Delete")
-                                .on_click(cx.listener(move |this, _event, cx| {
-                                    this.delete_library_version(&lib_id, &version_name, cx);
+                                .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _event, _window, cx| {
+                                    this.delete_library_version(&lib_id_clone, &version_name_clone, cx);
                                 }))
-                        )
+                        })
                 )
         }))
 }
@@ -251,6 +258,8 @@ pub fn render_version_details(
 pub fn render_library_dialog(
     show: bool,
     dialog_type: LibraryDialogType,
+    library_name_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
+    version_name_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     cx: &mut Context<CanViewApp>
 ) -> impl IntoElement {
     if !show {
@@ -265,11 +274,10 @@ pub fn render_library_dialog(
     div()
         .absolute()
         .inset_0()
-        .bg(rgb(0x000000).with_alpha(0.5))
+        .bg(rgb(0x000000))
         .flex()
         .items_center()
         .justify_center()
-        .z_index(1000)
         .child(
             div()
                 .w(px(600.))
@@ -289,8 +297,128 @@ pub fn render_library_dialog(
                         .child(title)
                 )
                 .child(match dialog_type {
-                    LibraryDialogType::Create => render_create_library_form(cx),
-                    LibraryDialogType::AddVersion => render_add_version_form(cx),
+                    LibraryDialogType::Create => {
+                        // Inline create library form with gpui-component Input
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap_4()
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .gap_2()
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .font_weight(FontWeight::MEDIUM)
+                                            .text_color(rgb(0xffffff))
+                                            .child("Library Name")
+                                    )
+                                    .child(
+                                        if let Some(input) = library_name_input {
+                                            Input::new(input).into_any_element()
+                                        } else {
+                                            div()
+                                                .px_3()
+                                                .py_2()
+                                                .bg(rgb(0x374151))
+                                                .border_1()
+                                                .border_color(rgb(0x2a2a2a))
+                                                .rounded(px(4.))
+                                                .text_color(rgb(0xffffff))
+                                                .child("Enter library name...")
+                                                .into_any_element()
+                                        }
+                                    )
+                            )
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .gap_2()
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .font_weight(FontWeight::MEDIUM)
+                                            .text_color(rgb(0xffffff))
+                                            .child("Library Type")
+                                    )
+                                    .child(
+                                        div()
+                                            .px_3()
+                                            .py_2()
+                                            .bg(rgb(0x374151))
+                                            .border_1()
+                                            .border_color(rgb(0x2a2a2a))
+                                            .rounded(px(4.))
+                                            .text_color(rgb(0xffffff))
+                                            .child("CAN (DBC)")
+                                    )
+                            )
+                            .into_any_element()
+                    }
+                    LibraryDialogType::AddVersion => {
+                        // Inline add version form with gpui-component Input
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap_4()
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .gap_2()
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .font_weight(FontWeight::MEDIUM)
+                                            .text_color(rgb(0xffffff))
+                                            .child("Version Name")
+                                    )
+                                    .child(
+                                        if let Some(input) = version_name_input {
+                                            Input::new(input).into_any_element()
+                                        } else {
+                                            div()
+                                                .px_3()
+                                                .py_2()
+                                                .bg(rgb(0x374151))
+                                                .border_1()
+                                                .border_color(rgb(0x2a2a2a))
+                                                .rounded(px(4.))
+                                                .text_color(rgb(0xffffff))
+                                                .child("Enter version name...")
+                                                .into_any_element()
+                                        }
+                                    )
+                            )
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .gap_2()
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .font_weight(FontWeight::MEDIUM)
+                                            .text_color(rgb(0xffffff))
+                                            .child("Database File")
+                                    )
+                                    .child(
+                                        div()
+                                            .px_3()
+                                            .py_2()
+                                            .bg(rgb(0x374151))
+                                            .border_1()
+                                            .border_color(rgb(0x2a2a2a))
+                                            .rounded(px(4.))
+                                            .text_color(rgb(0xffffff))
+                                            .child("Select DBC/LDF file...")
+                                    )
+                            )
+                            .into_any_element()
+                    }
                 })
                 .child(
                     div()
@@ -307,7 +435,7 @@ pub fn render_library_dialog(
                                 .hover(|style| style.bg(rgb(0x4b5563)))
                                 .text_color(rgb(0xffffff))
                                 .child("Cancel")
-                                .on_click(cx.listener(|this, _event, cx| {
+                                .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _event, _window, cx| {
                                     this.show_library_dialog = false;
                                     cx.notify();
                                 }))

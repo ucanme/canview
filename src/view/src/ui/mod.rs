@@ -4,13 +4,13 @@ pub mod views;
 pub mod components;
 
 use gpui::*;
-use crate::models::{AppView, CanViewApp};
+use crate::app::AppView;
 
 /// Main UI renderer
 pub struct UiRenderer;
 
 impl UiRenderer {
-    pub fn render_titlebar(&self, app: &CanViewApp) -> impl IntoElement {
+    pub fn render_titlebar() -> impl IntoElement {
         div()
             .h(px(40.))
             .px_4()
@@ -38,47 +38,6 @@ impl UiRenderer {
                             .text_color(rgb(0x9ca3af))
                             .child("Bus Data Analyzer"),
                     )
-            )
-    }
-
-    pub fn render_status_bar(&self, app: &CanViewApp) -> impl IntoElement {
-        div()
-            .h(px(30.))
-            .px_4()
-            .flex()
-            .items_center()
-            .justify_between()
-            .bg(rgb(0x1f1f1f))
-            .border_b_1()
-            .border_color(rgb(0x2a2a2a))
-            .child(
-                div()
-                    .text_sm()
-                    .text_color(rgb(0x9ca3af))
-                    .child(app.status_msg.clone())
-            )
-            .child(
-                div()
-                    .flex()
-                    .gap_4()
-                    .child(
-                        div()
-                            .text_xs()
-                            .text_color(rgb(0x6b7280))
-                            .child(format!("{} messages", app.messages.len()))
-                    )
-                    .when(app.is_streaming_mode, |div| {
-                        div.child(
-                            div()
-                                .px_2()
-                                .py(px(2.))
-                                .bg(rgb(0x10b981))
-                                .rounded(px(3.))
-                                .text_xs()
-                                .text_color(rgb(0xffffff))
-                                .child("LIVE")
-                        )
-                    })
             )
     }
 }

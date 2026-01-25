@@ -1,0 +1,33 @@
+fn render_add_channel_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoElement {
+    div()
+        .px_3()
+        .py_2()
+        .mt_1()
+        .border_1()
+        .border_dashed()
+        .border_color(rgb(0x45475a))
+        .rounded(px(3.0))
+        .cursor_pointer()
+        .hover(|style| style.bg(rgb(0x1a1f2e)))
+        .flex()
+        .items_center()
+        .justify_center()
+        .gap_2()
+        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _event, _window, cx| {
+            this.show_add_channel_input = true;
+            cx.notify();
+        }))
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap_2()
+                .child(
+                    div()
+                        .text_sm()
+                        .font_weight(FontWeight::MEDIUM)
+                        .text_color(rgb(0x7dcfff))
+                        .child("+ Add Channel")
+                )
+        )
+}

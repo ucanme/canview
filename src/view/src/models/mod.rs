@@ -4,6 +4,7 @@ pub mod library;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use gpui::Pixels;
 
 // Re-export library types
 pub use library::{SignalLibrary, LibraryVersion, DatabaseType, ChannelDatabase, VersionStats};
@@ -15,6 +16,12 @@ pub enum ChannelType {
     LIN,
 }
 
+impl Default for ChannelType {
+    fn default() -> Self {
+        ChannelType::CAN
+    }
+}
+
 impl ChannelType {
     pub fn is_can(&self) -> bool {
         matches!(self, ChannelType::CAN)
@@ -22,6 +29,13 @@ impl ChannelType {
 
     pub fn is_lin(&self) -> bool {
         matches!(self, ChannelType::LIN)
+    }
+
+    pub fn icon(&self) -> &str {
+        match self {
+            ChannelType::CAN => "🟦",
+            ChannelType::LIN => "🟨",
+        }
     }
 }
 
@@ -55,6 +69,7 @@ pub struct AppConfig {
     #[serde(default)]
     pub libraries: Vec<SignalLibrary>,
     /// 通道映射列表
+    #[serde(default)]
     pub mappings: Vec<ChannelMapping>,
     /// 当前激活的库ID
     #[serde(default)]
@@ -62,20 +77,4 @@ pub struct AppConfig {
     /// 当前激活的版本名称
     #[serde(default)]
     pub active_version_name: Option<String>,
-}
-
-/// Application view enumeration
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum AppView {
-    LogView,
-    ConfigView,
-    ChartView,
-}
-
-/// State for tracking scrollbar drag operation
-#[derive(Clone)]
-pub struct ScrollbarDragState {
-    pub start_y: Pixels,
-    pub start_scroll_offset: f32,
-    pub filtered_count: usize,
 }

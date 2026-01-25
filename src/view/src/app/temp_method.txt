@@ -1,0 +1,21 @@
+    fn render_library_view(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
+        use crate::ui::views::library_management::LibraryManagementView;
+
+        // 创建三栏布局视图
+        let view = LibraryManagementView {
+            selected_library_id: self.selected_library_id.clone(),
+            selected_version_name: None, // TODO: 添加版本选择状态
+            search_query: self.library_search_query.clone(),
+            filter_type: self.library_filter_type,
+            show_new_library_input: self.show_library_dialog && self.library_dialog_type == super::state::LibraryDialogType::Create,
+            new_library_name: self.new_library_name.clone(),
+            show_add_version_input: self.show_version_input,
+            new_version_name: self.new_version_name.clone(),
+            show_add_channel_input: false,
+            new_channel_id: String::new(),
+            new_channel_path: String::new(),
+        };
+
+        // 使用新的三栏布局渲染
+        view.render(self.library_manager.libraries(), &self.app_config.mappings, cx)
+    }

@@ -1,38 +1,21 @@
 {
   "libraries": [
     {
-      "id": "ch1_lib",
-      "name": "Channel 1 Library",
+      "id": "lib_aeaeb6346d324d62",
+      "name": "123",
+      "channel_type": "CAN",
       "versions": [
         {
-          "name": "V1",
-          "path": "ch1.dbc",
-          "date": "2025-12-27"
-        }
-      ]
-    },
-    {
-      "id": "ch2_lib",
-      "name": "Channel 2 Library",
-      "versions": [
-        {
-          "name": "V1",
-          "path": "ch2.dbc",
-          "date": "2025-12-27"
+          "name": "123",
+          "path": "",
+          "date": "2026-01-25",
+          "description": "Created version '123' (database file to be added)",
+          "channel_databases": []
         }
       ]
     }
   ],
-  "mappings": [
-    {
-      "channel": 1,
-      "library_id": "ch1_lib",
-      "version_name": "V1"
-    },
-    {
-      "channel": 2,
-      "library_id": "ch2_lib",
-      "version_name": "V1"
-    }
-  ]
+  "mappings": [],
+  "active_library_id": null,
+  "active_version_name": null
 }

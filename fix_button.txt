@@ -1,0 +1,71 @@
+fn render_add_channel_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoElement {
+    let this = cx.entity().clone();
+
+    div()
+        .px_3()
+        .py_2()
+        .mt_1()
+        .border_1()
+        .border_dashed()
+        .border_color(rgb(0x45475a))
+        .rounded(px(3.0))
+        .cursor_pointer()
+        .hover(|style| style.bg(rgb(0x1a1f2e)))
+        .flex()
+        .items_center()
+        .justify_center()
+        .gap_2()
+        .on_mouse_down(gpui::MouseButton::Left, {
+            let this = this.clone();
+            move |_, _, app| {
+                let this = this.clone();
+                app.spawn(async move |cx| {
+                    if let Some(file) = rfd::AsyncFileDialog::new()
+                        .add_filter("Database Files", &["dbc", "ldf"])
+                        .pick_file()
+                        .await
+                    {
+                        let path_str = file.path().to_string_lossy().to_string();
+                        let _ = cx.update(|cx| {
+                            this.update(cx, |view, cx| {
+                                let file_name = std::path::Path::new(&path_str)
+                                    .file_stem()
+                                    .and_then(|s| s.to_str())
+                                    .unwrap_or("Unknown");
+
+                                let next_id = if let Some(lib_id) = &view.selected_library_id {
+                                    view.library_manager
+                                        .find_library(lib_id)
+                                        .and_then(|lib| lib.latest_version())
+                                        .map(|v| v.channel_databases.len() as u16 + 1)
+                                        .unwrap_or(1)
+                                } else {
+                                    1
+                                };
+
+                                view.new_channel_id = next_id.to_string();
+                                view.new_channel_name = file_name.to_string();
+                                view.new_channel_db_path = path_str.clone();
+                                view.save_channel_config(cx);
+                            });
+                        });
+                    }
+                    Ok::<(), anyhow::Error>(())
+                })
+                .detach();
+            }
+        })
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap_2()
+                .child(
+                    div()
+                        .text_sm()
+                        .font_weight(FontWeight::MEDIUM)
+                        .text_color(rgb(0x7dcfff))
+                        .child("+ Add Channel")
+                )
+        )
+}

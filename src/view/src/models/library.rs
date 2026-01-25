@@ -40,6 +40,9 @@ impl DatabaseType {
 /// 通道数据库配置
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ChannelDatabase {
+    /// 通道类型 (CAN/LIN)
+    #[serde(default)]
+    pub channel_type: crate::models::ChannelType,
     /// 通道ID
     pub channel_id: u16,
     /// 通道名称
@@ -50,8 +53,9 @@ pub struct ChannelDatabase {
 
 impl ChannelDatabase {
     /// 创建新的通道数据库配置
-    pub fn new(channel_id: u16, channel_name: String, database_path: String) -> Self {
+    pub fn new(channel_type: crate::models::ChannelType, channel_id: u16, channel_name: String, database_path: String) -> Self {
         Self {
+            channel_type,
             channel_id,
             channel_name,
             database_path,
@@ -295,6 +299,13 @@ impl SignalLibrary {
             .filter(|m| m.library_id.as_ref() == Some(&self.id))
             .map(|m| m.channel_id)
             .collect()
+    }
+
+    /// 获取当前激活的版本名称
+    pub fn active_version_name(&self, mappings: &[super::ChannelMapping]) -> Option<String> {
+        mappings.iter()
+            .filter(|m| m.library_id.as_ref() == Some(&self.id))
+            .find_map(|m| m.version_name.clone())
     }
 }
 

@@ -6,7 +6,8 @@ edition = "2021"
 [dependencies]
 blf = { path = "src/blf" }
 parser = { path = "src/parser" }
-gpui = { git = "https://github.com/zed-industries/zed", branch = "main" }
+gpui = "0.2.2"
+gpui-component = "0.5.0"
 smallvec = { version = "2.0.0-alpha.12" }
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -28,9 +29,9 @@ members = [
     "src/parser",
 ]
 
-[[bin]]
-name = "test_blf_debug"
-path = "test_blf_debug.rs"
+# [[bin]]
+# name = "test_blf_debug"
+# path = "test_blf_debug.rs"
 
 [workspace.dependencies]
 ashpd = { version = "0.8", default-features = false, features = ["tokio"] }

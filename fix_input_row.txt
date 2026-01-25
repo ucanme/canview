@@ -1,0 +1,151 @@
+/// 渲染内联添加通道输入行 - 完整的输入界面
+fn render_add_channel_input_row(
+    channel_id_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
+    channel_name_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
+    channel_db_path_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
+    channel_type: crate::models::ChannelType,
+    cx: &mut Context<crate::CanViewApp>
+) -> impl IntoElement {
+    div()
+        .px_3()
+        .py_1()
+        .h(px(32.))
+        .border_1()
+        .border_color(rgb(0x252525))
+        .flex()
+        .items_center()
+        .gap_3()
+        .on_key_down(cx.listener(|this, event: &KeyDownEvent, _window, cx| {
+            if event.keystroke.key == "escape" {
+                this.show_add_channel_input = false;
+                this.channel_id_input = None;
+                this.channel_name_input = None;
+                this.channel_db_path_input = None;
+                cx.notify();
+            } else if event.keystroke.key == "enter" {
+                this.save_channel_config(cx);
+            }
+        }))
+        .child(
+            // 类型选择器
+            div()
+                .w(px(80.0))
+                .flex_shrink_0()
+                .flex()
+                .gap_1()
+                .child(
+                    div()
+                        .flex_1()
+                        .px_2()
+                        .py_1()
+                        .bg(rgb(0x1a1a1a))
+                        .rounded(px(2.0))
+                        .text_color(rgb(0xffffff))
+                        .text_sm()
+                        .child(if channel_type == crate::models::ChannelType::CAN { "CAN" } else { "LIN" })
+                )
+        )
+        .child(
+            // 通道ID输入
+            div()
+                .w(px(60.0))
+                .flex_shrink_0()
+                .child(
+                    if let Some(input) = channel_id_input {
+                        div()
+                            .flex_1()
+                            .child(Input::new(&input).appearance(true))
+                            .into_any_element()
+                    } else {
+                        div()
+                            .text_color(gpui::rgb(0xffffff))
+                            .text_sm()
+                            .child("ID...")
+                            .into_any_element()
+                    }
+                )
+        )
+        .child(
+            // 通道名称输入
+            div()
+                .w(px(120.0))
+                .flex_shrink_0()
+                .child(
+                    if let Some(input) = channel_name_input {
+                        div()
+                            .flex_1()
+                            .child(Input::new(&input).appearance(true))
+                            .into_any_element()
+                    } else {
+                        div()
+                            .text_color(gpui::rgb(0xffffff))
+                            .text_sm()
+                            .child("Name...")
+                            .into_any_element()
+                    }
+                )
+        )
+        .child(
+            // 数据库路径 + Browse按钮
+            div()
+                .flex_1()
+                .min_w_0())
+                .flex()
+                .gap_2()
+                .child(
+                    div()
+                        .flex_1()
+                        .child(
+                            if let Some(input) = channel_db_path_input {
+                                div()
+                                    .flex_1()
+                                    .child(Input::new(&input).appearance(true))
+                                    .into_any_element()
+                            } else {
+                                div()
+                                    .text_color(gpui::rgb(0xffffff))
+                                    .text_sm()
+                                    .child("Database path...")
+                                    .into_any_element()
+                            }
+                        )
+                )
+                .child({
+                    // 文件选择按钮
+                    let this = cx.entity().clone();
+                    div()
+                        .px_2()
+                        .py_1()
+                        .cursor_pointer()
+                        .hover(|style| style.bg(rgb(0x313244)))
+                        .rounded(px(2.0))
+                        .text_color(rgb(0x7dcfff))
+                        .text_xs()
+                        .child("Browse...")
+                        .on_mouse_down(gpui::MouseButton::Left, {
+                            let this = this.clone();
+                            move |_, _, app| {
+                                let this = this.clone();
+                                app.spawn(async move |cx| {
+                                    if let Some(file) = rfd::AsyncFileDialog::new()
+                                        .add_filter("Database Files", &["dbc", "ldf"])
+                                        .pick_file()
+                                        .await
+                                    {
+                                        let path_str = file.path().to_string_lossy().to_string();
+                                        let _ = cx.update(|cx| {
+                                            this.update(cx, |view, cx| {
+                                                view.new_channel_db_path = path_str.clone();
+                                                view.status_msg = format!("Selected: {}", path_str).into();
+                                                cx.notify();
+                                            });
+                                        });
+                                    }
+                                    Ok::<(), anyhow::Error>(())
+                                })
+                                .detach();
+                            }
+                        })
+                })
+        )
+}

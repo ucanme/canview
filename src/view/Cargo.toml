@@ -1,10 +1,11 @@
 [package]
 name = "view"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-gpui = { git = "https://github.com/zed-industries/zed", branch = "main" }
+gpui = { git = "https://github.com/zed-industries/zed" }
+gpui-component = { path = "../../../gpui-component/crates/ui" }
 anyhow = "1.0"
 blf = { path = "../blf" }
 parser = { path = "../parser" }
@@ -29,3 +30,6 @@ rfd = { version = "0.14", default-features = false, features = ["tokio", "xdg-po
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"
 
+[[bin]]
+name = "view"
+path = "src/main.rs"

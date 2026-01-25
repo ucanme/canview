@@ -2,7 +2,7 @@
 //!
 //! 提供信号库的CRUD操作、版本管理和验证功能
 
-use crate::models::{SignalLibrary, LibraryVersion, ChannelType, DatabaseType, ChannelMapping};
+use crate::models::{SignalLibrary, LibraryVersion, ChannelType, DatabaseType, ChannelMapping, ChannelDatabase};
 use parser::dbc::{DbcParser, DbcDatabase};
 use parser::ldf::{LdfParser, LdfDatabase};
 use std::collections::hash_map::DefaultHasher;
@@ -239,8 +239,8 @@ impl LibraryManager {
 
         // 检查版本是否被使用
         if mappings.iter().any(|m| {
-            m.library_id.as_ref() == Some(library_id)
-                && m.version_name.as_ref() == Some(version_name.to_string())
+            m.library_id.as_ref().map(|s| s.as_str()) == Some(library_id)
+                && m.version_name.as_ref().map(|s| s.as_str()) == Some(version_name)
         }) {
             return Err("Version is currently in use".to_string());
         }
