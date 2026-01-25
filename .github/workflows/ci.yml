@@ -69,28 +69,30 @@ jobs:
       - name: Run cargo test
         run: cargo test -p view
 
-  # macOS 快速检查
-  check-macos:
-    name: Quick Check (macOS)
-    runs-on: macos-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Setup Rust cache
-        uses: swatinem/rust-cache@v2
-
-      - name: Run cargo check
-        run: cargo check -p view
-
-      - name: Run cargo clippy
-        run: cargo clippy -p view -- -D warnings
-
-      - name: Run cargo test
-        run: cargo test -p view
+  # macOS 快速检查 - 暂时禁用
+  # 原因：core-graphics 依赖版本冲突 (0.24.0 vs 0.25.0)
+  # TODO: 在 GPUI 修复依赖冲突后重新启用
+  # check-macos:
+  #   name: Quick Check (macOS)
+  #   runs-on: macos-latest
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Install Rust toolchain
+  #       uses: dtolnay/rust-toolchain@stable
+  #
+  #     - name: Setup Rust cache
+  #       uses: swatinem/rust-cache@v2
+  #
+  #     - name: Run cargo check
+  #       run: cargo check -p view
+  #
+  #     - name: Run cargo clippy
+  #       run: cargo clippy -p view -- -D warnings
+  #
+  #     - name: Run cargo test
+  #       run: cargo test -p view
 
   # 格式检查
   fmt:

@@ -2,6 +2,10 @@
 //!
 //! 提供信号库的CRUD操作、版本管理和验证功能
 
+mod storage;
+
+pub use storage::SignalLibraryStorage;
+
 use crate::models::{SignalLibrary, LibraryVersion, ChannelType, DatabaseType, ChannelMapping, ChannelDatabase};
 use parser::dbc::{DbcParser, DbcDatabase};
 use parser::ldf::{LdfParser, LdfDatabase};

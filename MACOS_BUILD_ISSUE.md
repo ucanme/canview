@@ -37,35 +37,25 @@ gpui (from git)
 
 ### GitHub Actions 修改
 
-**文件**: `.github/workflows/release.yml`
+已在以下 workflow 文件中禁用 macOS 构建：
 
-1. **注释掉 macOS 构建矩阵**:
-```yaml
-# - os: macos-latest
-#   platform: macos
-#   artifact_name: canview
-#   asset_extension: zip
-```
+#### 1. **`.github/workflows/release.yml`**
+- 注释掉 macOS 构建矩阵
+- 注释掉 macOS 打包步骤
+- 注释掉 macOS 上传步骤
+- 更新发布说明，移除 macOS 下载链接
 
-2. **注释掉 macOS 打包步骤**:
-```yaml
-# - name: Package (macOS)
-#   if: matrix.os == 'macos-latest'
-#   run: |
-#     chmod +x package.sh
-#     ./package.sh ${{ steps.get_version.outputs.version }}
-```
+#### 2. **`.github/workflows/ci.yml`**
+- 注释掉 `check-macos` job
+- 保留 Linux 和 Windows 快速检查
 
-3. **注释掉 macOS 上传步骤**:
-```yaml
-# - name: Upload artifacts (macOS)
-# - name: Upload macOS Release Asset
-```
+#### 3. **`.github/workflows/build.yml`**
+- 注释掉 macOS ARM (Apple Silicon) 构建
+- 注释掉 macOS Intel (x86_64) 构建
+- 保留 Linux 和 Windows 构建
 
-4. **更新发布说明**:
-```yaml
-**注意**: macOS 版本暂时不可用，由于 GPUI 框架的依赖冲突问题。
-```
+所有修改都包含了详细的注释，说明禁用原因和未来重新启用的条件。
+
 
 ## 长期解决方案
 
