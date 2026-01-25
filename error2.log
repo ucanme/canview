@@ -1,0 +1,533 @@
+warning: `C:\Users\Administrator\.cargo\config` is deprecated in favor of `config.toml`
+  |
+  = help: if you need to support cargo 1.38 or earlier, you can symlink `config` to `config.toml`
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   C:\Users\Administrator\RustroverProjects\canview\src\view\Cargo.toml
+workspace: C:\Users\Administrator\RustroverProjects\canview\Cargo.toml
+warning: patch `ashpd v0.13.0 (https://github.com/bilelmoussaoui/ashpd?branch=master#220045bf)` was not used in the crate graph
+help: Check that the patched package version and available features are compatible
+      with the dependency requirements. If the patch has a different version from
+      what is locked in the Cargo.lock file, run `cargo update` to use the new
+      version. This may also occur with an optional dependency that is not enabled.
+   Compiling view v0.1.0 (C:\Users\Administrator\RustroverProjects\canview\src\view)
+warning: unused import: `ChannelMapping`
+  --> src\view\src\app\state.rs:13:24
+   |
+13 | use crate::{AppConfig, ChannelMapping, ChannelType};
+   |                        ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `LibraryManager` and `ScrollbarDragState`
+ --> src\view\src\app\mod.rs:9:38
+  |
+9 | pub use state::{CanViewApp, AppView, ScrollbarDragState, LibraryManager, LibraryDialogType};
+  |                                      ^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^
+
+warning: unused import: `constants::*`
+ --> src\view\src\config\mod.rs:7:9
+  |
+7 | pub use constants::*;
+  |         ^^^^^^^^^^^^
+
+warning: unused import: `io::*`
+ --> src\view\src\config\mod.rs:8:9
+  |
+8 | pub use io::*;
+  |         ^^^^^
+
+warning: unused import: `startup::*`
+ --> src\view\src\config\mod.rs:9:9
+  |
+9 | pub use startup::*;
+  |         ^^^^^^^^^^
+
+warning: unused import: `file::*`
+ --> src\view\src\handlers\mod.rs:8:9
+  |
+8 | pub use file::*;
+  |         ^^^^^^^
+
+warning: unused import: `filter::*`
+ --> src\view\src\handlers\mod.rs:9:9
+  |
+9 | pub use filter::*;
+  |         ^^^^^^^^^
+
+warning: unused import: `Pixels`
+ --> src\view\src\rendering\message.rs:9:16
+  |
+9 | use gpui::{px, Pixels};
+  |                ^^^^^^
+
+warning: unused import: `utils::*`
+ --> src\view\src\rendering\mod.rs:9:9
+  |
+9 | pub use utils::*;
+  |         ^^^^^^^^
+
+warning: unused import: `std::collections::HashMap`
+  --> src\view\src\library\mod.rs:15:5
+   |
+15 | use std::collections::HashMap;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::collections::HashMap`
+ --> src\view\src\models\mod.rs:6:5
+  |
+6 | use std::collections::HashMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `gpui::Pixels`
+ --> src\view\src\models\mod.rs:7:5
+  |
+7 | use gpui::Pixels;
+  |     ^^^^^^^^^^^^
+
+warning: unused import: `VersionStats`
+  --> src\view\src\models\mod.rs:10:81
+   |
+10 | pub use library::{SignalLibrary, LibraryVersion, DatabaseType, ChannelDatabase, VersionStats};
+   |                                                                                 ^^^^^^^^^^^^
+
+warning: unused imports: `ChannelType`, `DatabaseType`, and `LibraryVersion`
+ --> src\view\src\ui\views\library_view.rs:6:36
+  |
+6 | use crate::models::{SignalLibrary, LibraryVersion, DatabaseType, ChannelType};
+  |                                    ^^^^^^^^^^^^^^  ^^^^^^^^^^^^  ^^^^^^^^^^^
+
+warning: unused import: `crate::library::LibraryManager`
+ --> src\view\src\ui\views\library_view.rs:7:5
+  |
+7 | use crate::library::LibraryManager;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `LibraryVersion`
+  --> src\view\src\ui\views\library_management_enhanced.rs:10:36
+   |
+10 | use crate::models::{SignalLibrary, LibraryVersion, ChannelMapping};
+   |                                    ^^^^^^^^^^^^^^
+
+warning: unused import: `std::time::Duration`
+  --> src\view\src\ui\components\enhanced_text_input.rs:34:5
+   |
+34 | use std::time::Duration;
+   |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `DividerOrientation` and `Divider`
+  --> src\view\src\ui\components\mod.rs:20:19
+   |
+20 | pub use divider::{Divider, DividerOrientation};
+   |                   ^^^^^^^  ^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `TextInputBuilder` and `TextInputValidation`
+  --> src\view\src\ui\components\mod.rs:23:22
+   |
+23 | pub use text_input::{TextInputBuilder, TextInputValidation};
+   |                      ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `simple_text_input::SimpleTextInputBuilder`
+  --> src\view\src\ui\components\mod.rs:24:9
+   |
+24 | pub use simple_text_input::SimpleTextInputBuilder;  // Simple version, no internal event handling
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `EnhancedTextInputState` and `TextSelection`
+  --> src\view\src\ui\components\mod.rs:25:57
+   |
+25 | pub use enhanced_text_input::{EnhancedTextInputBuilder, EnhancedTextInputState, TextSelection};
+   |                                                         ^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+
+warning: unused imports: `ZedStyleTextInputBuilder` and `ZedStyleTextInputState`
+  --> src\view\src\ui\components\mod.rs:26:32
+   |
+26 | pub use zed_style_text_input::{ZedStyleTextInputBuilder, ZedStyleTextInputState};
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `ImeTextInputState`
+  --> src\view\src\ui\components\mod.rs:27:26
+   |
+27 | pub use ime_text_input::{ImeTextInputState};
+   |                          ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::app::AppView`
+ --> src\view\src\ui\mod.rs:7:5
+  |
+7 | use crate::app::AppView;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `data::*`
+ --> src\view\src\chart\mod.rs:4:9
+  |
+4 | pub use data::*;
+  |         ^^^^^^^
+
+warning: unused import: `renderer::*`
+ --> src\view\src\chart\mod.rs:5:9
+  |
+5 | pub use renderer::*;
+  |         ^^^^^^^^^^^
+
+warning: unused import: `rendering::calculate_column_widths`
+  --> src\view\src\main.rs:14:5
+   |
+14 | use rendering::calculate_column_widths;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `rendering::get_message_strings`
+  --> src\view\src\main.rs:15:5
+   |
+15 | use rendering::get_message_strings;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: multiple `deprecated` attributes
+   --> src\view\src\app\state.rs:139:5
+    |
+139 |     #[deprecated(note = "Not needed with gpui-component Input")]
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+    |
+note: attribute also specified here
+   --> src\view\src\app\state.rs:138:5
+    |
+138 |     #[deprecated(note = "Not needed with gpui-component Input")]
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0597]: `renderer` does not live long enough
+   --> src\view\src\app\impls.rs:686:9
+    |
+682 |     fn render_chart_view(&self) -> impl IntoElement {
+    |                          - let's call the lifetime of this reference `'1`
+...
+685 |         let renderer = ChartRenderer::new(self.chart_series.clone());
+    |             -------- binding `renderer` declared here
+686 |         renderer.render()
+    |         ^^^^^^^^---------
+    |         |
+    |         borrowed value does not live long enough
+    |         argument requires that `renderer` is borrowed for `'1`
+687 |     }
+    |     - `renderer` dropped here while still borrowed
+
+warning: use of deprecated field `app::state::CanViewApp::focused_library_input`: Use library_name_input instead
+   --> src\view\src\app\impls.rs:708:18
+    |
+708 |                 &self.focused_library_input,
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+
+warning: variable does not need to be mutable
+    --> src\view\src\app\impls.rs:2896:21
+     |
+2896 |         if let Some(mut receiver) = self.pending_file_path.take() {
+     |                     ----^^^^^^^^
+     |                     |
+     |                     help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: use of deprecated field `app::state::CanViewApp::library_input_state`: Use library_name_input instead
+   --> src\view\src\ui\views\library_management_enhanced.rs:114:45
+    |
+114 | ...                   this.library_input_state.text = new_text.to_string();
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::library_input_state`: Use library_name_input instead
+   --> src\view\src\ui\views\library_management_enhanced.rs:117:45
+    |
+117 | ...                   this.library_input_state.cursor_position = this.library_cursor_position;
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::is_editing_library_name`: Use library_name_input instead
+   --> src\view\src\ui\views\library_management_enhanced.rs:131:49
+    |
+131 | ...                   this.is_editing_library_name = false;
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::focused_library_input`: Use library_name_input instead
+   --> src\view\src\ui\views\library_management_enhanced.rs:132:49
+    |
+132 | ...                   this.focused_library_input = None;
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::is_editing_library_name`: Use library_name_input instead
+   --> src\view\src\ui\views\library_management_enhanced.rs:153:33
+    |
+153 | ...                   this.is_editing_library_name = false;
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::focused_library_input`: Use library_name_input instead
+   --> src\view\src\ui\views\library_management_enhanced.rs:154:33
+    |
+154 | ...                   this.focused_library_input = None;
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::library_input_state`: Use library_name_input instead
+   --> src\view\src\ui\views\library_management_enhanced.rs:172:33
+    |
+172 | ...                   this.library_input_state.text.clear();
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::is_editing_library_name`: Use library_name_input instead
+   --> src\view\src\ui\views\library_management_enhanced.rs:173:33
+    |
+173 | ...                   this.is_editing_library_name = false;
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::focused_library_input`: Use library_name_input instead
+   --> src\view\src\ui\views\library_management_enhanced.rs:174:33
+    |
+174 | ...                   this.focused_library_input = None;
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::focused_library_input`: Use library_name_input instead
+   --> src\view\src\ui\views\library_management_enhanced.rs:282:53
+    |
+282 | ...                   this.focused_library_input = None;
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::focused_library_input`: Use library_name_input instead
+   --> src\view\src\ui\views\library_management_enhanced.rs:304:41
+    |
+304 | ...                   this.focused_library_input = None;
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::focused_library_input`: Use library_name_input instead
+   --> src\view\src\ui\views\library_management_enhanced.rs:323:37
+    |
+323 | ...                   this.focused_library_input = None;
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::focused_library_input`: Use library_name_input instead
+   --> src\view\src\ui\views\library_management_enhanced.rs:624:13
+    |
+624 |             this.focused_library_input = Some("new_library_input".to_string());
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::is_editing_library_name`: Use library_name_input instead
+   --> src\view\src\ui\views\library_management_enhanced.rs:625:13
+    |
+625 |             this.is_editing_library_name = true;
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::focused_library_input`: Use library_name_input instead
+   --> src\view\src\ui\views\library_management_enhanced.rs:655:17
+    |
+655 |                 this.focused_library_input = Some("new_version_input".to_string());
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::focused_library_input`: Use library_name_input instead
+   --> src\view\src\app\state.rs:219:13
+    |
+219 |             focused_library_input: None,
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::is_editing_library_name`: Use library_name_input instead
+   --> src\view\src\app\state.rs:220:13
+    |
+220 |             is_editing_library_name: false,
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::library_input_state`: Use library_name_input instead
+   --> src\view\src\app\state.rs:221:13
+    |
+221 |             library_input_state: crate::ui::components::ime_text_input::ImeTextInputState::default(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::library_focus_handle`: Not needed with gpui-component Input
+   --> src\view\src\app\state.rs:222:13
+    |
+222 |             library_focus_handle: None,
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::ime_handler_registered`: Not needed with gpui-component Input
+   --> src\view\src\app\state.rs:223:13
+    |
+223 |             ime_handler_registered: false,
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::focused_library_input`: Use library_name_input instead
+  --> src\view\src\app\impls.rs:94:13
+   |
+94 |             focused_library_input: None,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::is_editing_library_name`: Use library_name_input instead
+  --> src\view\src\app\impls.rs:95:13
+   |
+95 |             is_editing_library_name: false,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::library_input_state`: Use library_name_input instead
+  --> src\view\src\app\impls.rs:96:13
+   |
+96 |             library_input_state: crate::ui::components::ime_text_input::ImeTextInputState::default(),
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::library_focus_handle`: Not needed with gpui-component Input
+  --> src\view\src\app\impls.rs:97:13
+   |
+97 |             library_focus_handle: None,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::ime_handler_registered`: Not needed with gpui-component Input
+  --> src\view\src\app\impls.rs:98:13
+   |
+98 |             ime_handler_registered: false,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::focused_library_input`: Use library_name_input instead
+   --> src\view\src\app\impls.rs:650:13
+    |
+650 |             focused_library_input: None,
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::is_editing_library_name`: Use library_name_input instead
+   --> src\view\src\app\impls.rs:651:13
+    |
+651 |             is_editing_library_name: false,
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::library_input_state`: Use library_name_input instead
+   --> src\view\src\app\impls.rs:652:13
+    |
+652 |             library_input_state: crate::ui::components::ime_text_input::ImeTextInputState::default(),
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::library_focus_handle`: Not needed with gpui-component Input
+   --> src\view\src\app\impls.rs:653:13
+    |
+653 |             library_focus_handle: None,
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `app::state::CanViewApp::ime_handler_registered`: Not needed with gpui-component Input
+   --> src\view\src\app\impls.rs:654:13
+    |
+654 |             ime_handler_registered: false,
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `gpui::prelude::FluentBuilder`
+  --> src\view\src\ui\components\text_input.rs:43:5
+   |
+43 | use gpui::prelude::FluentBuilder;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `gpui`
+ --> src\view\src\ui\components\ime_text_input.rs:5:5
+  |
+5 | use gpui::*;
+  |     ^^^^
+
+warning: unused variable: `cx`
+   --> src\view\src\ui\views\library_view.rs:454:31
+    |
+454 | fn render_create_library_form(cx: &mut Context<CanViewApp>) -> impl IntoElement {
+    |                               ^^ help: if this is intentional, prefix it with an underscore: `_cx`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `cx`
+   --> src\view\src\ui\views\library_view.rs:539:28
+    |
+539 | fn render_add_version_form(cx: &mut Context<CanViewApp>) -> impl IntoElement {
+    |                            ^^ help: if this is intentional, prefix it with an underscore: `_cx`
+
+warning: unused variable: `focused_input`
+  --> src\view\src\ui\views\library_management.rs:78:5
+   |
+78 |     focused_input: &Option<String>,
+   |     ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_focused_input`
+
+warning: unused variable: `cursor_pos`
+  --> src\view\src\ui\views\library_management.rs:79:5
+   |
+79 |     cursor_pos: usize,
+   |     ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_cursor_pos`
+
+warning: unused variable: `focused_input`
+   --> src\view\src\ui\views\library_management.rs:346:5
+    |
+346 |     focused_input: &Option<String>,
+    |     ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_focused_input`
+
+warning: unused variable: `cursor_pos`
+   --> src\view\src\ui\views\library_management.rs:347:5
+    |
+347 |     cursor_pos: usize,
+    |     ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_cursor_pos`
+
+warning: unused variable: `this`
+   --> src\view\src\ui\components\text_input.rs:321:54
+    |
+321 | ...                   view.update(cx, |this, cx| {
+    |                                        ^^^^ help: if this is intentional, prefix it with an underscore: `_this`
+
+warning: unused variable: `this`
+   --> src\view\src\ui\components\text_input.rs:277:46
+    |
+277 | ...                   view.update(cx, |this, cx| {
+    |                                        ^^^^ help: if this is intentional, prefix it with an underscore: `_this`
+
+warning: unused variable: `this`
+   --> src\view\src\ui\components\text_input.rs:272:46
+    |
+272 | ...                   view.update(cx, |this, cx| {
+    |                                        ^^^^ help: if this is intentional, prefix it with an underscore: `_this`
+
+warning: unused variable: `this`
+   --> src\view\src\ui\components\text_input.rs:262:46
+    |
+262 | ...                   view.update(cx, |this, cx| {
+    |                                        ^^^^ help: if this is intentional, prefix it with an underscore: `_this`
+
+warning: unused variable: `view`
+   --> src\view\src\ui\components\enhanced_text_input.rs:316:9
+    |
+316 |         view: Entity<App>,
+    |         ^^^^ help: if this is intentional, prefix it with an underscore: `_view`
+
+warning: unused variable: `on_change`
+   --> src\view\src\ui\components\enhanced_text_input.rs:317:9
+    |
+317 |         on_change: impl Fn(&str, &mut gpui::Context<App>) + 'static,
+    |         ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_on_change`
+
+warning: unused variable: `on_submit`
+   --> src\view\src\ui\components\enhanced_text_input.rs:318:9
+    |
+318 |         on_submit: impl Fn(&str, &mut gpui::Context<App>) + 'static,
+    |         ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_on_submit`
+
+warning: unused variable: `validation`
+   --> src\view\src\ui\components\enhanced_text_input.rs:326:13
+    |
+326 |         let validation = self.validation;
+    |             ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_validation`
+
+warning: unused variable: `this`
+   --> src\view\src\ui\components\zed_style_text_input.rs:283:54
+    |
+283 | ...                   view.update(cx, |this, cx| {
+    |                                        ^^^^ help: if this is intentional, prefix it with an underscore: `_this`
+
+warning: unused variable: `this`
+   --> src\view\src\ui\components\zed_style_text_input.rs:246:46
+    |
+246 | ...                   view.update(cx, |this, cx| {
+    |                                        ^^^^ help: if this is intentional, prefix it with an underscore: `_this`
+
+warning: unused variable: `this`
+   --> src\view\src\ui\components\zed_style_text_input.rs:241:46
+    |
+241 | ...                   view.update(cx, |this, cx| {
+    |                                        ^^^^ help: if this is intentional, prefix it with an underscore: `_this`
+
+warning: unused variable: `this`
+   --> src\view\src\ui\components\zed_style_text_input.rs:231:46
+    |
+231 | ...                   view.update(cx, |this, cx| {
+    |                                        ^^^^ help: if this is intentional, prefix it with an underscore: `_this`
+
+For more information about this error, try `rustc --explain E0597`.
+warning: `view` (bin "view") generated 80 warnings
+error: could not compile `view` (bin "view") due to 2 previous errors; 80 warnings emitted

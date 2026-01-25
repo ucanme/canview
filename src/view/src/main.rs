@@ -8,6 +8,7 @@ mod rendering;
 mod library;
 mod models;
 mod ui;
+mod chart;
 
 // Import rendering utilities and app types
 use rendering::calculate_column_widths;

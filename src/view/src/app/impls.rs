@@ -96,6 +96,7 @@ impl CanViewApp {
             library_input_state: crate::ui::components::ime_text_input::ImeTextInputState::default(),
             library_focus_handle: None,
             ime_handler_registered: false,
+            chart_series: Vec::new(),
         };
         
         // 🔧 启动时加载配置
@@ -651,6 +652,7 @@ impl CanViewApp {
             library_input_state: crate::ui::components::ime_text_input::ImeTextInputState::default(),
             library_focus_handle: None,
             ime_handler_registered: false,
+            chart_series: Vec::new(), // Chart state
         };
 
         // Load startup config (this will reset some state, so do it carefully)
@@ -678,17 +680,10 @@ impl CanViewApp {
     }
 
     fn render_chart_view(&self) -> impl IntoElement {
-        div()
-            .size_full()
-            .flex()
-            .items_center()
-            .justify_center()
-            .child(
-                div()
-                    .text_lg()
-                    .text_color(rgb(0x9ca3af))
-                    .child("Chart view - Feature coming soon")
-            )
+        use crate::chart::renderer::ChartRenderer;
+        
+        let renderer = ChartRenderer::new(self.chart_series.clone());
+        renderer.render()
     }
 
     fn render_library_view(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
@@ -3173,6 +3168,41 @@ impl Render for CanViewApp {
                                                 }
                                             })
                                             .child("Logs"),
+                                    )
+                                    .child(
+                                        div()
+                                            .px_3()
+                                            .py(px(1.5))
+                                            .text_xs()
+                                            .font_weight(FontWeight::MEDIUM)
+                                            .cursor_pointer()
+                                            .rounded(px(3.))
+                                            .bg(if self.current_view == AppView::ChartView {
+                                                rgb(0x1e1e2e)
+                                            } else {
+                                                rgb(0x0c0c0e)
+                                            })
+                                            .text_color(if self.current_view == AppView::ChartView {
+                                                rgb(0xcdd6f4)
+                                            } else {
+                                                rgb(0x646473)
+                                            })
+                                            .hover(|style| {
+                                                if self.current_view != AppView::ChartView {
+                                                    style.bg(rgb(0x151515)).text_color(rgb(0x9399b2))
+                                                } else {
+                                                    style
+                                                }
+                                            })
+                                            .on_mouse_down(gpui::MouseButton::Left, {
+                                                let view = view.clone();
+                                                move |_, _, cx| {
+                                                    view.update(cx, |view, _| {
+                                                        view.current_view = AppView::ChartView
+                                                    });
+                                                }
+                                            })
+                                            .child("Chart"),
                                     )
                                     .child(
                                         div()
