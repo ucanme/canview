@@ -35,9 +35,9 @@ members = [
 
 [workspace.dependencies]
 ashpd = { version = "0.8", default-features = false, features = ["tokio"] }
-# Downgrade font-kit to version that uses core-graphics 0.24
-font-kit = { version = "0.11", default-features = false }
+font-kit = { version = "0.14", default-features = false }
 
 [patch.crates-io]
-# Remove Zed's font-kit fork patch - using older version instead
-# font-kit = { git = "https://github.com/zed-industries/font-kit", branch = "master" }
+# Use Zed's font-kit fork which uses core-graphics 0.24.0
+# This matches core-text > 20 but we need to pin core-text to 20.x or 21.0.0 if 21.1.0 broke it
+font-kit = { git = "https://github.com/zed-industries/font-kit", branch = "master" }
