@@ -74,6 +74,8 @@ jobs:
             pkg-config \
             libxkbcommon-dev \
             libxkbcommon-x11-dev \
+            libwayland-dev \
+            libvulkan-dev \
             libx11-dev \
             libegl1-mesa-dev \
             libfontconfig1-dev \
