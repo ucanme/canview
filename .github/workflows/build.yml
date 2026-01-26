@@ -27,14 +27,14 @@ jobs:
           # 原因：core-graphics 依赖版本冲突 (0.24.0 vs 0.25.0)
           # TODO: 在 GPUI 修复依赖冲突后重新启用
           
-          # macOS ARM (Apple Silicon)
-          - os: macos-latest
+          # macOS ARM (Apple Silicon) - Native Build on M1
+          - os: macos-14
             target: aarch64-apple-darwin
             artifact_name: view
             asset_name: canview-macos-aarch64
           
-          # macOS Intel (x86_64)
-          - os: macos-latest
+          # macOS Intel (x86_64) - Native Build on Intel
+          - os: macos-13
             target: x86_64-apple-darwin
             artifact_name: view
             asset_name: canview-macos-x86_64
