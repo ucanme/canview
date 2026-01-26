@@ -151,19 +151,18 @@ canview.exe
 |------|------|------|------|
 | **Linux** | x86_64 | ✅ 支持 | 完全支持 |
 | **Windows** | x86_64 | ✅ 支持 | 完全支持 |
-| **macOS** | ARM64 | ❌ 禁用 | 依赖冲突 |
-| **macOS** | x86_64 | ❌ 禁用 | 依赖冲突 |
+| **macOS** | ARM64 | ❌ 禁用 | GPUI 依赖已废弃的 core-text |
+| **macOS** | x86_64 | ❌ 禁用 | GPUI 依赖已废弃的 core-text |
 
-### macOS 支持计划
+### macOS 支持状态
 
-macOS 构建因 GPUI 框架的 `core-graphics` 依赖冲突暂时禁用。
+macOS 构建因 GPUI 的上游依赖问题而禁用:
+- `core-text` crate 已于 2023年7月归档,不再维护
+- 最后版本依赖 `core-graphics` 0.24.0
+- `font-kit` 需要 `core-graphics` 0.25.0
+- 两个版本的类型在 Rust 中不兼容
 
-**重新启用条件**:
-1. GPUI 修复依赖冲突
-2. 或使用其他 UI 框架
-3. 或 fork font-kit 并修复
-
-**跟踪**: 参见 `MACOS_BUILD_ISSUE.md`
+**解决方案**: 等待 GPUI 团队移除对 core-text 的依赖或使用替代方案。详见 `MACOS_BUILD_ISSUE.md`。
 
 ## 使用示例
 

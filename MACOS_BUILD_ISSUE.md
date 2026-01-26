@@ -59,56 +59,6 @@ gpui (from git)
 
 ## 长期解决方案
 
-### 方案 1: 等待上游修复
-
-最理想的解决方案是等待 GPUI 或 font-kit 修复依赖冲突。
-
-**跟踪问题**:
-- GPUI: https://github.com/zed-industries/zed/issues
-- font-kit: https://github.com/servo/font-kit/issues
-
-### 方案 2: 使用统一的 core-graphics 版本
-
-尝试在 `Cargo.toml` 中强制使用统一版本：
-
-```toml
-[patch.crates-io]
-core-graphics = { version = "0.25.0" }
-```
-
-**问题**: 可能导致其他依赖不兼容。
-
-### 方案 3: Fork font-kit
-
-Fork font-kit 并更新其依赖到 core-graphics 0.25.0。
-
-**步骤**:
-1. Fork https://github.com/servo/font-kit
-2. 更新 `Cargo.toml` 中的 core-graphics 版本
-3. 在项目中使用 fork 版本
-
-```toml
-[patch.crates-io]
-font-kit = { git = "https://github.com/your-username/font-kit", branch = "update-core-graphics" }
-```
-
-### 方案 4: 使用不同的 UI 框架
-
-考虑使用其他跨平台 UI 框架，如：
-- egui
-- iced
-- tauri
-
-**优点**: 更成熟的跨平台支持  
-**缺点**: 需要重写大量 UI 代码
-
-## 本地 macOS 构建
-
-如果您需要在本地构建 macOS 版本，可以尝试以下方法：
-
-### 方法 1: 降级 Rust 工具链
-
-```bash
 rustup install 1.75.0
 rustup default 1.75.0
 cargo build --release -p view
