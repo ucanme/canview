@@ -151,12 +151,19 @@ canview.exe
 |------|------|------|------|
 | **Linux** | x86_64 | ✅ 支持 | 完全支持 |
 | **Windows** | x86_64 | ✅ 支持 | 完全支持 |
-| **macOS** | ARM64 | ✅ 支持 | 已修复依赖冲突 |
-| **macOS** | x86_64 | ✅ 支持 | 已修复依赖冲突 |
+| **macOS** | ARM64 | ❌ 禁用 | 依赖冲突 |
+| **macOS** | x86_64 | ❌ 禁用 | 依赖冲突 |
 
-### macOS 支持状态
+### macOS 支持计划
 
-macOS 构建已重新启用。通过在 `Cargo.toml` 中使用 `[patch.crates-io]` 强制统一 `core-graphics` 版本为 0.25.0,解决了之前的依赖冲突问题。
+macOS 构建因 GPUI 框架的 `core-graphics` 依赖冲突暂时禁用。
+
+**重新启用条件**:
+1. GPUI 修复依赖冲突
+2. 或使用其他 UI 框架
+3. 或 fork font-kit 并修复
+
+**跟踪**: 参见 `MACOS_BUILD_ISSUE.md`
 
 ## 使用示例
 
