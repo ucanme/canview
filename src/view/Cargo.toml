@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-# Pinned to specific commit for reproducible builds
-# This version is known to work on Windows and Linux
+# Pinned to specific commits for reproducible builds and type compatibility
+# These versions are known to work together on Windows and Linux
 gpui = { git = "https://github.com/zed-industries/zed", rev = "0a338c37312fc8e2571f367e46b83a542f52ada2" }
-gpui-component = { git = "https://github.com/longbridge/gpui-component" }
+gpui-component = { git = "https://github.com/longbridge/gpui-component", rev = "35f55766f71ef30ef8dfbbcf4f647fef49a99a83" }
 anyhow = "1.0"
 blf = { path = "../blf" }
 parser = { path = "../parser" }
