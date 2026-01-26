@@ -4,9 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-# Use published crates.io versions for stability and faster builds
-gpui = "0.2.2"
-gpui-component = "0.5.0"
+# Use git versions for latest features and Windows compatibility
+# Note: crates.io version 0.2.2 is too old and requires fxc.exe on Windows
+gpui = { git = "https://github.com/zed-industries/zed" }
+gpui-component = { git = "https://github.com/longbridge/gpui-component" }
 anyhow = "1.0"
 blf = { path = "../blf" }
 parser = { path = "../parser" }
