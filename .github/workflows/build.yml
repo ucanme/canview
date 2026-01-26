@@ -24,36 +24,27 @@ jobs:
       matrix:
         include:
           # ==========================================
-          # macOS 构建暂时禁用
+          # macOS 构建已重新启用!
           # ==========================================
-          # 原因: GPUI 依赖已废弃的 core-text crate
-          #   - core-text v21.1.0 (最后版本,2023年归档) → core-graphics 0.24.0
-          #   - font-kit → core-graphics 0.25.0
-          #   - 两个版本的类型在 Rust 中不兼容
+          # 解决方案: 使用 Zed 的 font-kit fork
+          #   - Zed 的 fork 使用 core-graphics 0.24.0
+          #   - 与 core-text 的要求匹配
+          #   - 避免了版本冲突!
           #
-          # 已尝试的解决方案:
-          #   ❌ Cargo version patches (不支持)
-          #   ❌ 使用 Zed's font-kit fork (仍有冲突)
-          #   ❌ 升级 core-text (已废弃,无新版本)
-          #
-          # 等待上游修复:
-          #   - GPUI 团队移除对 core-text 的依赖
-          #   - 或使用替代方案 (如 cosmic-text)
-          #
-          # 跟踪: 参见 MACOS_BUILD_ISSUE.md
+          # 参见: Cargo.toml [patch.crates.io] 部分
           # ==========================================
           
-          # # macOS ARM (Apple Silicon)
-          # - os: macos-latest
-          #   target: aarch64-apple-darwin
-          #   artifact_name: view
-          #   asset_name: canview-macos-aarch64
-          #
-          # # macOS Intel (x86_64)
-          # - os: macos-latest
-          #   target: x86_64-apple-darwin
-          #   artifact_name: view
-          #   asset_name: canview-macos-x86_64
+          # macOS ARM (Apple Silicon)
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: view
+            asset_name: canview-macos-aarch64
+
+          # macOS Intel (x86_64)
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: view
+            asset_name: canview-macos-x86_64
 
           # Linux x86_64
           - os: ubuntu-latest

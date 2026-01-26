@@ -38,5 +38,6 @@ ashpd = { version = "0.8", default-features = false, features = ["tokio"] }
 font-kit = { version = "0.14", default-features = false }
 
 [patch.crates-io]
-# Use Zed's font-kit fork to fix macOS core-graphics dependency conflicts
+# Use Zed's font-kit fork which uses core-graphics 0.24.0
+# This matches core-text's requirement and fixes macOS builds!
 font-kit = { git = "https://github.com/zed-industries/font-kit", branch = "master" }
