@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-# Pin to specific commits to avoid core-graphics dependency conflicts on macOS
-gpui = { git = "https://github.com/zed-industries/zed", rev = "v0.220.0" }
-gpui-component = { git = "https://github.com/longbridge/gpui-component", rev = "main" }
+# Use published crates.io versions for stability and faster builds
+gpui = "0.2.2"
+gpui-component = "0.5.0"
 anyhow = "1.0"
 blf = { path = "../blf" }
 parser = { path = "../parser" }
