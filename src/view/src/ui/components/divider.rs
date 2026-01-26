@@ -52,14 +52,12 @@ impl Divider {
     /// Build the divider element
     pub fn build(self) -> impl IntoElement {
         match self.orientation {
-            DividerOrientation::Horizontal => div()
-                .h(px(self.thickness))
-                .w_full()
-                .bg(rgb(self.color)),
-            DividerOrientation::Vertical => div()
-                .w(px(self.thickness))
-                .h_full()
-                .bg(rgb(self.color)),
+            DividerOrientation::Horizontal => {
+                div().h(px(self.thickness)).w_full().bg(rgb(self.color))
+            }
+            DividerOrientation::Vertical => {
+                div().w(px(self.thickness)).h_full().bg(rgb(self.color))
+            }
         }
     }
 }

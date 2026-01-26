@@ -45,8 +45,7 @@ mod tests {
 
     #[test]
     fn test_format_config_error() {
-        let error = serde_json::from_str::<serde_json::Value>("invalid json")
-            .unwrap_err();
+        let error = serde_json::from_str::<serde_json::Value>("invalid json").unwrap_err();
         let msg = format_config_error(error);
         assert!(msg.contains("Config load error"));
     }
@@ -54,7 +53,10 @@ mod tests {
     #[test]
     fn test_message_constants() {
         assert_eq!(config_loaded_message(), "Configuration loaded.");
-        assert_eq!(config_not_found_message(), "Ready - GPUI version initialized");
+        assert_eq!(
+            config_not_found_message(),
+            "Ready - GPUI version initialized"
+        );
         assert_eq!(config_found_message(), "Found saved config, loading...");
     }
 }

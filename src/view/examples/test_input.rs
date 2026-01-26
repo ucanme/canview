@@ -50,8 +50,13 @@ fn main() {
                                 }
                             }
                         }))
-                        .child(div().text_sm().text_color(rgb(0xffffff)).child("Type here..."))
-                )
+                        .child(
+                            div()
+                                .text_sm()
+                                .text_color(rgb(0xffffff))
+                                .child("Type here..."),
+                        ),
+                ),
         )
     })
 }

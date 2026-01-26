@@ -2,12 +2,12 @@
 
 pub mod library;
 
+use gpui::Pixels;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use gpui::Pixels;
 
 // Re-export library types
-pub use library::{SignalLibrary, LibraryVersion, DatabaseType, ChannelDatabase, VersionStats};
+pub use library::{ChannelDatabase, DatabaseType, LibraryVersion, SignalLibrary, VersionStats};
 
 /// Channel type enumeration
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Copy)]

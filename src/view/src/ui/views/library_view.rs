@@ -1,18 +1,18 @@
 //! Library management UI components
 
+use crate::CanViewApp;
+use crate::library::LibraryManager;
+use crate::models::{ChannelType, DatabaseType, LibraryVersion, SignalLibrary};
 use gpui::prelude::*;
 use gpui::*;
 use gpui_component::input::Input;
-use crate::models::{SignalLibrary, LibraryVersion, DatabaseType, ChannelType};
-use crate::library::LibraryManager;
-use crate::CanViewApp;
 
 /// Library list component
 pub fn render_library_list(
     libraries: &[SignalLibrary],
     selected_id: &Option<String>,
     mappings: &[crate::models::ChannelMapping],
-    cx: &mut Context<CanViewApp>
+    cx: &mut Context<CanViewApp>,
 ) -> impl IntoElement {
     if libraries.is_empty() {
         return div()
@@ -28,7 +28,7 @@ pub fn render_library_list(
                 div()
                     .text_sm()
                     .text_color(rgb(0x6b7280))
-                    .child("No libraries configured")
+                    .child("No libraries configured"),
             );
     }
 
@@ -57,9 +57,7 @@ pub fn render_library_list(
                 .py_2()
                 .cursor_pointer()
                 .hover(|style| style.bg(rgb(0x374151)))
-                .when(is_selected, |el| {
-                    el.bg(rgb(0x3b82f6))
-                })
+                .when(is_selected, |el| el.bg(rgb(0x3b82f6)))
                 .rounded(px(4.))
                 .flex()
                 .items_center()
@@ -69,12 +67,7 @@ pub fn render_library_list(
                         .flex()
                         .items_center()
                         .gap_2()
-                        .child(
-                            div()
-                                .text_sm()
-                                .text_color(rgb(0xffffff))
-                                .child(db_icon)
-                        )
+                        .child(div().text_sm().text_color(rgb(0xffffff)).child(db_icon))
                         .child(
                             div()
                                 .flex()
@@ -85,15 +78,15 @@ pub fn render_library_list(
                                         .text_sm()
                                         .font_weight(FontWeight::MEDIUM)
                                         .text_color(rgb(0xffffff))
-                                        .child(lib_name.clone())
+                                        .child(lib_name.clone()),
                                 )
                                 .child(
                                     div()
                                         .text_xs()
                                         .text_color(rgb(0x9ca3af))
-                                        .child(format!("{} versions", version_count))
-                                )
-                        )
+                                        .child(format!("{} versions", version_count)),
+                                ),
+                        ),
                 )
                 .when(is_used, |el| {
                     el.child(
@@ -104,13 +97,16 @@ pub fn render_library_list(
                             .rounded(px(3.))
                             .text_xs()
                             .text_color(rgb(0xffffff))
-                            .child("In Use")
+                            .child("In Use"),
                     )
                 })
-                .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _event, _window, cx| {
-                    this.selected_library_id = Some(lib_id.clone());
-                    cx.notify();
-                }))
+                .on_mouse_down(
+                    gpui::MouseButton::Left,
+                    cx.listener(move |this, _event, _window, cx| {
+                        this.selected_library_id = Some(lib_id.clone());
+                        cx.notify();
+                    }),
+                ),
         );
     }
 
@@ -121,22 +117,17 @@ pub fn render_library_list(
 pub fn render_version_details(
     library: &SignalLibrary,
     mappings: &[crate::models::ChannelMapping],
-    cx: &mut Context<CanViewApp>
+    cx: &mut Context<CanViewApp>,
 ) -> impl IntoElement {
     let versions = &library.versions;
 
     if versions.is_empty() {
-        return div()
-            .flex_1()
-            .flex()
-            .items_center()
-            .justify_center()
-            .child(
-                div()
-                    .text_sm()
-                    .text_color(rgb(0x6b7280))
-                    .child("No versions available")
-            );
+        return div().flex_1().flex().items_center().justify_center().child(
+            div()
+                .text_sm()
+                .text_color(rgb(0x6b7280))
+                .child("No versions available"),
+        );
     }
 
     div()
@@ -155,61 +146,55 @@ pub fn render_version_details(
                 .border_1()
                 .border_color(rgb(0x2a2a2a))
                 .rounded(px(8.))
-                .when(is_active, |el| {
-                    el.border_2().border_color(rgb(0x10b981))
-                })
+                .when(is_active, |el| el.border_2().border_color(rgb(0x10b981)))
                 .flex()
                 .flex_col()
                 .gap_2()
                 .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .justify_between()
-                        .child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .gap_2()
-                                .child(
+                    div().flex().items_center().justify_between().child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .child(
+                                div()
+                                    .text_lg()
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(rgb(0xffffff))
+                                    .child(version.name.clone()),
+                            )
+                            .when(is_active, |el| {
+                                el.child(
                                     div()
-                                        .text_lg()
-                                        .font_weight(FontWeight::BOLD)
+                                        .px_2()
+                                        .py_1()
+                                        .bg(rgb(0x10b981))
+                                        .rounded(px(3.))
+                                        .text_xs()
                                         .text_color(rgb(0xffffff))
-                                        .child(version.name.clone())
+                                        .child("Active"),
                                 )
-                                .when(is_active, |el| {
-                                    el.child(
-                                        div()
-                                            .px_2()
-                                            .py_1()
-                                            .bg(rgb(0x10b981))
-                                            .rounded(px(3.))
-                                            .text_xs()
-                                            .text_color(rgb(0xffffff))
-                                            .child("Active")
-                                    )
-                                })
-                        )
+                            }),
+                    ),
                 )
                 .child(
                     div()
                         .text_sm()
                         .text_color(rgb(0x9ca3af))
-                        .child(format!("Date: {}", version.date))
+                        .child(format!("Date: {}", version.date)),
                 )
                 .child(
                     div()
                         .text_sm()
                         .text_color(rgb(0x9ca3af))
-                        .child(format!("Path: {}", version.path))
+                        .child(format!("Path: {}", version.path)),
                 )
                 .when(!version.description.is_empty(), |el| {
                     el.child(
                         div()
                             .text_sm()
                             .text_color(rgb(0x9ca3af))
-                            .child(format!("Description: {}", version.description))
+                            .child(format!("Description: {}", version.description)),
                     )
                 })
                 .child(
@@ -229,9 +214,16 @@ pub fn render_version_details(
                                 .text_color(rgb(0xffffff))
                                 .text_sm()
                                 .child("Load")
-                                .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _event, _window, cx| {
-                                    this.load_library_version(&lib_id_clone, &version_name_clone, cx);
-                                }))
+                                .on_mouse_down(
+                                    gpui::MouseButton::Left,
+                                    cx.listener(move |this, _event, _window, cx| {
+                                        this.load_library_version(
+                                            &lib_id_clone,
+                                            &version_name_clone,
+                                            cx,
+                                        );
+                                    }),
+                                )
                         })
                         .child({
                             let lib_id_clone = lib_id.clone();
@@ -246,10 +238,17 @@ pub fn render_version_details(
                                 .text_color(rgb(0xffffff))
                                 .text_sm()
                                 .child("Delete")
-                                .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _event, _window, cx| {
-                                    this.delete_library_version(&lib_id_clone, &version_name_clone, cx);
-                                }))
-                        })
+                                .on_mouse_down(
+                                    gpui::MouseButton::Left,
+                                    cx.listener(move |this, _event, _window, cx| {
+                                        this.delete_library_version(
+                                            &lib_id_clone,
+                                            &version_name_clone,
+                                            cx,
+                                        );
+                                    }),
+                                )
+                        }),
                 )
         }))
 }
@@ -260,7 +259,7 @@ pub fn render_library_dialog(
     dialog_type: LibraryDialogType,
     library_name_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     version_name_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
-    cx: &mut Context<CanViewApp>
+    cx: &mut Context<CanViewApp>,
 ) -> impl IntoElement {
     if !show {
         return div();
@@ -294,7 +293,7 @@ pub fn render_library_dialog(
                         .text_xl()
                         .font_weight(FontWeight::BOLD)
                         .text_color(rgb(0xffffff))
-                        .child(title)
+                        .child(title),
                 )
                 .child(match dialog_type {
                     LibraryDialogType::Create => {
@@ -313,24 +312,22 @@ pub fn render_library_dialog(
                                             .text_sm()
                                             .font_weight(FontWeight::MEDIUM)
                                             .text_color(rgb(0xffffff))
-                                            .child("Library Name")
+                                            .child("Library Name"),
                                     )
-                                    .child(
-                                        if let Some(input) = library_name_input {
-                                            Input::new(input).into_any_element()
-                                        } else {
-                                            div()
-                                                .px_3()
-                                                .py_2()
-                                                .bg(rgb(0x374151))
-                                                .border_1()
-                                                .border_color(rgb(0x2a2a2a))
-                                                .rounded(px(4.))
-                                                .text_color(rgb(0xffffff))
-                                                .child("Enter library name...")
-                                                .into_any_element()
-                                        }
-                                    )
+                                    .child(if let Some(input) = library_name_input {
+                                        Input::new(input).into_any_element()
+                                    } else {
+                                        div()
+                                            .px_3()
+                                            .py_2()
+                                            .bg(rgb(0x374151))
+                                            .border_1()
+                                            .border_color(rgb(0x2a2a2a))
+                                            .rounded(px(4.))
+                                            .text_color(rgb(0xffffff))
+                                            .child("Enter library name...")
+                                            .into_any_element()
+                                    }),
                             )
                             .child(
                                 div()
@@ -342,7 +339,7 @@ pub fn render_library_dialog(
                                             .text_sm()
                                             .font_weight(FontWeight::MEDIUM)
                                             .text_color(rgb(0xffffff))
-                                            .child("Library Type")
+                                            .child("Library Type"),
                                     )
                                     .child(
                                         div()
@@ -353,8 +350,8 @@ pub fn render_library_dialog(
                                             .border_color(rgb(0x2a2a2a))
                                             .rounded(px(4.))
                                             .text_color(rgb(0xffffff))
-                                            .child("CAN (DBC)")
-                                    )
+                                            .child("CAN (DBC)"),
+                                    ),
                             )
                             .into_any_element()
                     }
@@ -374,24 +371,22 @@ pub fn render_library_dialog(
                                             .text_sm()
                                             .font_weight(FontWeight::MEDIUM)
                                             .text_color(rgb(0xffffff))
-                                            .child("Version Name")
+                                            .child("Version Name"),
                                     )
-                                    .child(
-                                        if let Some(input) = version_name_input {
-                                            Input::new(input).into_any_element()
-                                        } else {
-                                            div()
-                                                .px_3()
-                                                .py_2()
-                                                .bg(rgb(0x374151))
-                                                .border_1()
-                                                .border_color(rgb(0x2a2a2a))
-                                                .rounded(px(4.))
-                                                .text_color(rgb(0xffffff))
-                                                .child("Enter version name...")
-                                                .into_any_element()
-                                        }
-                                    )
+                                    .child(if let Some(input) = version_name_input {
+                                        Input::new(input).into_any_element()
+                                    } else {
+                                        div()
+                                            .px_3()
+                                            .py_2()
+                                            .bg(rgb(0x374151))
+                                            .border_1()
+                                            .border_color(rgb(0x2a2a2a))
+                                            .rounded(px(4.))
+                                            .text_color(rgb(0xffffff))
+                                            .child("Enter version name...")
+                                            .into_any_element()
+                                    }),
                             )
                             .child(
                                 div()
@@ -403,7 +398,7 @@ pub fn render_library_dialog(
                                             .text_sm()
                                             .font_weight(FontWeight::MEDIUM)
                                             .text_color(rgb(0xffffff))
-                                            .child("Database File")
+                                            .child("Database File"),
                                     )
                                     .child(
                                         div()
@@ -414,33 +409,32 @@ pub fn render_library_dialog(
                                             .border_color(rgb(0x2a2a2a))
                                             .rounded(px(4.))
                                             .text_color(rgb(0xffffff))
-                                            .child("Select DBC/LDF file...")
-                                    )
+                                            .child("Select DBC/LDF file..."),
+                                    ),
                             )
                             .into_any_element()
                     }
                 })
                 .child(
-                    div()
-                        .flex()
-                        .gap_2()
-                        .justify_end()
-                        .child(
-                            div()
-                                .px_4()
-                                .py_2()
-                                .bg(rgb(0x6b7280))
-                                .rounded(px(4.))
-                                .cursor_pointer()
-                                .hover(|style| style.bg(rgb(0x4b5563)))
-                                .text_color(rgb(0xffffff))
-                                .child("Cancel")
-                                .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _event, _window, cx| {
+                    div().flex().gap_2().justify_end().child(
+                        div()
+                            .px_4()
+                            .py_2()
+                            .bg(rgb(0x6b7280))
+                            .rounded(px(4.))
+                            .cursor_pointer()
+                            .hover(|style| style.bg(rgb(0x4b5563)))
+                            .text_color(rgb(0xffffff))
+                            .child("Cancel")
+                            .on_mouse_down(
+                                gpui::MouseButton::Left,
+                                cx.listener(|this, _event, _window, cx| {
                                     this.show_library_dialog = false;
                                     cx.notify();
-                                }))
-                        )
-                )
+                                }),
+                            ),
+                    ),
+                ),
         )
 }
 
@@ -466,7 +460,7 @@ fn render_create_library_form(cx: &mut Context<CanViewApp>) -> impl IntoElement 
                         .text_sm()
                         .font_weight(FontWeight::MEDIUM)
                         .text_color(rgb(0xffffff))
-                        .child("Library Name")
+                        .child("Library Name"),
                 )
                 .child(
                     div()
@@ -477,8 +471,8 @@ fn render_create_library_form(cx: &mut Context<CanViewApp>) -> impl IntoElement 
                         .border_color(rgb(0x2a2a2a))
                         .rounded(px(4.))
                         .text_color(rgb(0xffffff))
-                        .child("Enter library name...")
-                )
+                        .child("Enter library name..."),
+                ),
         )
         .child(
             div()
@@ -490,7 +484,7 @@ fn render_create_library_form(cx: &mut Context<CanViewApp>) -> impl IntoElement 
                         .text_sm()
                         .font_weight(FontWeight::MEDIUM)
                         .text_color(rgb(0xffffff))
-                        .child("Library Type")
+                        .child("Library Type"),
                 )
                 .child(
                     div()
@@ -506,7 +500,7 @@ fn render_create_library_form(cx: &mut Context<CanViewApp>) -> impl IntoElement 
                                 .border_color(rgb(0x2563eb))
                                 .rounded(px(4.))
                                 .text_color(rgb(0xffffff))
-                                .child("CAN")
+                                .child("CAN"),
                         )
                         .child(
                             div()
@@ -518,9 +512,9 @@ fn render_create_library_form(cx: &mut Context<CanViewApp>) -> impl IntoElement 
                                 .border_color(rgb(0x2a2a2a))
                                 .rounded(px(4.))
                                 .text_color(rgb(0xffffff))
-                                .child("LIN")
-                        )
-                )
+                                .child("LIN"),
+                        ),
+                ),
         )
         .child(
             div()
@@ -531,7 +525,7 @@ fn render_create_library_form(cx: &mut Context<CanViewApp>) -> impl IntoElement 
                 .cursor_pointer()
                 .hover(|style| style.bg(rgb(0x059669)))
                 .text_color(rgb(0xffffff))
-                .child("Create Library")
+                .child("Create Library"),
         )
 }
 
@@ -551,7 +545,7 @@ fn render_add_version_form(cx: &mut Context<CanViewApp>) -> impl IntoElement {
                         .text_sm()
                         .font_weight(FontWeight::MEDIUM)
                         .text_color(rgb(0xffffff))
-                        .child("Version Name")
+                        .child("Version Name"),
                 )
                 .child(
                     div()
@@ -562,8 +556,8 @@ fn render_add_version_form(cx: &mut Context<CanViewApp>) -> impl IntoElement {
                         .border_color(rgb(0x2a2a2a))
                         .rounded(px(4.))
                         .text_color(rgb(0xffffff))
-                        .child("v1.0")
-                )
+                        .child("v1.0"),
+                ),
         )
         .child(
             div()
@@ -575,7 +569,7 @@ fn render_add_version_form(cx: &mut Context<CanViewApp>) -> impl IntoElement {
                         .text_sm()
                         .font_weight(FontWeight::MEDIUM)
                         .text_color(rgb(0xffffff))
-                        .child("Database File")
+                        .child("Database File"),
                 )
                 .child(
                     div()
@@ -586,8 +580,8 @@ fn render_add_version_form(cx: &mut Context<CanViewApp>) -> impl IntoElement {
                         .border_color(rgb(0x2a2a2a))
                         .rounded(px(4.))
                         .text_color(rgb(0x9ca3af))
-                        .child("Click to select file...")
-                )
+                        .child("Click to select file..."),
+                ),
         )
         .child(
             div()
@@ -598,6 +592,6 @@ fn render_add_version_form(cx: &mut Context<CanViewApp>) -> impl IntoElement {
                 .cursor_pointer()
                 .hover(|style| style.bg(rgb(0x059669)))
                 .text_color(rgb(0xffffff))
-                .child("Add Version")
+                .child("Add Version"),
         )
 }

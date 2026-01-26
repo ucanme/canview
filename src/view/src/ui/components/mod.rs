@@ -8,11 +8,11 @@
 pub mod divider;
 // pub mod label;
 // pub mod panel;
-pub mod text_input;
-pub mod simple_text_input;  // New simplified version
 pub mod enhanced_text_input;
-pub mod zed_style_text_input;
 pub mod ime_text_input;
+pub mod simple_text_input; // New simplified version
+pub mod text_input;
+pub mod zed_style_text_input;
 
 // Re-export for convenience
 // pub use button::{Button, ButtonColor};
@@ -20,14 +20,14 @@ pub mod ime_text_input;
 pub use divider::{Divider, DividerOrientation};
 // pub use label::{Label, LabelColor, LabelSize};
 // pub use panel::{Panel, PanelStyle};
-pub use text_input::{TextInputBuilder, TextInputValidation};
-pub use simple_text_input::SimpleTextInputBuilder;  // Simple version, no internal event handling
 pub use enhanced_text_input::{EnhancedTextInputBuilder, EnhancedTextInputState, TextSelection};
+pub use ime_text_input::ImeTextInputState;
+pub use simple_text_input::SimpleTextInputBuilder; // Simple version, no internal event handling
+pub use text_input::{TextInputBuilder, TextInputValidation};
 pub use zed_style_text_input::{ZedStyleTextInputBuilder, ZedStyleTextInputState};
-pub use ime_text_input::{ImeTextInputState};
 
-use crate::app::AppView;
 use crate::CanViewApp;
+use crate::app::AppView;
 use gpui::prelude::*;
 use gpui::*;
 

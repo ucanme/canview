@@ -16,27 +16,31 @@ pub struct BlfResult {
 
 impl BlfResult {
     /// 将相对时间戳（纳秒）转换为绝对时间戳（纳秒）
-    /// 
+    ///
     /// # 参数
     /// - `relative_ns`: 相对于测量开始时间的偏移量（纳秒）
-    /// 
+    ///
     /// # 返回
     /// 绝对时间戳（纳秒，自 Unix epoch）
     pub fn to_absolute_timestamp_ns(&self, relative_ns: u64) -> i64 {
-        self.file_stats.measurement_start_time.add_nanoseconds(relative_ns)
+        self.file_stats
+            .measurement_start_time
+            .add_nanoseconds(relative_ns)
     }
-    
+
     /// 格式化时间戳为字符串
-    /// 
+    ///
     /// # 参数
     /// - `relative_ns`: 相对于测量开始时间的偏移量（纳秒）
-    /// 
+    ///
     /// # 返回
     /// 格式化的时间字符串（YYYY-MM-DD HH:MM:SS.ffffff）
     pub fn format_timestamp(&self, relative_ns: u64) -> String {
-        self.file_stats.measurement_start_time.format_with_offset(relative_ns)
+        self.file_stats
+            .measurement_start_time
+            .format_with_offset(relative_ns)
     }
-    
+
     /// 获取测量开始时间的格式化字符串
     pub fn measurement_start_time_str(&self) -> String {
         self.file_stats.measurement_start_time.format()

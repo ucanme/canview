@@ -207,7 +207,12 @@ impl ZedStyleTextInputBuilder {
                     .flex()
                     .items_center()
                     .w_full()
-                    .child(div().text_sm().text_color(text_color).child(display_text.clone()))
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(text_color)
+                            .child(display_text.clone()),
+                    )
                     .when(self.focused && self.show_cursor && !is_empty, |el| {
                         // Simple cursor indicator
                         el.child(

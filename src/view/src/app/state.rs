@@ -2,12 +2,12 @@
 //!
 //! This module contains the core application state structures.
 
-use gpui::{Bounds, Pixels, UniformListScrollHandle, Entity};
+use blf::LogObject;
+use gpui::{Bounds, Entity, Pixels, UniformListScrollHandle};
 use parser::dbc::DbcDatabase;
 use parser::ldf::LdfDatabase;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use blf::LogObject;
 
 // Import AppConfig and ChannelMapping from crate root (defined in main.rs)
 use crate::{AppConfig, ChannelMapping, ChannelType};
@@ -34,7 +34,7 @@ pub enum AppView {
 pub struct ScrollbarDragState {
     pub start_y: Pixels,
     pub start_scroll_offset: f32,
-    pub filtered_count: usize,  // Number of filtered messages at drag start
+    pub filtered_count: usize, // Number of filtered messages at drag start
 }
 
 /// Main application state
@@ -53,7 +53,7 @@ pub struct CanViewApp {
     // Configuration
     pub config_dir: Option<PathBuf>,
     pub config_file_path: Option<PathBuf>,
-    
+
     // Signal library local storage
     pub signal_storage: Option<crate::library::SignalLibraryStorage>,
 
@@ -70,7 +70,7 @@ pub struct CanViewApp {
     pub list_container_height: f32,
 
     // Display settings
-    pub id_display_decimal: bool,  // true for decimal, false for hexadecimal
+    pub id_display_decimal: bool, // true for decimal, false for hexadecimal
 
     // ID filter
     pub id_filter: Option<u32>,
@@ -96,7 +96,7 @@ pub struct CanViewApp {
     // Library management
     pub library_manager: LibraryManager,
     pub selected_library_id: Option<String>,
-    pub selected_version_id: Option<String>,  // Add selected version ID
+    pub selected_version_id: Option<String>, // Add selected version ID
     pub new_library_name: String,
     pub library_cursor_position: usize,
     pub library_versions_expanded: bool,
@@ -117,13 +117,13 @@ pub struct CanViewApp {
     pub new_channel_id: String,
     pub new_channel_name: String,
     pub new_channel_db_path: String,
-    pub editing_channel_index: Option<usize>,  // None for adding new, Some(index) for editing
+    pub editing_channel_index: Option<usize>, // None for adding new, Some(index) for editing
     pub channel_id_input: Option<Entity<InputState>>,
     pub channel_name_input: Option<Entity<InputState>>,
-    pub show_add_channel_input: bool,  // Controls inline input display in channel list
-    pub channel_db_path_input: Option<Entity<InputState>>,  // For database path input
-    pub new_channel_type: ChannelType,  // Store selected channel type (CAN/LIN)
-    pub pending_file_path: Option<std::sync::mpsc::Receiver<Option<String>>>,  // For file dialog result
+    pub show_add_channel_input: bool, // Controls inline input display in channel list
+    pub channel_db_path_input: Option<Entity<InputState>>, // For database path input
+    pub new_channel_type: ChannelType, // Store selected channel type (CAN/LIN)
+    pub pending_file_path: Option<std::sync::mpsc::Receiver<Option<String>>>, // For file dialog result
 
     // Deprecated: These fields are kept for backward compatibility during migration
     #[deprecated(note = "Use library_name_input instead")]
@@ -184,7 +184,7 @@ impl CanViewApp {
             channel_filter_scroll_handle: UniformListScrollHandle::new(),
             library_manager: LibraryManager::new(),
             selected_library_id: None,
-            selected_version_id: None,  // Initialize selected version ID
+            selected_version_id: None, // Initialize selected version ID
             new_library_name: String::new(),
             library_cursor_position: 0,
             library_versions_expanded: true,
@@ -196,24 +196,25 @@ impl CanViewApp {
             library_search_query: String::new(),
             library_filter_type: None,
             // gpui-component input support
-            library_name_input: None,  // Will be initialized when cx is available
-            version_name_input: None,  // Will be initialized when cx is available
+            library_name_input: None, // Will be initialized when cx is available
+            version_name_input: None, // Will be initialized when cx is available
             // Channel configuration dialog
             show_channel_config_dialog: false,
             new_channel_id: String::new(),
             new_channel_name: String::new(),
             new_channel_db_path: String::new(),
             editing_channel_index: None,
-            channel_id_input: None,  // Will be initialized when cx is available
-            channel_name_input: None,  // Will be initialized when cx is available
+            channel_id_input: None, // Will be initialized when cx is available
+            channel_name_input: None, // Will be initialized when cx is available
             show_add_channel_input: false,
-            channel_db_path_input: None,  // Will be initialized when cx is available
-            new_channel_type: ChannelType::CAN,  // Default to CAN
-            pending_file_path: None,  // For file dialog result
+            channel_db_path_input: None, // Will be initialized when cx is available
+            new_channel_type: ChannelType::CAN, // Default to CAN
+            pending_file_path: None,     // For file dialog result
             // Deprecated fields for backward compatibility
             focused_library_input: None,
             is_editing_library_name: false,
-            library_input_state: crate::ui::components::ime_text_input::ImeTextInputState::default(),
+            library_input_state: crate::ui::components::ime_text_input::ImeTextInputState::default(
+            ),
             library_focus_handle: None,
             ime_handler_registered: false,
         }

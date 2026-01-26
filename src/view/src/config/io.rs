@@ -2,8 +2,8 @@
 //!
 //! Handles loading and saving configuration files.
 
-use std::path::PathBuf;
 use crate::AppConfig;
+use std::path::PathBuf;
 
 /// Load configuration from a file selected by the user
 pub fn load_config_from_file() -> Option<(AppConfig, PathBuf, String)> {
@@ -28,7 +28,10 @@ pub fn load_config_from_file() -> Option<(AppConfig, PathBuf, String)> {
 }
 
 /// Save configuration to a file
-pub fn save_config_to_file(config: &AppConfig, default_path: Option<PathBuf>) -> Option<(PathBuf, String)> {
+pub fn save_config_to_file(
+    config: &AppConfig,
+    default_path: Option<PathBuf>,
+) -> Option<(PathBuf, String)> {
     let path = if let Some(existing_path) = default_path {
         existing_path
     } else {
@@ -36,7 +39,7 @@ pub fn save_config_to_file(config: &AppConfig, default_path: Option<PathBuf>) ->
             .add_filter("Config Files", &["json"])
             .save_file()?
     };
-    
+
     match serde_json::to_string_pretty(config) {
         Ok(content) => {
             if std::fs::write(&path, content).is_ok() {

@@ -5,12 +5,12 @@
 //! - 中栏：版本列表
 //! - 右栏：通道配置
 
+use crate::app::LibraryDialogType;
+use crate::models::{ChannelMapping, LibraryVersion, SignalLibrary};
+use crate::ui::components::EnhancedTextInputBuilder;
+use crate::ui::components::enhanced_text_input::TextInputValidation;
 use gpui::prelude::*;
 use gpui::*;
-use crate::models::{SignalLibrary, LibraryVersion, ChannelMapping};
-use crate::app::LibraryDialogType;
-use crate::ui::components::{EnhancedTextInputBuilder};
-use crate::ui::components::enhanced_text_input::TextInputValidation;
 
 /// 渲染三栏布局的库管理界面
 pub fn render_library_management_view(
@@ -22,9 +22,9 @@ pub fn render_library_management_view(
     new_library_name: &str,
     new_version_name: &str,
     focused_input: &Option<String>,
-    _library_cursor_pos: usize,  // No longer needed - handled by EnhancedTextInput
-    _version_cursor_pos: usize,  // No longer needed - handled by EnhancedTextInput
-    cx: &mut Context<crate::CanViewApp>
+    _library_cursor_pos: usize, // No longer needed - handled by EnhancedTextInput
+    _version_cursor_pos: usize, // No longer needed - handled by EnhancedTextInput
+    cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     div()
         .flex_1()
@@ -40,7 +40,7 @@ pub fn render_library_management_view(
             show_new_library_input,
             new_library_name,
             focused_input,
-            cx
+            cx,
         ))
         .child(render_middle_column_enhanced(
             libraries,
@@ -49,9 +49,13 @@ pub fn render_library_management_view(
             show_add_version_input,
             new_version_name,
             focused_input,
-            cx
+            cx,
         ))
-        .child(render_right_column(libraries, selected_library_id, mappings))
+        .child(render_right_column(
+            libraries,
+            selected_library_id,
+            mappings,
+        ))
 }
 
 /// 左栏：库列表（使用 EnhancedTextInput）
@@ -62,7 +66,7 @@ fn render_left_column_enhanced(
     show_new_library_input: bool,
     new_library_name: &str,
     focused_input: &Option<String>,
-    cx: &mut Context<crate::CanViewApp>
+    cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     let is_focused = focused_input.as_ref() == Some(&"new_library_input".to_string());
     let view = cx.entity().clone();
@@ -219,7 +223,7 @@ fn render_middle_column_enhanced(
     show_add_version_input: bool,
     new_version_name: &str,
     focused_input: &Option<String>,
-    cx: &mut Context<crate::CanViewApp>
+    cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     let is_focused = focused_input.as_ref() == Some(&"new_version_input".to_string());
     let view = cx.entity().clone();
@@ -468,7 +472,7 @@ fn render_middle_column_enhanced(
 fn render_right_column(
     _libraries: &[SignalLibrary],
     selected_library_id: &Option<String>,
-    _mappings: &[ChannelMapping]
+    _mappings: &[ChannelMapping],
 ) -> impl IntoElement {
     div()
         .flex_1()
@@ -480,7 +484,7 @@ fn render_right_column(
                 .text_base()
                 .font_weight(FontWeight::BOLD)
                 .text_color(rgb(0xffffff))
-                .child("Channel Configuration")
+                .child("Channel Configuration"),
         )
         .when(selected_library_id.is_some(), |this| {
             this.child(
@@ -496,8 +500,8 @@ fn render_right_column(
                         div()
                             .text_sm()
                             .text_color(rgb(0x6b7280))
-                            .child("Channel configuration UI (to be implemented)")
-                    )
+                            .child("Channel configuration UI (to be implemented)"),
+                    ),
             )
         })
         .when(selected_library_id.is_none(), |this| {
@@ -514,8 +518,8 @@ fn render_right_column(
                         div()
                             .text_sm()
                             .text_color(rgb(0x6b7280))
-                            .child("No library selected")
-                    )
+                            .child("No library selected"),
+                    ),
             )
         })
 }
@@ -527,12 +531,8 @@ fn render_filter_button(label: &'static str, is_active: bool) -> impl IntoElemen
         .py_1()
         .rounded(px(4.0))
         .cursor_pointer()
-        .when(is_active, |el| {
-            el.bg(rgb(0x3b82f6))
-        })
-        .when(!is_active, |el| {
-            el.hover(|style| style.bg(rgb(0x374151)))
-        })
+        .when(is_active, |el| el.bg(rgb(0x3b82f6)))
+        .when(!is_active, |el| el.hover(|style| style.bg(rgb(0x374151))))
         .text_color(rgb(0xffffff))
         .text_sm()
         .child(label)
@@ -542,7 +542,7 @@ fn render_filter_button(label: &'static str, is_active: bool) -> impl IntoElemen
 fn render_library_item(
     library: &SignalLibrary,
     selected_library_id: &Option<String>,
-    mappings: &[ChannelMapping]
+    mappings: &[ChannelMapping],
 ) -> impl IntoElement {
     let is_selected = selected_library_id.as_ref() == Some(&library.id);
     let is_used = library.is_used(mappings);
@@ -552,9 +552,7 @@ fn render_library_item(
         .py_2()
         .cursor_pointer()
         .hover(|style| style.bg(rgb(0x374151)))
-        .when(is_selected, |el| {
-            el.bg(rgb(0x3b82f6))
-        })
+        .when(is_selected, |el| el.bg(rgb(0x3b82f6)))
         .rounded(px(4.0))
         .flex()
         .items_center()
@@ -569,7 +567,7 @@ fn render_library_item(
                         .text_sm()
                         .font_weight(FontWeight::MEDIUM)
                         .text_color(rgb(0xffffff))
-                        .child(library.name.clone())
+                        .child(library.name.clone()),
                 )
                 .when(is_used, |el| {
                     el.child(
@@ -580,9 +578,9 @@ fn render_library_item(
                             .rounded(px(2.0))
                             .text_xs()
                             .text_color(rgb(0xffffff))
-                            .child("In Use")
+                            .child("In Use"),
                     )
-                })
+                }),
         )
         .child(
             div()
@@ -593,7 +591,7 @@ fn render_library_item(
                 .cursor_pointer()
                 .text_color(rgb(0x9ca3af))
                 .text_xs()
-                .child("✕")
+                .child("✕"),
         )
 }
 
@@ -616,16 +614,19 @@ fn render_add_library_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoEl
             div()
                 .text_sm()
                 .text_color(rgb(0x6b7280))
-                .child("+ Add Library")
+                .child("+ Add Library"),
         )
-        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _event, _window, cx| {
-            this.show_library_dialog = true;
-            this.library_dialog_type = LibraryDialogType::Create;
-            this.focused_library_input = Some("new_library_input".to_string());
-            this.is_editing_library_name = true;
-            cx.notify();
-            eprintln!("➕ Add library button clicked");
-        }))
+        .on_mouse_down(
+            gpui::MouseButton::Left,
+            cx.listener(|this, _event, _window, cx| {
+                this.show_library_dialog = true;
+                this.library_dialog_type = LibraryDialogType::Create;
+                this.focused_library_input = Some("new_library_input".to_string());
+                this.is_editing_library_name = true;
+                cx.notify();
+                eprintln!("➕ Add library button clicked");
+            }),
+        )
 }
 
 /// 渲染添加版本按钮（保持不变）
@@ -647,14 +648,17 @@ fn render_add_version_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoEl
             div()
                 .text_sm()
                 .text_color(rgb(0x6b7280))
-                .child("+ Add Version")
+                .child("+ Add Version"),
         )
-        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _event, _window, cx| {
-            if this.selected_library_id.is_some() {
-                this.show_version_input = true;
-                this.focused_library_input = Some("new_version_input".to_string());
-                cx.notify();
-                eprintln!("➕ Add version button clicked");
-            }
-        }))
+        .on_mouse_down(
+            gpui::MouseButton::Left,
+            cx.listener(|this, _event, _window, cx| {
+                if this.selected_library_id.is_some() {
+                    this.show_version_input = true;
+                    this.focused_library_input = Some("new_version_input".to_string());
+                    cx.notify();
+                    eprintln!("➕ Add version button clicked");
+                }
+            }),
+        )
 }

@@ -35,17 +35,20 @@ impl CanMessage {
             // Check both offset 0 and offset 16
             let channel_at_0 = u16::from_le_bytes([remaining[0], remaining[1]]);
             let dlc_at_3 = remaining[3];
-            let id_at_4 = u32::from_le_bytes([remaining[4], remaining[5], remaining[6], remaining[7]]);
+            let id_at_4 =
+                u32::from_le_bytes([remaining[4], remaining[5], remaining[6], remaining[7]]);
 
             let channel_at_16 = u16::from_le_bytes([remaining[16], remaining[17]]);
             let dlc_at_19 = remaining[19];
-            let id_at_20 = u32::from_le_bytes([remaining[20], remaining[21], remaining[22], remaining[23]]);
+            let id_at_20 =
+                u32::from_le_bytes([remaining[20], remaining[21], remaining[22], remaining[23]]);
 
             // Offset 0 looks invalid (all zeros or suspicious) AND offset 16 looks valid
-            let offset_0_invalid = (channel_at_0 == 0 && dlc_at_3 == 0 && id_at_4 == 0) ||
-                                   (dlc_at_3 == 0 && id_at_4 == 0 && channel_at_0 <= 1);
+            let offset_0_invalid = (channel_at_0 == 0 && dlc_at_3 == 0 && id_at_4 == 0)
+                || (dlc_at_3 == 0 && id_at_4 == 0 && channel_at_0 <= 1);
 
-            let offset_16_valid = (channel_at_16 > 0 || dlc_at_19 > 0 || id_at_20 > 0) && dlc_at_19 <= 8;
+            let offset_16_valid =
+                (channel_at_16 > 0 || dlc_at_19 > 0 || id_at_20 > 0) && dlc_at_19 <= 8;
 
             if offset_0_invalid && offset_16_valid {
                 16

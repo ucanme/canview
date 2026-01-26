@@ -53,7 +53,12 @@ pub struct ChannelDatabase {
 
 impl ChannelDatabase {
     /// 创建新的通道数据库配置
-    pub fn new(channel_type: crate::models::ChannelType, channel_id: u16, channel_name: String, database_path: String) -> Self {
+    pub fn new(
+        channel_type: crate::models::ChannelType,
+        channel_id: u16,
+        channel_name: String,
+        database_path: String,
+    ) -> Self {
         Self {
             channel_type,
             channel_id,
@@ -66,7 +71,10 @@ impl ChannelDatabase {
     pub fn validate(&self) -> Result<(), String> {
         // 检查通道ID是否有效（1-255）
         if self.channel_id == 0 || self.channel_id > 255 {
-            return Err(format!("Invalid channel ID: {}. Must be between 1 and 255", self.channel_id));
+            return Err(format!(
+                "Invalid channel ID: {}. Must be between 1 and 255",
+                self.channel_id
+            ));
         }
 
         // 检查通道名称是否为空
@@ -133,8 +141,15 @@ impl LibraryVersion {
         channel_db.validate()?;
 
         // 检查通道ID是否已存在
-        if self.channel_databases.iter().any(|db| db.channel_id == channel_db.channel_id) {
-            return Err(format!("Channel ID {} already exists in this version", channel_db.channel_id));
+        if self
+            .channel_databases
+            .iter()
+            .any(|db| db.channel_id == channel_db.channel_id)
+        {
+            return Err(format!(
+                "Channel ID {} already exists in this version",
+                channel_db.channel_id
+            ));
         }
 
         self.channel_databases.push(channel_db);
@@ -143,20 +158,23 @@ impl LibraryVersion {
 
     /// 获取指定通道的数据库配置
     pub fn get_channel_database(&self, channel_id: u16) -> Option<&ChannelDatabase> {
-        self.channel_databases.iter()
+        self.channel_databases
+            .iter()
             .find(|db| db.channel_id == channel_id)
     }
 
     /// 获取所有CAN通道
     pub fn get_can_channels(&self) -> Vec<&ChannelDatabase> {
-        self.channel_databases.iter()
+        self.channel_databases
+            .iter()
             .filter(|db| db.database_type() == Some(DatabaseType::DBC))
             .collect()
     }
 
     /// 获取所有LIN通道
     pub fn get_lin_channels(&self) -> Vec<&ChannelDatabase> {
-        self.channel_databases.iter()
+        self.channel_databases
+            .iter()
             .filter(|db| db.database_type() == Some(DatabaseType::LDF))
             .collect()
     }
@@ -179,12 +197,17 @@ impl LibraryVersion {
 
     /// 检查通道ID是否已被使用
     pub fn is_channel_id_used(&self, channel_id: u16) -> bool {
-        self.channel_databases.iter().any(|db| db.channel_id == channel_id)
+        self.channel_databases
+            .iter()
+            .any(|db| db.channel_id == channel_id)
     }
 
     /// 获取已使用的通道ID列表
     pub fn get_used_channel_ids(&self) -> Vec<u16> {
-        self.channel_databases.iter().map(|db| db.channel_id).collect()
+        self.channel_databases
+            .iter()
+            .map(|db| db.channel_id)
+            .collect()
     }
 
     /// 获取版本统计信息
@@ -290,12 +313,15 @@ impl SignalLibrary {
 
     /// 检查库是否被使用
     pub fn is_used(&self, mappings: &[super::ChannelMapping]) -> bool {
-        mappings.iter().any(|m| m.library_id.as_ref() == Some(&self.id))
+        mappings
+            .iter()
+            .any(|m| m.library_id.as_ref() == Some(&self.id))
     }
 
     /// 获取使用此库的通道列表
     pub fn used_channels(&self, mappings: &[super::ChannelMapping]) -> Vec<u16> {
-        mappings.iter()
+        mappings
+            .iter()
             .filter(|m| m.library_id.as_ref() == Some(&self.id))
             .map(|m| m.channel_id)
             .collect()
@@ -303,7 +329,8 @@ impl SignalLibrary {
 
     /// 获取当前激活的版本名称
     pub fn active_version_name(&self, mappings: &[super::ChannelMapping]) -> Option<String> {
-        mappings.iter()
+        mappings
+            .iter()
             .filter(|m| m.library_id.as_ref() == Some(&self.id))
             .find_map(|m| m.version_name.clone())
     }
@@ -352,9 +379,21 @@ mod tests {
             super::ChannelType::CAN,
         );
 
-        lib.add_version(LibraryVersion::new("v1.0".to_string(), "/path1".to_string(), "2024-01-01".to_string()));
-        lib.add_version(LibraryVersion::new("v2.0".to_string(), "/path2".to_string(), "2024-01-02".to_string()));
-        lib.add_version(LibraryVersion::new("v1.5".to_string(), "/path3".to_string(), "2024-01-03".to_string()));
+        lib.add_version(LibraryVersion::new(
+            "v1.0".to_string(),
+            "/path1".to_string(),
+            "2024-01-01".to_string(),
+        ));
+        lib.add_version(LibraryVersion::new(
+            "v2.0".to_string(),
+            "/path2".to_string(),
+            "2024-01-02".to_string(),
+        ));
+        lib.add_version(LibraryVersion::new(
+            "v1.5".to_string(),
+            "/path3".to_string(),
+            "2024-01-03".to_string(),
+        ));
 
         // Should be sorted: v2.0, v1.5, v1.0
         assert_eq!(lib.versions[0].name, "v2.0");

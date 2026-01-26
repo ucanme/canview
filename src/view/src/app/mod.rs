@@ -2,11 +2,11 @@
 //!
 //! Contains the core application state and implementation.
 
-mod state;
 mod impls;
+mod state;
 
 // Re-export the main types
-pub use state::{CanViewApp, AppView, ScrollbarDragState, LibraryManager, LibraryDialogType};
+pub use state::{AppView, CanViewApp, LibraryDialogType, LibraryManager, ScrollbarDragState};
 
 // Define actions for text input handling (public, so other modules can use them)
 // Note: actions! macro defines the types in the current scope, not in a separate module

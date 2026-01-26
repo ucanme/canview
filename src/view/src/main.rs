@@ -4,18 +4,18 @@ use gpui::{prelude::*, *};
 mod app;
 mod config;
 mod handlers;
-mod rendering;
 mod library;
 mod models;
+mod rendering;
 mod ui;
 
 // Import rendering utilities and app types
+use app::CanViewApp;
 use rendering::calculate_column_widths;
 use rendering::get_message_strings;
-use app::CanViewApp;
 
 // Re-export common types from models for use in other modules
-pub use models::{ChannelType, ChannelMapping, AppConfig};
+pub use models::{AppConfig, ChannelMapping, ChannelType};
 
 fn main() {
     env_logger::init();

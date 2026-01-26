@@ -2,17 +2,17 @@
 //!
 //! This file contains all impl blocks for CanViewApp.
 
+use super::state::{AppView, CanViewApp, LibraryManager, ScrollbarDragState};
 use crate::AppConfig;
 use crate::ChannelType;
-use super::state::{CanViewApp, AppView, ScrollbarDragState, LibraryManager};
-use blf::{read_blf_from_file, BlfResult, LogObject};
+use crate::rendering::calculate_column_widths;
+use blf::{BlfResult, LogObject, read_blf_from_file};
 use gpui::{prelude::*, *};
 use gpui_component::input::InputState;
 use parser::dbc::DbcDatabase;
 use parser::ldf::LdfDatabase;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use crate::rendering::calculate_column_widths;
 
 impl CanViewApp {
     pub fn new() -> Self {
@@ -93,14 +93,15 @@ impl CanViewApp {
             // Deprecated fields for backward compatibility
             focused_library_input: None,
             is_editing_library_name: false,
-            library_input_state: crate::ui::components::ime_text_input::ImeTextInputState::default(),
+            library_input_state: crate::ui::components::ime_text_input::ImeTextInputState::default(
+            ),
             library_focus_handle: None,
             ime_handler_registered: false,
         };
-        
+
         // 🔧 启动时加载配置
         app.load_startup_config();
-        
+
         app
     }
 
@@ -119,44 +120,55 @@ impl CanViewApp {
                                 .to_path_buf(),
                         );
                         self.config_file_path = Some(path);
-                        
+
                         // 🔧 加载信号库
                         if !config.libraries.is_empty() {
                             eprintln!("📚 加载信号库配置...");
                             eprintln!("  找到 {} 个信号库", config.libraries.len());
-                            
+
                             // 将库加载到 library_manager
-                            self.library_manager = LibraryManager::from_libraries(config.libraries.clone());
-                            
+                            self.library_manager =
+                                LibraryManager::from_libraries(config.libraries.clone());
+
                             // 统计信息
-                            let total_versions: usize = self.library_manager.libraries()
+                            let total_versions: usize = self
+                                .library_manager
+                                .libraries()
                                 .iter()
                                 .map(|lib| lib.versions.len())
                                 .sum();
-                            let total_channels: usize = self.library_manager.libraries()
+                            let total_channels: usize = self
+                                .library_manager
+                                .libraries()
                                 .iter()
                                 .flat_map(|lib| &lib.versions)
                                 .map(|ver| ver.channel_databases.len())
                                 .sum();
-                            
+
                             eprintln!("  ✅ 加载完成:");
                             eprintln!("     - {} 个库", self.library_manager.libraries().len());
                             eprintln!("     - {} 个版本", total_versions);
                             eprintln!("     - {} 个通道", total_channels);
-                            
+
                             // 显示库列表
                             for library in self.library_manager.libraries() {
-                                eprintln!("     📦 {}: {} 个版本", library.name, library.versions.len());
+                                eprintln!(
+                                    "     📦 {}: {} 个版本",
+                                    library.name,
+                                    library.versions.len()
+                                );
                             }
-                            
+
                             self.status_msg = format!(
                                 "Configuration loaded: {} libraries, {} versions, {} channels",
                                 self.library_manager.libraries().len(),
                                 total_versions,
                                 total_channels
-                            ).into();
+                            )
+                            .into();
                         } else {
-                            self.status_msg = "Configuration loaded (no libraries configured).".into();
+                            self.status_msg =
+                                "Configuration loaded (no libraries configured).".into();
                         }
                     }
                     Err(e) => {
@@ -183,26 +195,30 @@ impl CanViewApp {
                 println!("\n=== BLF 时间戳诊断 ===");
                 println!("基准时间: {:?}", result.file_stats.measurement_start_time);
                 println!("总消息数: {}", result.objects.len());
-                
+
                 // 检查前 10 条消息的时间戳
                 println!("\n前 10 条消息的时间戳:");
                 for (i, obj) in result.objects.iter().take(10).enumerate() {
                     let ts = obj.timestamp();
-                    println!("  Message {}: {} ns ({:.9} s)", 
-                        i, ts, ts as f64 / 1_000_000_000.0);
+                    println!(
+                        "  Message {}: {} ns ({:.9} s)",
+                        i,
+                        ts,
+                        ts as f64 / 1_000_000_000.0
+                    );
                 }
-                
+
                 // 检查时间戳是否都相同
                 if result.objects.len() > 1 {
                     let first_ts = result.objects[0].timestamp();
                     let last_ts = result.objects.last().unwrap().timestamp();
                     let time_span = (last_ts - first_ts) as f64 / 1_000_000_000.0;
-                    
+
                     println!("\n时间跨度分析:");
                     println!("  第一条: {} ns", first_ts);
                     println!("  最后一条: {} ns", last_ts);
                     println!("  时间跨度: {:.6} 秒", time_span);
-                    
+
                     if time_span < 0.000001 {
                         println!("  ⚠️  警告: 所有消息的时间戳几乎相同!");
                     } else {
@@ -236,15 +252,16 @@ impl CanViewApp {
         }
     }
 
-
     fn load_config(&mut self, _cx: &mut Context<Self>) {
         // TODO: File dialog integration requires fixing GPUI async lifetime issues on Windows
-        self.status_msg = "Config loading temporarily unavailable. Please use command-line arguments.".into();
+        self.status_msg =
+            "Config loading temporarily unavailable. Please use command-line arguments.".into();
     }
 
     fn import_database_file(&mut self, _cx: &mut Context<Self>) {
         // TODO: File dialog integration requires fixing GPUI async lifetime issues on Windows
-        self.status_msg = "Database import temporarily unavailable. Please use library management.".into();
+        self.status_msg =
+            "Database import temporarily unavailable. Please use library management.".into();
     }
     fn get_timestamp_string(&self, timestamp: u64) -> String {
         if let Some(start) = &self.start_time {
@@ -357,29 +374,29 @@ impl CanViewApp {
         };
 
         let bg_color = if index.is_multiple_of(2) {
-            rgb(0x09090b)  // Zed's dark background (zebra)
+            rgb(0x09090b) // Zed's dark background (zebra)
         } else {
-            rgb(0x0c0c0e)  // Zed's dark background (base)
+            rgb(0x0c0c0e) // Zed's dark background (base)
         };
 
         div()
             .flex()
             .w_full()
-            .min_h(px(24.))  // Slightly taller for better readability
+            .min_h(px(24.)) // Slightly taller for better readability
             .bg(bg_color)
             .border_b_1()
-            .border_color(rgb(0x2a2a2a))  // Semi-transparent border like Zed
+            .border_color(rgb(0x2a2a2a)) // Semi-transparent border like Zed
             .items_center()
-            .text_sm()  // Slightly larger text like Zed
-            .text_color(rgb(0xcdd6f4))  // Zed's default text color
-            .hover(|style| style.bg(rgb(0x1f1f1f)))  // Subtle hover like Zed
+            .text_sm() // Slightly larger text like Zed
+            .text_color(rgb(0xcdd6f4)) // Zed's default text color
+            .hover(|style| style.bg(rgb(0x1f1f1f))) // Subtle hover like Zed
             .cursor_pointer()
             .child(
                 div()
                     .w(px(100.))
                     .px_3()
                     .py_1()
-                    .text_color(rgb(0x646473))  // Zed's muted color
+                    .text_color(rgb(0x646473)) // Zed's muted color
                     .child(time_str),
             )
             .child(
@@ -387,7 +404,7 @@ impl CanViewApp {
                     .w(px(40.))
                     .px_2()
                     .py_1()
-                    .text_color(rgb(0x7dcfff))  // Zed's blue
+                    .text_color(rgb(0x7dcfff)) // Zed's blue
                     .child(channel_id.to_string()),
             )
             .child(
@@ -395,7 +412,7 @@ impl CanViewApp {
                     .w(px(50.))
                     .px_2()
                     .py_1()
-                    .text_color(rgb(0xa6e3a1))  // Zed's green
+                    .text_color(rgb(0xa6e3a1)) // Zed's green
                     .child(msg_type),
             )
             .child(
@@ -403,7 +420,7 @@ impl CanViewApp {
                     .w(px(70.))
                     .px_2()
                     .py_1()
-                    .text_color(rgb(0xf9e2af))  // Zed's yellow
+                    .text_color(rgb(0xf9e2af)) // Zed's yellow
                     .child(id_str),
             )
             .child(div().w(px(40.)).px_2().py_1().child(dlc_str))
@@ -412,7 +429,7 @@ impl CanViewApp {
                     .w(px(150.))
                     .px_2()
                     .py_1()
-                    .text_color(rgb(0xb4befe))  // Zed's purple
+                    .text_color(rgb(0xb4befe)) // Zed's purple
                     .child(data_str),
             )
             .child(
@@ -420,7 +437,7 @@ impl CanViewApp {
                     .flex_1()
                     .px_2()
                     .py_1()
-                    .text_color(rgb(0x9399b2))  // Zed's comment color
+                    .text_color(rgb(0x9399b2)) // Zed's comment color
                     .child(signals_str),
             )
     }
@@ -648,7 +665,8 @@ impl CanViewApp {
             // Deprecated fields for backward compatibility
             focused_library_input: None,
             is_editing_library_name: false,
-            library_input_state: crate::ui::components::ime_text_input::ImeTextInputState::default(),
+            library_input_state: crate::ui::components::ime_text_input::ImeTextInputState::default(
+            ),
             library_focus_handle: None,
             ime_handler_registered: false,
         };
@@ -677,8 +695,6 @@ impl CanViewApp {
         }
     }
 
-
-
     fn render_library_view(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
         use crate::ui::views::library_management::render_library_management_view;
 
@@ -692,9 +708,10 @@ impl CanViewApp {
             .child(render_library_management_view(
                 self.library_manager.libraries(),
                 &self.selected_library_id,
-                &self.selected_version_id,  // Add selected version ID
+                &self.selected_version_id, // Add selected version ID
                 &self.app_config.mappings,
-                self.show_library_dialog && self.library_dialog_type == super::state::LibraryDialogType::Create,
+                self.show_library_dialog
+                    && self.library_dialog_type == super::state::LibraryDialogType::Create,
                 self.show_version_input,
                 &self.new_library_name,
                 &self.new_version_name,
@@ -707,8 +724,8 @@ impl CanViewApp {
                 self.channel_id_input.as_ref(),
                 self.channel_name_input.as_ref(),
                 self.channel_db_path_input.as_ref(),
-                &self.new_channel_db_path,  // Add this parameter
-                cx
+                &self.new_channel_db_path, // Add this parameter
+                cx,
             ))
     }
 
@@ -2755,8 +2772,8 @@ impl CanViewApp {
                                             });
                                         }
                                     }),
-                            )
-                    )
+                            ),
+                    ),
             )
             .child(
                 div()
@@ -2776,45 +2793,44 @@ impl CanViewApp {
                             .text_color(rgb(0xffffff))
                             .child("Channel Mappings"),
                     )
-                    .child(
-                        div()
-                            .flex_1()
-                            .flex()
-                            .flex_col()
-                            .gap_2()
-                            .children(
-                                self.app_config.mappings.iter().map(|mapping| {
+                    .child(div().flex_1().flex().flex_col().gap_2().children(
+                        self.app_config.mappings.iter().map(|mapping| {
+                            div()
+                                .p_3()
+                                .bg(rgb(0x374151))
+                                .rounded(px(4.))
+                                .flex()
+                                .items_center()
+                                .justify_between()
+                                .child(
                                     div()
-                                        .p_3()
-                                        .bg(rgb(0x374151))
-                                        .rounded(px(4.))
                                         .flex()
-                                        .items_center()
-                                        .justify_between()
+                                        .flex_col()
+                                        .gap_1()
                                         .child(
                                             div()
-                                                .flex()
-                                                .flex_col()
-                                                .gap_1()
-                                                .child(
-                                                    div()
-                                                        .text_sm()
-                                                        .font_weight(FontWeight::MEDIUM)
-                                                        .text_color(rgb(0xffffff))
-                                                        .child(format!("Channel {} ({})",
-                                                            mapping.channel_id,
-                                                            if mapping.channel_type == ChannelType::CAN { "CAN" } else { "LIN" })),
-                                                )
-                                                .child(
-                                                    div()
-                                                        .text_xs()
-                                                        .text_color(rgb(0x9ca3af))
-                                                        .child(mapping.path.clone()),
-                                                )
+                                                .text_sm()
+                                                .font_weight(FontWeight::MEDIUM)
+                                                .text_color(rgb(0xffffff))
+                                                .child(format!(
+                                                    "Channel {} ({})",
+                                                    mapping.channel_id,
+                                                    if mapping.channel_type == ChannelType::CAN {
+                                                        "CAN"
+                                                    } else {
+                                                        "LIN"
+                                                    }
+                                                )),
                                         )
-                                })
-                            )
-                    )
+                                        .child(
+                                            div()
+                                                .text_xs()
+                                                .text_color(rgb(0x9ca3af))
+                                                .child(mapping.path.clone()),
+                                        ),
+                                )
+                        }),
+                    )),
             )
             .child(
                 // Status bar
@@ -2855,8 +2871,8 @@ impl CanViewApp {
                                     .text_xs()
                                     .text_color(rgb(0x9ca3af))
                                     .child(format!("LIN: {}", self.ldf_channels.len())),
-                            )
-                    )
+                            ),
+                    ),
             )
     }
 }
@@ -2869,21 +2885,16 @@ impl Render for CanViewApp {
         if self.show_add_channel_input {
             if self.channel_id_input.is_none() {
                 eprintln!("📝 Creating channel_id_input in render...");
-                self.channel_id_input = Some(cx.new(|cx| {
-                    InputState::new(window, cx)
-                        .placeholder("Channel ID")
-                }));
+                self.channel_id_input =
+                    Some(cx.new(|cx| InputState::new(window, cx).placeholder("Channel ID")));
             }
-            
+
             if self.channel_name_input.is_none() {
                 eprintln!("📝 Creating channel_name_input in render...");
-                self.channel_name_input = Some(cx.new(|cx| {
-                    InputState::new(window, cx)
-                        .placeholder("Channel name")
-                }));
+                self.channel_name_input =
+                    Some(cx.new(|cx| InputState::new(window, cx).placeholder("Channel name")));
             }
         }
-
 
         // Check for file dialog result (non-blocking poll)
         if let Some(mut receiver) = self.pending_file_path.take() {
@@ -2935,12 +2946,18 @@ impl Render for CanViewApp {
                             eprintln!("📥 Enter pressed in library dialog");
 
                             // Read input value BEFORE entering update block to avoid nested update conflict
-                            let library_name = view.read(cx).library_name_input.as_ref()
+                            let library_name = view
+                                .read(cx)
+                                .library_name_input
+                                .as_ref()
                                 .map(|i| i.read(cx).value().to_string())
                                 .unwrap_or_default();
 
                             view.update(cx, |app, cx| {
-                                eprintln!("⏎ Creating library from ROOT handler: '{}'", library_name);
+                                eprintln!(
+                                    "⏎ Creating library from ROOT handler: '{}'",
+                                    library_name
+                                );
 
                                 if !library_name.trim().is_empty() {
                                     app.new_library_name = library_name.clone();
@@ -2961,7 +2978,10 @@ impl Render for CanViewApp {
                             eprintln!("📥 Enter pressed in version input");
 
                             // Read input value BEFORE entering update block to avoid nested update conflict
-                            let version_name = view.read(cx).version_name_input.as_ref()
+                            let version_name = view
+                                .read(cx)
+                                .version_name_input
+                                .as_ref()
                                 .map(|input| input.read(cx).value().to_string())
                                 .unwrap_or_default();
 
@@ -3043,14 +3063,14 @@ impl Render for CanViewApp {
             .child(
                 // Unified top bar with all options - Zed style
                 div()
-                    .h(px(48.))  // Slightly shorter, more like Zed
-                    .bg(rgb(0x0c0c0e))  // Zed's panel background
+                    .h(px(48.)) // Slightly shorter, more like Zed
+                    .bg(rgb(0x0c0c0e)) // Zed's panel background
                     .flex()
                     .items_center()
                     .justify_between()
                     .px_4()
                     .border_b_1()
-                    .border_color(rgb(0x1a1a1a))  // Very subtle border
+                    .border_color(rgb(0x1a1a1a)) // Very subtle border
                     .window_control_area(WindowControlArea::Drag)
                     .child(
                         // Left: App branding and navigation tabs (draggable area)
@@ -3071,7 +3091,7 @@ impl Render for CanViewApp {
                                             .w(px(20.))
                                             .h(px(20.))
                                             .rounded(px(4.))
-                                            .bg(rgb(0x1e1e2e))  // Zed-style subtle background
+                                            .bg(rgb(0x1e1e2e)) // Zed-style subtle background
                                             .flex()
                                             .items_center()
                                             .justify_center()
@@ -3081,21 +3101,21 @@ impl Render for CanViewApp {
                                                     .w(px(2.5))
                                                     .h(px(2.5))
                                                     .rounded(px(1.))
-                                                    .bg(rgb(0xa6e3a1)),  // Zed green
+                                                    .bg(rgb(0xa6e3a1)), // Zed green
                                             )
                                             .child(
                                                 div()
                                                     .w(px(2.5))
                                                     .h(px(2.5))
                                                     .rounded(px(1.))
-                                                    .bg(rgb(0x7dcfff)),  // Zed blue
+                                                    .bg(rgb(0x7dcfff)), // Zed blue
                                             )
                                             .child(
                                                 div()
                                                     .w(px(3.))
                                                     .h(px(3.))
                                                     .rounded(px(1.5))
-                                                    .bg(rgb(0xb4befe)),  // Zed purple
+                                                    .bg(rgb(0xb4befe)), // Zed purple
                                             )
                                             .child(
                                                 div()
@@ -3114,9 +3134,9 @@ impl Render for CanViewApp {
                                     )
                                     .child(
                                         div()
-                                            .text_color(rgb(0xcdd6f4))  // Zed's default text
+                                            .text_color(rgb(0xcdd6f4)) // Zed's default text
                                             .font_weight(FontWeight::SEMIBOLD)
-                                            .text_sm()  // Smaller, more refined
+                                            .text_sm() // Smaller, more refined
                                             .child("CANVIEW"),
                                     ),
                             )
@@ -3124,7 +3144,7 @@ impl Render for CanViewApp {
                                 div()
                                     .flex()
                                     .items_center()
-                                    .gap_0()  // Tighter spacing like Zed
+                                    .gap_0() // Tighter spacing like Zed
                                     .child(
                                         div()
                                             .px_3()
@@ -3132,21 +3152,21 @@ impl Render for CanViewApp {
                                             .text_xs()
                                             .font_weight(FontWeight::MEDIUM)
                                             .cursor_pointer()
-                                            .rounded(px(3.))  // Smaller radius like Zed
+                                            .rounded(px(3.)) // Smaller radius like Zed
                                             .bg(if self.current_view == AppView::LogView {
-                                                rgb(0x1e1e2e)  // Zed-style active tab
+                                                rgb(0x1e1e2e) // Zed-style active tab
                                             } else {
-                                                rgb(0x0c0c0e)  // Transparent
+                                                rgb(0x0c0c0e) // Transparent
                                             })
                                             .text_color(if self.current_view == AppView::LogView {
-                                                rgb(0xcdd6f4)  // Zed's text
+                                                rgb(0xcdd6f4) // Zed's text
                                             } else {
-                                                rgb(0x646473)  // Zed's muted
+                                                rgb(0x646473) // Zed's muted
                                             })
                                             .hover(|style| {
                                                 if self.current_view != AppView::LogView {
                                                     style
-                                                        .bg(rgb(0x151515))  // Very subtle hover
+                                                        .bg(rgb(0x151515)) // Very subtle hover
                                                         .text_color(rgb(0x9399b2))
                                                 } else {
                                                     style
@@ -3162,7 +3182,6 @@ impl Render for CanViewApp {
                                             })
                                             .child("Logs"),
                                     )
-
                                     .child(
                                         div()
                                             .px_3()
@@ -3170,23 +3189,23 @@ impl Render for CanViewApp {
                                             .text_xs()
                                             .font_weight(FontWeight::MEDIUM)
                                             .cursor_pointer()
-                                            .rounded(px(3.))  // Smaller radius like Zed
+                                            .rounded(px(3.)) // Smaller radius like Zed
                                             .bg(if self.current_view == AppView::ConfigView {
-                                                rgb(0x1e1e2e)  // Zed-style active tab (yellow)
+                                                rgb(0x1e1e2e) // Zed-style active tab (yellow)
                                             } else {
-                                                rgb(0x0c0c0e)  // Transparent
+                                                rgb(0x0c0c0e) // Transparent
                                             })
                                             .text_color(
                                                 if self.current_view == AppView::ConfigView {
-                                                    rgb(0xcdd6f4)  // Zed's text
+                                                    rgb(0xcdd6f4) // Zed's text
                                                 } else {
-                                                    rgb(0x646473)  // Zed's muted
+                                                    rgb(0x646473) // Zed's muted
                                                 },
                                             )
                                             .hover(|style| {
                                                 if self.current_view != AppView::ConfigView {
                                                     style
-                                                        .bg(rgb(0x151515))  // Very subtle hover
+                                                        .bg(rgb(0x151515)) // Very subtle hover
                                                         .text_color(rgb(0x9399b2))
                                                 } else {
                                                     style
@@ -3202,7 +3221,6 @@ impl Render for CanViewApp {
                                             })
                                             .child("Config"),
                                     )
-
                                     .child(
                                         div()
                                             .px_3()
@@ -3210,23 +3228,23 @@ impl Render for CanViewApp {
                                             .text_xs()
                                             .font_weight(FontWeight::MEDIUM)
                                             .cursor_pointer()
-                                            .rounded(px(3.))  // Smaller radius like Zed
+                                            .rounded(px(3.)) // Smaller radius like Zed
                                             .bg(if self.current_view == AppView::LibraryView {
-                                                rgb(0x1e1e2e)  // Zed-style active tab (blue)
+                                                rgb(0x1e1e2e) // Zed-style active tab (blue)
                                             } else {
-                                                rgb(0x0c0c0e)  // Transparent
+                                                rgb(0x0c0c0e) // Transparent
                                             })
                                             .text_color(
                                                 if self.current_view == AppView::LibraryView {
-                                                    rgb(0xcdd6f4)  // Zed's text
+                                                    rgb(0xcdd6f4) // Zed's text
                                                 } else {
-                                                    rgb(0x646473)  // Zed's muted
+                                                    rgb(0x646473) // Zed's muted
                                                 },
                                             )
                                             .hover(|style| {
                                                 if self.current_view != AppView::LibraryView {
                                                     style
-                                                        .bg(rgb(0x151515))  // Very subtle hover
+                                                        .bg(rgb(0x151515)) // Very subtle hover
                                                         .text_color(rgb(0x9399b2))
                                                 } else {
                                                     style
@@ -3255,15 +3273,15 @@ impl Render for CanViewApp {
                             .child(
                                 div()
                                     .text_xs()
-                                    .text_color(rgb(0x646473))  // Zed's muted
+                                    .text_color(rgb(0x646473)) // Zed's muted
                                     .child(self.status_msg.clone()),
                             )
-                            .child(div().w(px(1.0)).h(px(12.0)).bg(rgb(0x1a1a1a)))  // Subtle divider
+                            .child(div().w(px(1.0)).h(px(12.0)).bg(rgb(0x1a1a1a))) // Subtle divider
                             .child(
                                 div()
                                     .flex()
                                     .items_center()
-                                    .gap_2()  // Tighter spacing
+                                    .gap_2() // Tighter spacing
                                     .text_xs()
                                     .text_color(rgb(0x9ca3af))
                                     .child(format!("{} msgs", self.messages.len()))
@@ -3285,11 +3303,11 @@ impl Render for CanViewApp {
                                     .py(px(1.5))
                                     .text_xs()
                                     .font_weight(FontWeight::MEDIUM)
-                                    .text_color(rgb(0xcdd6f4))  // Zed's text
-                                    .bg(rgb(0x1a1f2e))  // Zed-style subtle green
-                                    .rounded(px(3.))  // Smaller radius
+                                    .text_color(rgb(0xcdd6f4)) // Zed's text
+                                    .bg(rgb(0x1a1f2e)) // Zed-style subtle green
+                                    .rounded(px(3.)) // Smaller radius
                                     .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0x252f3a)))  // Subtle hover
+                                    .hover(|style| style.bg(rgb(0x252f3a))) // Subtle hover
                                     .on_mouse_down(gpui::MouseButton::Left, {
                                         let view = view.clone();
                                         move |_, _, app| {
@@ -3337,19 +3355,19 @@ impl Render for CanViewApp {
                             )
                             .child(
                                 // Window controls separator
-                                div().w(px(12.)),  // Smaller separator
+                                div().w(px(12.)), // Smaller separator
                             )
                             .child(
                                 // Minimize button - Zed style
                                 div()
-                                    .w(px(28.))  // Slightly smaller
+                                    .w(px(28.)) // Slightly smaller
                                     .h(px(28.))
                                     .flex()
                                     .items_center()
                                     .justify_center()
                                     .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0x121212)))  // Very subtle hover
-                                    .child(div().w(px(10.)).h(px(1.)).bg(rgb(0x646473)))  // Zed's muted
+                                    .hover(|style| style.bg(rgb(0x121212))) // Very subtle hover
+                                    .child(div().w(px(10.)).h(px(1.)).bg(rgb(0x646473))) // Zed's muted
                                     .on_mouse_down(
                                         gpui::MouseButton::Left,
                                         |_event, window, _app| {
@@ -3360,19 +3378,19 @@ impl Render for CanViewApp {
                             .child(
                                 // Maximize/Restore button - Zed style
                                 div()
-                                    .w(px(28.))  // Slightly smaller
+                                    .w(px(28.)) // Slightly smaller
                                     .h(px(28.))
                                     .flex()
                                     .items_center()
                                     .justify_center()
                                     .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0x121212)))  // Very subtle hover
+                                    .hover(|style| style.bg(rgb(0x121212))) // Very subtle hover
                                     .child(
                                         div()
                                             .w(px(9.))
                                             .h(px(9.))
                                             .border_1()
-                                            .border_color(rgb(0x646473)),  // Zed's muted
+                                            .border_color(rgb(0x646473)), // Zed's muted
                                     )
                                     .on_mouse_down(gpui::MouseButton::Left, {
                                         let view = view.clone();
@@ -3387,14 +3405,14 @@ impl Render for CanViewApp {
                             .child(
                                 // Close button - Zed style
                                 div()
-                                    .w(px(28.))  // Slightly smaller
+                                    .w(px(28.)) // Slightly smaller
                                     .h(px(28.))
                                     .flex()
                                     .items_center()
                                     .justify_center()
                                     .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0x3a1a1a)))  // Subtle red hover
-                                    .child(div().text_sm().text_color(rgb(0x646473)).child("×"))  // Zed's muted
+                                    .hover(|style| style.bg(rgb(0x3a1a1a))) // Subtle red hover
+                                    .child(div().text_sm().text_color(rgb(0x646473)).child("×")) // Zed's muted
                                     .on_mouse_down(
                                         gpui::MouseButton::Left,
                                         |_event, window, _app| {
@@ -3408,7 +3426,7 @@ impl Render for CanViewApp {
                 // Content area - Zed style
                 div()
                     .flex_1()
-                    .bg(rgb(0x0c0c0e))  // Zed's main background
+                    .bg(rgb(0x0c0c0e)) // Zed's main background
                     .overflow_hidden()
                     .child(match self.current_view {
                         AppView::LogView => {
@@ -3519,7 +3537,10 @@ impl CanViewApp {
 
     /// Delete a library
     pub fn delete_library(&mut self, library_id: &str, cx: &mut Context<Self>) {
-        match self.library_manager.delete_library(library_id, &self.app_config.mappings) {
+        match self
+            .library_manager
+            .delete_library(library_id, &self.app_config.mappings)
+        {
             Ok(_) => {
                 self.status_msg = format!("Library deleted").into();
                 if self.selected_library_id.as_ref() == Some(&library_id.to_string()) {
@@ -3558,7 +3579,10 @@ impl CanViewApp {
             return;
         }
 
-        eprintln!("📝 Adding version: '{}' to library: {}", version_name, library_id);
+        eprintln!(
+            "📝 Adding version: '{}' to library: {}",
+            version_name, library_id
+        );
 
         // Hide the input dialog
         self.show_version_input = false;
@@ -3569,9 +3593,13 @@ impl CanViewApp {
         let date = chrono::Utc::now().format("%Y-%m-%d").to_string();
         let version = crate::models::library::LibraryVersion::new(
             version_name.clone(),
-            String::new(),  // Empty path for now
-            date
-        ).with_description(format!("Created version '{}' (database file to be added)", version_name));
+            String::new(), // Empty path for now
+            date,
+        )
+        .with_description(format!(
+            "Created version '{}' (database file to be added)",
+            version_name
+        ));
 
         // Add version directly to library
         if let Some(library) = self.library_manager.find_library_mut(&library_id) {
@@ -3587,7 +3615,8 @@ impl CanViewApp {
             self.status_msg = format!(
                 "Version '{}' created successfully. Use 'Add Database File' to attach a database.",
                 version_name
-            ).into();
+            )
+            .into();
             self.new_version_name.clear();
             cx.notify();
         } else {
@@ -3598,8 +3627,17 @@ impl CanViewApp {
     }
 
     /// Delete a version from a library
-    pub fn delete_library_version(&mut self, library_id: &str, version_name: &str, cx: &mut Context<Self>) {
-        match self.library_manager.remove_version(library_id, version_name, &self.app_config.mappings) {
+    pub fn delete_library_version(
+        &mut self,
+        library_id: &str,
+        version_name: &str,
+        cx: &mut Context<Self>,
+    ) {
+        match self.library_manager.remove_version(
+            library_id,
+            version_name,
+            &self.app_config.mappings,
+        ) {
             Ok(_) => {
                 self.status_msg = format!("Version '{}' deleted", version_name).into();
                 cx.notify();
@@ -3612,7 +3650,12 @@ impl CanViewApp {
     }
 
     /// Load a library version
-    pub fn load_library_version(&mut self, library_id: &str, version_name: &str, cx: &mut Context<Self>) {
+    pub fn load_library_version(
+        &mut self,
+        library_id: &str,
+        version_name: &str,
+        cx: &mut Context<Self>,
+    ) {
         let library = match self.library_manager.find_library(library_id) {
             Some(lib) => lib,
             None => {
@@ -3637,7 +3680,10 @@ impl CanViewApp {
         if channel_dbs.is_empty() {
             // Use the default path (backward compatibility)
             let path = &version.path;
-            match self.library_manager.load_database(path, library.channel_type) {
+            match self
+                .library_manager
+                .load_database(path, library.channel_type)
+            {
                 Ok(database) => {
                     match database {
                         crate::library::Database::Dbc(dbc) => {
@@ -3647,7 +3693,8 @@ impl CanViewApp {
                             self.ldf_channels.insert(1, ldf);
                         }
                     }
-                    self.status_msg = format!("Loaded version {} of {}", version_name, library.name).into();
+                    self.status_msg =
+                        format!("Loaded version {} of {}", version_name, library.name).into();
                 }
                 Err(e) => {
                     self.status_msg = format!("Error loading database: {}", e).into();
@@ -3656,24 +3703,32 @@ impl CanViewApp {
         } else {
             // Load all configured channels
             for channel_db in channel_dbs {
-                match self.library_manager.load_database(&channel_db.database_path, library.channel_type) {
-                    Ok(database) => {
-                        match database {
-                            crate::library::Database::Dbc(dbc) => {
-                                self.dbc_channels.insert(channel_db.channel_id, dbc);
-                            }
-                            crate::library::Database::Ldf(ldf) => {
-                                self.ldf_channels.insert(channel_db.channel_id, ldf);
-                            }
+                match self
+                    .library_manager
+                    .load_database(&channel_db.database_path, library.channel_type)
+                {
+                    Ok(database) => match database {
+                        crate::library::Database::Dbc(dbc) => {
+                            self.dbc_channels.insert(channel_db.channel_id, dbc);
                         }
-                    }
+                        crate::library::Database::Ldf(ldf) => {
+                            self.ldf_channels.insert(channel_db.channel_id, ldf);
+                        }
+                    },
                     Err(e) => {
-                        self.status_msg = format!("Error loading channel {}: {}", channel_db.channel_id, e).into();
+                        self.status_msg =
+                            format!("Error loading channel {}: {}", channel_db.channel_id, e)
+                                .into();
                     }
                 }
             }
-            self.status_msg = format!("Loaded version {} of {} ({} channels)",
-                version_name, library.name, channel_dbs.len()).into();
+            self.status_msg = format!(
+                "Loaded version {} of {} ({} channels)",
+                version_name,
+                library.name,
+                channel_dbs.len()
+            )
+            .into();
         }
 
         cx.notify();
@@ -3705,8 +3760,14 @@ impl CanViewApp {
         // Debug: print current state
         eprintln!("DEBUG: Saving channel config");
         eprintln!("DEBUG: new_channel_id before: '{}'", self.new_channel_id);
-        eprintln!("DEBUG: new_channel_name before: '{}'", self.new_channel_name);
-        eprintln!("DEBUG: new_channel_db_path before: '{}'", self.new_channel_db_path);
+        eprintln!(
+            "DEBUG: new_channel_name before: '{}'",
+            self.new_channel_name
+        );
+        eprintln!(
+            "DEBUG: new_channel_db_path before: '{}'",
+            self.new_channel_db_path
+        );
 
         // Read values from input fields
         if let Some(id_input) = &self.channel_id_input {
@@ -3727,10 +3788,15 @@ impl CanViewApp {
 
         // Path is set automatically when file is selected via "Select File..." button
         // No need to read from input since path display is read-only
-        eprintln!("DEBUG: Database path from file selector: '{}'", self.new_channel_db_path);
+        eprintln!(
+            "DEBUG: Database path from file selector: '{}'",
+            self.new_channel_db_path
+        );
 
-        eprintln!("DEBUG: Final values - ID: '{}', Name: '{}', Path: '{}'",
-            self.new_channel_id, self.new_channel_name, self.new_channel_db_path);
+        eprintln!(
+            "DEBUG: Final values - ID: '{}', Name: '{}', Path: '{}'",
+            self.new_channel_id, self.new_channel_name, self.new_channel_db_path
+        );
 
         // Validate inputs
         let channel_id: u16 = match self.new_channel_id.trim().parse() {
@@ -3807,7 +3873,7 @@ impl CanViewApp {
                 let library = self.library_manager.find_library(&library_id).unwrap();
                 library.name.clone()
             };
-            
+
             // 复制文件到本地存储
             let source_path = std::path::Path::new(&self.new_channel_db_path);
             match storage.copy_database(&library_name, &version_name, source_path) {
@@ -3884,7 +3950,9 @@ impl CanViewApp {
         };
 
         if let Some(version) = library.versions.iter_mut().find(|v| v.name == v.name) {
-            version.channel_databases.retain(|db| db.channel_id != channel_id);
+            version
+                .channel_databases
+                .retain(|db| db.channel_id != channel_id);
             self.status_msg = format!("Channel {} deleted", channel_id).into();
             cx.notify();
         }
@@ -3908,18 +3976,20 @@ impl CanViewApp {
         cx.notify();
     }
 
-
     /// Show the library dialog
-    pub fn show_library_dialog(&mut self, dialog_type: super::state::LibraryDialogType, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn show_library_dialog(
+        &mut self,
+        dialog_type: super::state::LibraryDialogType,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.library_dialog_type = dialog_type;
         self.show_library_dialog = true;
 
         // Initialize input states when dialog is shown
         if self.library_name_input.is_none() {
-            self.library_name_input = Some(cx.new(|cx| {
-                InputState::new(window, cx)
-                    .placeholder("Enter library name...")
-            }));
+            self.library_name_input =
+                Some(cx.new(|cx| InputState::new(window, cx).placeholder("Enter library name...")));
         }
 
         cx.notify();
@@ -3936,7 +4006,8 @@ impl CanViewApp {
     /// Quick import a database file
     pub fn quick_import_database(&mut self, cx: &mut Context<Self>) {
         // TODO: File dialog integration requires fixing GPUI async lifetime issues on Windows
-        self.status_msg = "Quick import temporarily unavailable. Please use library management interface.".into();
+        self.status_msg =
+            "Quick import temporarily unavailable. Please use library management interface.".into();
         cx.notify();
     }
 }

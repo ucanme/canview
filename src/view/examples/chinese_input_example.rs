@@ -2,8 +2,8 @@
 //
 // 这个示例展示如何使用 Zed 风格的 TextInput 组件进行中文输入
 
-use crate::ui::components::zed_style_text_input::ZedStyleTextInputBuilder;
 use crate::ui::components::TextInputValidation;
+use crate::ui::components::zed_style_text_input::ZedStyleTextInputBuilder;
 use gpui::*;
 
 /// 示例 1: 基础中文输入（库名称）
@@ -72,13 +72,7 @@ where
         .validation(TextInputValidation::VersionName) // ❌ 不支持中文
         .focused(is_focused)
         .min_width(px(150.))
-        .build(
-            "version_input",
-            view,
-            on_change,
-            on_submit,
-            on_cancel,
-        )
+        .build("version_input", view, on_change, on_submit, on_cancel)
 }
 
 /// 示例 3: 无验证（接受所有输入）
@@ -97,13 +91,7 @@ where
         .validation(TextInputValidation::None) // ✅ 支持所有字符（包括中文）
         .focused(is_focused)
         .min_width(px(300.))
-        .build(
-            "free_input",
-            view,
-            on_change,
-            on_submit,
-            on_cancel,
-        )
+        .build("free_input", view, on_change, on_submit, on_cancel)
 }
 
 /// 示例 4: 自定义验证（只允许中文和数字）
@@ -127,13 +115,7 @@ where
         .validation(chinese_only_validation)
         .focused(is_focused)
         .min_width(px(300.))
-        .build(
-            "chinese_only_input",
-            view,
-            on_change,
-            on_submit,
-            on_cancel,
-        )
+        .build("chinese_only_input", view, on_change, on_submit, on_cancel)
 }
 
 // ============================================================================

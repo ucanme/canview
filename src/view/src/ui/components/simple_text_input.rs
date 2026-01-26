@@ -143,7 +143,7 @@ impl SimpleTextInputBuilder {
                         .top(px(2.))
                         .bottom(px(2.))
                         .w(px(1.5))
-                        .bg(rgb(0xcdd6f4))
+                        .bg(rgb(0xcdd6f4)),
                 )
             })
     }

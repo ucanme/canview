@@ -14,22 +14,22 @@ fn test_available_events() -> Div {
         .on_key_down(|event, _window, cx| {
             eprintln!("on_key_down: {:?}", event);
         })
-        // 方法 2: on_key_press (可能捕获 IME)
-        //.on_key_press(|event, _window, cx| {
-        //    eprintln!("on_key_press: {:?}", event);
-        //})
-        // 方法 3: on_text (专门处理文本输入)
-        //.on_text(|text: &str, cx| {
-        //    eprintln!("on_text: '{}'", text);
-        //})
-        // 方法 4: on_input (可能的名字)
-        //.on_input(|input: &str, cx| {
-        //    eprintln!("on_input: '{}'", input);
-        //})
-        // 方法 5: on_chars (可能的名字)
-        //.on_chars(|chars: &[char], cx| {
-        //    eprintln!("on_chars: {:?}", chars);
-        //})
+    // 方法 2: on_key_press (可能捕获 IME)
+    //.on_key_press(|event, _window, cx| {
+    //    eprintln!("on_key_press: {:?}", event);
+    //})
+    // 方法 3: on_text (专门处理文本输入)
+    //.on_text(|text: &str, cx| {
+    //    eprintln!("on_text: '{}'", text);
+    //})
+    // 方法 4: on_input (可能的名字)
+    //.on_input(|input: &str, cx| {
+    //    eprintln!("on_input: '{}'", input);
+    //})
+    // 方法 5: on_chars (可能的名字)
+    //.on_chars(|chars: &[char], cx| {
+    //    eprintln!("on_chars: {:?}", chars);
+    //})
 }
 
 /*

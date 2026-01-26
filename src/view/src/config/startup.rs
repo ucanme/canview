@@ -2,13 +2,13 @@
 //!
 //! Handles loading configuration at application startup.
 
-use std::path::PathBuf;
 use crate::AppConfig;
+use std::path::PathBuf;
 
 /// Load startup configuration from the default config file
 pub fn load_startup_config() -> (AppConfig, Option<PathBuf>, Option<PathBuf>, String) {
     let path = PathBuf::from("multi_channel_config.json");
-    
+
     if path.exists() {
         if let Ok(content) = std::fs::read_to_string(&path) {
             match serde_json::from_str::<AppConfig>(&content) {
@@ -20,7 +20,7 @@ pub fn load_startup_config() -> (AppConfig, Option<PathBuf>, Option<PathBuf>, St
                     );
                     let config_file_path = Some(path);
                     let status_msg = "Configuration loaded.".to_string();
-                    
+
                     return (config, config_dir, config_file_path, status_msg);
                 }
                 Err(e) => {
@@ -30,7 +30,7 @@ pub fn load_startup_config() -> (AppConfig, Option<PathBuf>, Option<PathBuf>, St
             }
         }
     }
-    
+
     // Default: no config file found
     let status_msg = "Ready - GPUI version initialized".to_string();
     (AppConfig::default(), None, None, status_msg)

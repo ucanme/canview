@@ -45,4 +45,3 @@ impl ImeTextInputState {
 
 // Note: EntityInputHandler should be implemented by CanViewApp (in entity_input_handler.rs)
 // ImeTextInputState is just a data structure that stores input state
-

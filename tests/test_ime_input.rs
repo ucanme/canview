@@ -3,8 +3,8 @@
 //! This test verifies that the application properly handles text input
 //! through input methods (Chinese, Japanese, Korean, etc.)
 
-use canview::models::SignalLibrary;
 use canview::library::LibraryManager;
+use canview::models::SignalLibrary;
 use canview::ChannelType;
 
 #[cfg(test)]
@@ -125,7 +125,9 @@ mod ime_input_tests {
     #[test]
     fn test_version_name_format() {
         let mut manager = LibraryManager::new();
-        let library = manager.create_library("Test Library".to_string(), ChannelType::CAN).unwrap();
+        let library = manager
+            .create_library("Test Library".to_string(), ChannelType::CAN)
+            .unwrap();
 
         // Standard version formats
         let valid_versions = vec![
@@ -140,7 +142,7 @@ mod ime_input_tests {
             let result = manager.add_version(
                 &library.id,
                 version_name.to_string(),
-                "/path/to/file.dbc".to_string()
+                "/path/to/file.dbc".to_string(),
             );
             assert!(result.is_ok(), "Should create version: {}", version_name);
         }
@@ -156,12 +158,14 @@ mod ime_input_tests {
         let has_space = valid_chars.iter().any(|c| *c == ' ');
         assert!(!has_space, "Version names should not contain spaces");
 
-        let allowed = |c: char| -> bool {
-            c.is_ascii_alphanumeric() || c == '.' || c == '_' || c == '-'
-        };
+        let allowed =
+            |c: char| -> bool { c.is_ascii_alphanumeric() || c == '.' || c == '_' || c == '-' };
 
         let all_valid = valid_chars.iter().all(|c| allowed(*c));
-        assert!(all_valid, "All characters in version name should be allowed");
+        assert!(
+            all_valid,
+            "All characters in version name should be allowed"
+        );
     }
 
     /// Test searching for libraries with Chinese names
@@ -169,12 +173,19 @@ mod ime_input_tests {
     fn test_search_library_chinese() {
         let mut manager = LibraryManager::new();
 
-        manager.create_library("测试CAN库".to_string(), ChannelType::CAN).unwrap();
-        manager.create_library("测试LIN库".to_string(), ChannelType::LIN).unwrap();
-        manager.create_library("Test Library".to_string(), ChannelType::CAN).unwrap();
+        manager
+            .create_library("测试CAN库".to_string(), ChannelType::CAN)
+            .unwrap();
+        manager
+            .create_library("测试LIN库".to_string(), ChannelType::LIN)
+            .unwrap();
+        manager
+            .create_library("Test Library".to_string(), ChannelType::CAN)
+            .unwrap();
 
         // Search for libraries containing "测试"
-        let results: Vec<_> = manager.libraries()
+        let results: Vec<_> = manager
+            .libraries()
             .iter()
             .filter(|lib| lib.name.contains("测试"))
             .collect();
@@ -182,7 +193,8 @@ mod ime_input_tests {
         assert_eq!(results.len(), 2, "Should find 2 libraries with '测试'");
 
         // Search for libraries containing "CAN"
-        let results: Vec<_> = manager.libraries()
+        let results: Vec<_> = manager
+            .libraries()
             .iter()
             .filter(|lib| lib.name.contains("CAN"))
             .collect();
@@ -222,9 +234,9 @@ mod ime_input_tests {
         }
 
         let invalid_names = vec![
-            "Test\nLibrary",    // Contains newline
-            "Test\tLibrary",    // Contains tab
-            "Test\rLibrary",    // Contains carriage return
+            "Test\nLibrary", // Contains newline
+            "Test\tLibrary", // Contains tab
+            "Test\rLibrary", // Contains carriage return
         ];
 
         for name in invalid_names {
@@ -240,11 +252,11 @@ mod ime_input_tests {
     #[test]
     fn test_utf8_byte_vs_char_length() {
         let tests = vec![
-            ("Test", 4, 4),           // English: 1 byte per char
-            ("测试", 2, 6),           // Chinese: 3 bytes per char
-            ("🚀", 1, 4),             // Emoji: 4 bytes
-            ("Test测试", 6, 10),      // Mixed: 4 + 6 bytes
-            ("a🚀b", 3, 7),           // Emoji mixed: 1 + 4 + 2 bytes
+            ("Test", 4, 4),      // English: 1 byte per char
+            ("测试", 2, 6),      // Chinese: 3 bytes per char
+            ("🚀", 1, 4),        // Emoji: 4 bytes
+            ("Test测试", 6, 10), // Mixed: 4 + 6 bytes
+            ("a🚀b", 3, 7),      // Emoji mixed: 1 + 4 + 2 bytes
         ];
 
         for (text, expected_chars, expected_bytes) in tests {
@@ -265,7 +277,10 @@ mod ime_input_tests {
 
             // Cursor position should be based on characters
             let cursor_pos = char_count;
-            assert!(cursor_pos <= char_count, "Cursor position must be <= character count");
+            assert!(
+                cursor_pos <= char_count,
+                "Cursor position must be <= character count"
+            );
 
             // But string operations work with bytes
             let bytes = text.as_bytes();
@@ -394,7 +409,9 @@ mod integration_tests {
     #[test]
     fn test_user_scenario_edit_library_name() {
         let mut manager = LibraryManager::new();
-        let library = manager.create_library("测试库".to_string(), ChannelType::CAN).unwrap();
+        let library = manager
+            .create_library("测试库".to_string(), ChannelType::CAN)
+            .unwrap();
 
         // Scenario: User wants to edit the library name
         // Original: "测试库"

@@ -290,7 +290,7 @@ impl ObjectHeader {
             // 注意：有些 BLF 文件的 header_size 字段不准确
             // 即使 header_size=16，实际数据中也可能包含完整的 32 字节 header
             // 我们需要根据实际可用数据来判断
-            
+
             if base.header_size >= 32 {
                 // 标准的完整 V1 header (32 字节)
                 object_flags = cursor.read_u32::<LittleEndian>()?;
@@ -300,10 +300,10 @@ impl ObjectHeader {
             } else if base.header_size == 16 {
                 // header_size 声称是 16 字节，但我们尝试读取完整数据
                 // 因为很多 BLF 文件的 header_size 字段不准确
-                
+
                 // 检查是否还有足够的数据（至少 16 字节）
                 let remaining = cursor.get_ref().len() - cursor.position() as usize;
-                
+
                 if remaining >= 16 {
                     // 有足够数据，尝试读取完整 header
                     object_flags = cursor.read_u32::<LittleEndian>()?;

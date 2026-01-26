@@ -4,9 +4,9 @@
 //! CAN/LIN message data.
 
 use blf::LogObject;
+use gpui::{Pixels, px};
 use parser::dbc::DbcDatabase;
 use parser::ldf::LdfDatabase;
-use gpui::{px, Pixels};
 
 /// Calculate column widths for the message table
 ///
@@ -527,7 +527,8 @@ mod tests {
     #[test]
     fn test_format_id_decimal() {
         let format_id_fn = |id: u32| -> String {
-            if true {  // decimal = true
+            if true {
+                // decimal = true
                 id.to_string()
             } else {
                 format!("0x{:03X}", id)
@@ -541,7 +542,8 @@ mod tests {
     #[test]
     fn test_format_id_hex() {
         let format_id_fn = |id: u32| -> String {
-            if false {  // decimal = false
+            if false {
+                // decimal = false
                 id.to_string()
             } else {
                 format!("0x{:03X}", id)

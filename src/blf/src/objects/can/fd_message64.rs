@@ -155,17 +155,20 @@ impl CanFdMessage64 {
             // Check both offset 0 and offset 16
             let channel_at_0 = remaining[0];
             let dlc_at_1 = remaining[1];
-            let id_at_4 = u32::from_le_bytes([remaining[4], remaining[5], remaining[6], remaining[7]]);
+            let id_at_4 =
+                u32::from_le_bytes([remaining[4], remaining[5], remaining[6], remaining[7]]);
 
             let channel_at_16 = remaining[16];
             let dlc_at_17 = remaining[17];
-            let id_at_20 = u32::from_le_bytes([remaining[20], remaining[21], remaining[22], remaining[23]]);
+            let id_at_20 =
+                u32::from_le_bytes([remaining[20], remaining[21], remaining[22], remaining[23]]);
 
             // Offset 0 looks invalid (all zeros or suspicious) AND offset 16 looks valid
-            let offset_0_invalid = (channel_at_0 == 0 && dlc_at_1 == 0 && id_at_4 == 0) ||
-                                   (dlc_at_1 == 0 && id_at_4 == 0 && channel_at_0 <= 1);
+            let offset_0_invalid = (channel_at_0 == 0 && dlc_at_1 == 0 && id_at_4 == 0)
+                || (dlc_at_1 == 0 && id_at_4 == 0 && channel_at_0 <= 1);
 
-            let offset_16_valid = (channel_at_16 > 0 || dlc_at_17 > 0 || id_at_20 > 0) && dlc_at_17 <= 15;
+            let offset_16_valid =
+                (channel_at_16 > 0 || dlc_at_17 > 0 || id_at_20 > 0) && dlc_at_17 <= 15;
 
             if offset_0_invalid && offset_16_valid {
                 16

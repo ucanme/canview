@@ -44,13 +44,7 @@ fn main() {
     }
 
     // 测试中文字符串
-    let chinese_strings = vec![
-        "测试",
-        "中文",
-        "测试CAN信号库",
-        "你好世界",
-        "库名称",
-    ];
+    let chinese_strings = vec!["测试", "中文", "测试CAN信号库", "你好世界", "库名称"];
 
     println!("\n2. 测试中文字符串:");
     for s in chinese_strings {
@@ -145,12 +139,7 @@ mod tests {
         let validation = TextInputValidation::LibraryName;
 
         // 中文字符串应该被接受
-        let strings = vec![
-            "测试",
-            "中文",
-            "测试CAN信号库",
-            "你好世界",
-        ];
+        let strings = vec!["测试", "中文", "测试CAN信号库", "你好世界"];
 
         for s in strings {
             assert!(

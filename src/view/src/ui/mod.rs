@@ -1,10 +1,10 @@
 //! UI rendering components and views
 
-pub mod views;
 pub mod components;
+pub mod views;
 
-use gpui::*;
 use crate::app::AppView;
+use gpui::*;
 
 /// Main UI renderer
 pub struct UiRenderer;
@@ -37,7 +37,7 @@ impl UiRenderer {
                             .text_sm()
                             .text_color(rgb(0x9ca3af))
                             .child("Bus Data Analyzer"),
-                    )
+                    ),
             )
     }
 }
