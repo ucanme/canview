@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 # Pin to specific commits to avoid core-graphics dependency conflicts on macOS
-gpui = { git = "https://github.com/zed-industries/zed", rev = "v0.165.2" }
+gpui = { git = "https://github.com/zed-industries/zed", rev = "v0.220.0" }
 gpui-component = { git = "https://github.com/longbridge/gpui-component", rev = "main" }
 anyhow = "1.0"
 blf = { path = "../blf" }
