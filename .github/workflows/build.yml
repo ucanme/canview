@@ -86,8 +86,15 @@ jobs:
             fontconfig \
             xdg-desktop-portal \
             xdg-desktop-portal-gtk \
-            libwebkit2gtk-4.1-dev \
-            libgtk-3-dev
+            libgtk-3-dev \
+            libasound2-dev
+
+      - name: Verify xkbcommon-x11 (Ubuntu)
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          dpkg -L libxkbcommon-x11-dev || true
+          find /usr/lib -name "libxkbcommon-x11.so" || true
+          pkg-config --libs xkbcommon-x11 || true
 
       - name: Show Rust version
         run: |
