@@ -108,11 +108,16 @@ jobs:
         if: matrix.os != 'windows-latest'
         run: cargo clippy --target ${{ matrix.target }} -p view -- -W clippy::all
 
-      - name: Build release binary
+      - name: Build release binary (Ubuntu)
+        if: startsWith(matrix.os, 'ubuntu')
         run: |
           # Help linker find libraries in Ubuntu's multiarch directory
           export LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LIBRARY_PATH
           cargo build --release -p view --target ${{ matrix.target }}
+
+      - name: Build release binary (Non-Ubuntu)
+        if: "!startsWith(matrix.os, 'ubuntu')"
+        run: cargo build --release -p view --target ${{ matrix.target }}
 
       - name: Strip binary (Unix-like)
         if: runner.os != 'Windows'
