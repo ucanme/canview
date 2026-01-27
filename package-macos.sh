@@ -155,17 +155,23 @@ if command -v create-dmg &> /dev/null; then
     rm -f "$DMG_PATH"
     
     # 创建 DMG
-    create-dmg \
-        --volname "$APP_NAME" \
-        --volicon "$RESOURCES_DIR/canview.icns" \
-        --window-pos 200 120 \
-        --window-size 800 400 \
-        --icon-size 100 \
-        --icon "$APP_NAME.app" 200 190 \
-        --hide-extension "$APP_NAME.app" \
-        --app-drop-link 600 185 \
-        "$DMG_PATH" \
-        "$APP_DIR"
+    # 构建参数
+    ARGS=(
+        --volname "$APP_NAME"
+        --window-pos 200 120
+        --window-size 800 400
+        --icon-size 100
+        --icon "$APP_NAME.app" 200 190
+        --hide-extension "$APP_NAME.app"
+        --app-drop-link 600 185
+    )
+
+    # 只有当图标存在时才添加图标参数
+    if [ -f "$RESOURCES_DIR/canview.icns" ]; then
+        ARGS+=(--volicon "$RESOURCES_DIR/canview.icns")
+    fi
+
+    create-dmg "${ARGS[@]}" "$DMG_PATH" "$APP_DIR"
     
     echo "✅ DMG 镜像创建完成！"
     echo ""
