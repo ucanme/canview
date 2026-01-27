@@ -10,7 +10,20 @@
           "path": "",
           "date": "2026-01-25",
           "description": "Created version '12' (database file to be added)",
-          "channel_databases": []
+          "channel_databases": [
+            {
+              "channel_type": "CAN",
+              "channel_id": 123,
+              "channel_name": "123",
+              "database_path": "C:\\Users\\Administrator\\RustroverProjects\\canview\\target\\release\\config\\signal_library\\11\\12\\database.dbc"
+            },
+            {
+              "channel_type": "CAN",
+              "channel_id": 1,
+              "channel_name": "123",
+              "database_path": "C:\\Users\\Administrator\\RustroverProjects\\canview\\target\\release\\config\\signal_library\\11\\12\\database.dbc"
+            }
+          ]
         }
       ]
     }

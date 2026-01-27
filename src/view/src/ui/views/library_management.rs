@@ -36,6 +36,7 @@ pub fn render_library_management_view(
     channel_name_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     channel_db_path_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     new_channel_db_path: &str, // Add this parameter to avoid reading entity in render
+    new_channel_type: crate::models::ChannelType, // Add channel type parameter
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     div()
@@ -96,6 +97,7 @@ pub fn render_library_management_view(
             channel_name_input,
             channel_db_path_input,
             new_channel_db_path,
+            new_channel_type,
             cx,
         ))
 }
@@ -531,6 +533,7 @@ fn render_right_column(
     channel_name_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     channel_db_path_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     new_channel_db_path: &str, // Add this parameter to avoid reading entity in render
+    new_channel_type: crate::models::ChannelType, // Use the new channel type being added
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     // 找到选中的库和版本
@@ -549,10 +552,8 @@ fn render_right_column(
         .map(|v| v.channel_databases.len())
         .unwrap_or(0);
 
-    // Pre-calculate channel_type to avoid borrowing issues in closures
-    let channel_type = selected_library
-        .map(|lib| lib.channel_type)
-        .unwrap_or(crate::models::ChannelType::CAN);
+    // Use the passed new_channel_type parameter directly instead of getting from library
+    let channel_type = new_channel_type;
 
     // Use the passed parameter instead of reading entity - this avoids borrow conflicts
     let (path_text, path_is_empty) = if show_add_channel_input {
@@ -629,15 +630,27 @@ fn render_right_column(
                             .items_center()
                             .gap_3()
                             .child(
+                                // Type 列
                                 div().w(px(60.0)).flex_shrink_0().child(
                                     div()
                                         .text_xs()
                                         .font_weight(FontWeight::SEMIBOLD)
                                         .text_color(rgb(0x646473))
-                                        .child("ID"),
+                                        .child("Type"),
                                 ),
                             )
                             .child(
+                                // CH 列（通道编号）
+                                div().w(px(50.0)).flex_shrink_0().child(
+                                    div()
+                                        .text_xs()
+                                        .font_weight(FontWeight::SEMIBOLD)
+                                        .text_color(rgb(0x646473))
+                                        .child("CH"),
+                                ),
+                            )
+                            .child(
+                                // Name 列
                                 div().w(px(120.0)).flex_shrink_0().child(
                                     div()
                                         .text_xs()
@@ -647,6 +660,7 @@ fn render_right_column(
                                 ),
                             )
                             .child(
+                                // Database Path 列
                                 div().flex_1().min_w_0().child(
                                     div()
                                         .text_xs()
@@ -709,6 +723,7 @@ fn render_channel_item(
 ) -> impl IntoElement {
     let path = channel_db.database_path.clone();
     let channel_name = channel_db.channel_name.clone();
+    let channel_type = channel_db.channel_type;
 
     // Copy channel_id to avoid borrow issues in closure
     let channel_id = channel_db.channel_id;
@@ -726,13 +741,31 @@ fn render_channel_item(
         .items_center()
         .gap_3()
         .child(
-            // 通道ID - 固定宽度
+            // 通道类型 - 固定宽度
             div().w(px(60.0)).flex_shrink_0().child(
                 div()
                     .text_sm()
                     .font_weight(FontWeight::MEDIUM)
+                    .text_color(if channel_type == crate::models::ChannelType::CAN {
+                        rgb(0xa6e3a1) // Green for CAN
+                    } else {
+                        rgb(0xf9e2af) // Yellow for LIN
+                    })
+                    .child(if channel_type == crate::models::ChannelType::CAN {
+                        "CAN"
+                    } else {
+                        "LIN"
+                    }),
+            ),
+        )
+        .child(
+            // 通道ID - 固定宽度，只显示数字
+            div().w(px(50.0)).flex_shrink_0().child(
+                div()
+                    .text_sm()
+                    .font_weight(FontWeight::MEDIUM)
                     .text_color(rgb(0x89b4fa)) // Zed blue for ID
-                    .child(format!("CH {}", channel_db.channel_id)),
+                    .child(format!("{}", channel_db.channel_id)),
             ),
         )
         .child(
@@ -1047,17 +1080,25 @@ fn render_add_channel_input_row_with_path(
             }
         }))
         .child(
-            // 类型选择器 - 可点击切换
-            div().w(px(80.0)).flex_shrink_0().child(
+            // 类型选择器 - 可点击切换，宽度与表头对齐
+            div().w(px(60.0)).flex_shrink_0().child(
                 div()
                     .px_2()
                     .py_1()
                     .bg(rgb(0x1a1a1a))
                     .rounded(px(2.0))
-                    .text_color(rgb(0xffffff))
+                    .text_color(if channel_type == crate::models::ChannelType::CAN {
+                        rgb(0xa6e3a1) // Green for CAN
+                    } else {
+                        rgb(0xf9e2af) // Yellow for LIN
+                    })
                     .text_sm()
+                    .font_weight(FontWeight::MEDIUM)
                     .cursor_pointer()
                     .hover(|style| style.bg(rgb(0x2a2a2a)))
+                    .flex()
+                    .items_center()
+                    .justify_center()
                     .child(if channel_type == crate::models::ChannelType::CAN {
                         "CAN"
                     } else {
@@ -1081,7 +1122,7 @@ fn render_add_channel_input_row_with_path(
         .child(
             // 通道ID输入
             div()
-                .w(px(60.0))
+                .w(px(50.0))
                 .flex_shrink_0()
                 .child(if let Some(input) = channel_id_input {
                     div()
@@ -1166,7 +1207,7 @@ fn render_add_channel_input_row_with_path(
                                             eprintln!("📁 File selected: {}", path_str);
 
                                             // 自动保存通道配置
-                                            view.save_channel_config(cx);
+                                            // view.save_channel_config(cx); // Removed auto-save to allow user to input ID/Name after file selection
                                         });
                                     }
                                     Ok::<(), anyhow::Error>(())
@@ -1178,6 +1219,63 @@ fn render_add_channel_input_row_with_path(
                         div().child("Error: No entity")
                     }
                 }),
+        )
+        .child(
+            // 操作按钮：确认和取消
+            div()
+                .flex()
+                .items_center()
+                .gap_1()
+                .ml_2()
+                .flex_shrink_0()
+                .child(
+                    // 确认按钮
+                    div()
+                        .w(px(20.))
+                        .h(px(20.))
+                        .cursor_pointer()
+                        .hover(|style| style.bg(rgb(0x313244)))
+                        .rounded(px(3.))
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .child(
+                            div()
+                                .text_sm()
+                                .text_color(rgb(0xa6e3a1)) // Green
+                                .child("✓"),
+                        )
+                        .on_mouse_down(
+                            gpui::MouseButton::Left,
+                            cx.listener(|this, _, _, cx| {
+                                this.save_channel_config(cx);
+                            }),
+                        ),
+                )
+                .child(
+                    // 取消按钮
+                    div()
+                        .w(px(20.))
+                        .h(px(20.))
+                        .cursor_pointer()
+                        .hover(|style| style.bg(rgb(0x313244)))
+                        .rounded(px(3.))
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .child(
+                            div()
+                                .text_sm()
+                                .text_color(rgb(0xf38ba8)) // Red
+                                .child("✕"),
+                        )
+                        .on_mouse_down(
+                            gpui::MouseButton::Left,
+                            cx.listener(|this, _, _, cx| {
+                                this.hide_add_channel_input(cx);
+                            }),
+                        ),
+                ),
         )
 }
 

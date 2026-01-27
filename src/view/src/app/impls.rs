@@ -725,6 +725,7 @@ impl CanViewApp {
                 self.channel_name_input.as_ref(),
                 self.channel_db_path_input.as_ref(),
                 &self.new_channel_db_path, // Add this parameter
+                self.new_channel_type,     // Add channel type parameter
                 cx,
             ))
     }
@@ -2885,8 +2886,11 @@ impl Render for CanViewApp {
         if self.show_add_channel_input {
             if self.channel_id_input.is_none() {
                 eprintln!("📝 Creating channel_id_input in render...");
-                self.channel_id_input =
-                    Some(cx.new(|cx| InputState::new(window, cx).placeholder("Channel ID")));
+                self.channel_id_input = Some(cx.new(|cx| {
+                    InputState::new(window, cx)
+                        .placeholder("Channel ID")
+                        .validate(|s, _| s.chars().all(|c| c.is_ascii_digit()))
+                }));
             }
 
             if self.channel_name_input.is_none() {
@@ -3181,45 +3185,6 @@ impl Render for CanViewApp {
                                                 }
                                             })
                                             .child("Logs"),
-                                    )
-                                    .child(
-                                        div()
-                                            .px_3()
-                                            .py(px(1.5))
-                                            .text_xs()
-                                            .font_weight(FontWeight::MEDIUM)
-                                            .cursor_pointer()
-                                            .rounded(px(3.)) // Smaller radius like Zed
-                                            .bg(if self.current_view == AppView::ConfigView {
-                                                rgb(0x1e1e2e) // Zed-style active tab (yellow)
-                                            } else {
-                                                rgb(0x0c0c0e) // Transparent
-                                            })
-                                            .text_color(
-                                                if self.current_view == AppView::ConfigView {
-                                                    rgb(0xcdd6f4) // Zed's text
-                                                } else {
-                                                    rgb(0x646473) // Zed's muted
-                                                },
-                                            )
-                                            .hover(|style| {
-                                                if self.current_view != AppView::ConfigView {
-                                                    style
-                                                        .bg(rgb(0x151515)) // Very subtle hover
-                                                        .text_color(rgb(0x9399b2))
-                                                } else {
-                                                    style
-                                                }
-                                            })
-                                            .on_mouse_down(gpui::MouseButton::Left, {
-                                                let view = view.clone();
-                                                move |_, _, cx| {
-                                                    view.update(cx, |view, _| {
-                                                        view.current_view = AppView::ConfigView
-                                                    });
-                                                }
-                                            })
-                                            .child("Config"),
                                     )
                                     .child(
                                         div()
