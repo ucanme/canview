@@ -67,6 +67,11 @@ jobs:
         run: |
           choco install innosetup -y
 
+      - name: Download Inno Setup Translations
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/jrsoftware/issrc/master/Files/Languages/ChineseSimplified.isl" -OutFile "ChineseSimplified.isl"
+
       - name: Create installer
         shell: pwsh
         run: |
