@@ -261,6 +261,8 @@ fn render_library_item(
             gpui::MouseButton::Left,
             cx.listener(move |this, _event, _window, cx| {
                 this.selected_library_id = Some(library_id.clone());
+                // Reset add channel input when switching libraries
+                this.hide_add_channel_input(cx);
                 cx.notify();
             }),
         )
@@ -503,6 +505,8 @@ fn render_version_item(
             cx.listener(move |this, _event, _window, cx| {
                 this.selected_version_id = Some(version_name.clone());
                 this.status_msg = format!("Selected version: {}", version_name).into();
+                // Ensure add channel input is hidden when determining selection
+                this.hide_add_channel_input(cx);
                 cx.notify();
             }),
         )
@@ -779,13 +783,19 @@ fn render_channel_item(
             ),
         )
         .child(
-            // 数据库文件路径 - 自适应剩余宽度
             div().flex_1().min_w_0().child(
                 div()
                     .text_sm()
                     .text_color(rgb(0x646473)) // Zed muted
                     .truncate()
-                    .child(path),
+                    .child({
+                        let normalized = path.replace('\\', "/");
+                        if let Some(idx) = normalized.find("libraries/") {
+                            normalized[idx..].to_string()
+                        } else {
+                            path
+                        }
+                    }),
             ),
         )
         .child(
@@ -800,6 +810,9 @@ fn render_channel_item(
                 .items_center()
                 .justify_center()
                 .flex_shrink_0()
+                .text_color(rgb(0x646473)) // Zed muted
+                .hover(|style| style.text_color(rgb(0xf38ba8))) // Red on hover
+                .child("🗑")
                 .on_mouse_down(
                     gpui::MouseButton::Left,
                     cx.listener(move |this, _event, _window, cx| {
@@ -1127,7 +1140,7 @@ fn render_add_channel_input_row_with_path(
                 .child(if let Some(input) = channel_id_input {
                     div()
                         .flex_1()
-                        .child(Input::new(input).appearance(true))
+                        .child(Input::new(input))
                         .into_any_element()
                 } else {
                     div()
@@ -1145,7 +1158,7 @@ fn render_add_channel_input_row_with_path(
                 .child(if let Some(input) = channel_name_input {
                     div()
                         .flex_1()
-                        .child(Input::new(input).appearance(true))
+                        .child(Input::new(input))
                         .into_any_element()
                 } else {
                     div()
@@ -1195,8 +1208,14 @@ fn render_add_channel_input_row_with_path(
                             .on_mouse_down(gpui::MouseButton::Left, move |_event, _window, app| {
                                 let this = this.clone();
                                 app.spawn(async move |cx| {
-                                    if let Some(file) = rfd::AsyncFileDialog::new()
-                                        .add_filter("Database Files", &["dbc", "ldf"])
+                                    let dialog = rfd::AsyncFileDialog::new();
+                                    
+                                    let dialog = match channel_type {
+                                        crate::models::ChannelType::CAN => dialog.add_filter("DBC Files", &["dbc"]),
+                                        crate::models::ChannelType::LIN => dialog.add_filter("LDF Files", &["ldf"]),
+                                    };
+
+                                    if let Some(file) = dialog
                                         .pick_file()
                                         .await
                                     {
@@ -1205,6 +1224,13 @@ fn render_add_channel_input_row_with_path(
                                             // 保存文件路径
                                             view.new_channel_db_path = path_str.clone();
                                             eprintln!("📁 File selected: {}", path_str);
+
+                                            // Auto-fill channel name from filename if empty
+                                            if view.new_channel_name.is_empty() {
+                                                if let Some(stem) = std::path::Path::new(&path_str).file_stem() {
+                                                    view.new_channel_name = stem.to_string_lossy().to_string();
+                                                }
+                                            }
 
                                             // 自动保存通道配置
                                             // view.save_channel_config(cx); // Removed auto-save to allow user to input ID/Name after file selection
@@ -1248,6 +1274,7 @@ fn render_add_channel_input_row_with_path(
                         .on_mouse_down(
                             gpui::MouseButton::Left,
                             cx.listener(|this, _, _, cx| {
+                                eprintln!("🖱️ Confirm button clicked");
                                 this.save_channel_config(cx);
                             }),
                         ),

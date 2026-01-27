@@ -65,10 +65,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
+            lld \
+            clang \
             pkg-config \
             libxkbcommon-dev \
             libxkbcommon-x11-0 \
             libxkbcommon-x11-dev \
+            libxcb-xkb-dev \
             libwayland-dev \
             libvulkan-dev \
             libx11-dev \

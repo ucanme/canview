@@ -1,0 +1,48 @@
+VERSION "1.0"
+
+
+NS_ : 
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+	BA_DEF_DEF_
+	EV_DATA_
+	ENVVAR_DATA_
+	SGTYPE_
+	SGTYPE_VAL_
+	BA_DEF_SGTYPE_
+	BA_SGTYPE_
+	SIG_TYPE_REF_
+	VAL_TABLE_
+	SIG_GROUP_
+	SIG_VALTYPE_
+	SIGTYPE_VALTYPE_
+	BO_TX_BU_
+	BA_DEF_REL_
+	BA_REL_
+	BA_DEF_DEF_REL_
+	BU_SG_REL_
+	BU_EV_REL_
+	BU_BO_REL_
+	SG_MUL_VAL_
+
+BS_:
+
+BU_: Engine Display
+
+
+BO_ 256 EngineStatus: 8 Engine
+ SG_ Speed : 0|12@1+ (1,0) [0|4095] "rpm" Display
+ SG_ Temperature : 12|8@1+ (1,-40) [-40|215] "degC" Display
+ SG_ FuelLevel : 20|8@1+ (0.5,0) [0|100] "%" Display
+
+BO_ 257 VehicleSpeed: 4 Engine
+ SG_ SpeedKm : 0|16@1+ (0.1,0) [0|350] "km/h" Display
+
+BO_ 512 ControlCommand: 2 Display
+ SG_ AC_Switch : 0|1@1+ (1,0) [0|1] "" Engine

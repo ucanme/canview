@@ -13,15 +13,21 @@
           "channel_databases": [
             {
               "channel_type": "CAN",
-              "channel_id": 123,
-              "channel_name": "123",
+              "channel_id": 3,
+              "channel_name": "4",
               "database_path": "C:\\Users\\Administrator\\RustroverProjects\\canview\\target\\release\\config\\signal_library\\11\\12\\database.dbc"
             },
             {
               "channel_type": "CAN",
-              "channel_id": 1,
-              "channel_name": "123",
-              "database_path": "C:\\Users\\Administrator\\RustroverProjects\\canview\\target\\release\\config\\signal_library\\11\\12\\database.dbc"
+              "channel_id": 4,
+              "channel_name": "5",
+              "database_path": "C:\\Users\\Administrator\\RustroverProjects\\canview\\target\\release\\config\\signal_library\\11\\12\\test_can.dbc"
+            },
+            {
+              "channel_type": "CAN",
+              "channel_id": 5,
+              "channel_name": "6",
+              "database_path": "C:\\Users\\Administrator\\RustroverProjects\\canview\\target\\release\\config\\signal_library\\11\\12\\sample.dbc"
             }
           ]
         }

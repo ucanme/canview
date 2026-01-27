@@ -82,8 +82,15 @@ impl SignalLibraryStorage {
             .and_then(|e| e.to_str())
             .unwrap_or("dbc");
 
+        // 获取文件名
+        let file_name = source_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .map(|n| sanitize_filename(n))
+            .unwrap_or_else(|| format!("database.{}", extension));
+
         // 目标文件路径
-        let dest_path = version_dir.join(format!("database.{}", extension));
+        let dest_path = version_dir.join(file_name);
 
         // 复制文件
         fs::copy(source_path, &dest_path).context(format!(

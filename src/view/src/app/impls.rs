@@ -8,7 +8,7 @@ use crate::ChannelType;
 use crate::rendering::calculate_column_widths;
 use blf::{BlfResult, LogObject, read_blf_from_file};
 use gpui::{prelude::*, *};
-use gpui_component::input::InputState;
+use gpui_component::input::{InputEvent, InputState};
 use parser::dbc::DbcDatabase;
 use parser::ldf::LdfDatabase;
 use std::collections::HashMap;
@@ -86,7 +86,7 @@ impl CanViewApp {
             editing_channel_index: None,
             channel_id_input: None,
             channel_name_input: None,
-            show_add_channel_input: false,
+            show_add_channel_input: true,
             channel_db_path_input: None,
             new_channel_type: ChannelType::CAN,
             pending_file_path: None,
@@ -2886,17 +2886,34 @@ impl Render for CanViewApp {
         if self.show_add_channel_input {
             if self.channel_id_input.is_none() {
                 eprintln!("📝 Creating channel_id_input in render...");
-                self.channel_id_input = Some(cx.new(|cx| {
+                let input = cx.new(|cx| {
                     InputState::new(window, cx)
                         .placeholder("Channel ID")
-                        .validate(|s, _| s.chars().all(|c| c.is_ascii_digit()))
-                }));
+                });
+                cx.subscribe(&input, |this, input, event, cx| {
+                    if let InputEvent::Change = event {
+                        this.new_channel_id = input.read(cx).text().to_string();
+                        eprintln!("DEBUG: ID change: {}", this.new_channel_id);
+                        // cx.notify(); // Optional, but let's keep it minimal to avoid flicker
+                    }
+                })
+                .detach();
+                self.channel_id_input = Some(input);
             }
 
             if self.channel_name_input.is_none() {
                 eprintln!("📝 Creating channel_name_input in render...");
-                self.channel_name_input =
-                    Some(cx.new(|cx| InputState::new(window, cx).placeholder("Channel name")));
+                let input = cx.new(|cx| {
+                    InputState::new(window, cx).placeholder("Channel name")
+                });
+                cx.subscribe(&input, |this, input, event, cx| {
+                    if let InputEvent::Change = event {
+                        this.new_channel_name = input.read(cx).text().to_string();
+                        eprintln!("DEBUG: Name change: {}", this.new_channel_name);
+                    }
+                })
+                .detach();
+                self.channel_name_input = Some(input);
             }
         }
 
@@ -3621,6 +3638,9 @@ impl CanViewApp {
         version_name: &str,
         cx: &mut Context<Self>,
     ) {
+        // Reset add channel input state when loading a new version
+        self.hide_add_channel_input(cx);
+        
         let library = match self.library_manager.find_library(library_id) {
             Some(lib) => lib,
             None => {
@@ -3734,21 +3754,44 @@ impl CanViewApp {
             self.new_channel_db_path
         );
 
-        // Read values from input fields
+        // Read values from input fields (Manual read as primary)
+        // Note: Validation on input creation is currently removed to avoid issues.
         if let Some(id_input) = &self.channel_id_input {
             let id_text = id_input.read(cx).text().to_string();
-            eprintln!("DEBUG: ID input text: '{}'", id_text);
-            if !id_text.trim().is_empty() {
-                self.new_channel_id = id_text;
+            eprintln!("DEBUG: Manual Read ID: '{}', Listener ID: '{}'", id_text, self.new_channel_id);
+            // If listener failed, fallback to manual read
+            if self.new_channel_id.is_empty() && !id_text.is_empty() {
+                 self.new_channel_id = id_text;
+            } else if !id_text.is_empty() {
+                 self.new_channel_id = id_text;
             }
+        } else {
+             self.status_msg = "Error: Input lost. Try reopening.".into();
+             cx.notify();
+             return;
         }
 
         if let Some(name_input) = &self.channel_name_input {
             let name_text = name_input.read(cx).text().to_string();
-            eprintln!("DEBUG: Name input text: '{}'", name_text);
-            if !name_text.trim().is_empty() {
-                self.new_channel_name = name_text;
-            }
+            self.new_channel_name = name_text;
+        }
+
+        if self.new_channel_id.is_empty() {
+            self.status_msg = "Please enter channel ID".into();
+            cx.notify();
+            return;
+        }
+
+        if self.new_channel_name.is_empty() {
+             self.status_msg = "Please enter channel name".into();
+             cx.notify();
+             return;
+        }
+
+        if self.new_channel_db_path.is_empty() {
+             self.status_msg = "Please select a database file".into();
+             cx.notify();
+             return;
         }
 
         // Path is set automatically when file is selected via "Select File..." button
@@ -3859,7 +3902,9 @@ impl CanViewApp {
 
         // Validate the channel config
         if let Err(e) = channel_db.validate() {
-            self.status_msg = format!("Validation error: {}", e).into();
+            let msg = format!("Validation error: {}", e);
+            eprintln!("❌ {}", msg);
+            self.status_msg = msg.into();
             cx.notify();
             return;
         }
@@ -3870,7 +3915,8 @@ impl CanViewApp {
             match version.add_channel_database(channel_db) {
                 Ok(_) => {
                     self.status_msg = format!("Channel {} added successfully", channel_id).into();
-                    self.show_add_channel_input = false;
+                    // Keep input row open for continuous adding
+                    self.show_add_channel_input = true;
 
                     // Clear input fields
                     self.new_channel_id.clear();
@@ -3909,15 +3955,32 @@ impl CanViewApp {
             None => return,
         };
 
+        let version_name = match &self.selected_version_id {
+            Some(name) => name.clone(),
+            None => return,
+        };
+
         let library = match self.library_manager.find_library_mut(&library_id) {
             Some(lib) => lib,
             None => return,
         };
 
-        if let Some(version) = library.versions.iter_mut().find(|v| v.name == v.name) {
+        if let Some(version) = library.versions.iter_mut().find(|v| v.name == version_name) {
+            // Remove from configuration
             version
                 .channel_databases
                 .retain(|db| db.channel_id != channel_id);
+            
+            // Remove from runtime cache
+            self.dbc_channels.remove(&channel_id);
+            self.ldf_channels.remove(&channel_id);
+
+            // Sync to app config
+            self.app_config.libraries = self.library_manager.libraries().to_vec();
+            
+            // Save to disk
+            self.save_config(cx);
+
             self.status_msg = format!("Channel {} deleted", channel_id).into();
             cx.notify();
         }
