@@ -121,7 +121,7 @@ Comment=CAN/LIN Bus Analysis Tool
 Exec=/usr/bin/$APP_NAME
 Icon=$APP_NAME
 Terminal=false
-Categories=Development;Utility;
+Categories=Development;
 Keywords=CAN;LIN;Bus;Analysis;
 EOF
 
@@ -226,19 +226,12 @@ Requires:       gtk3
 CANVIEW is a professional tool for analyzing CAN and LIN bus data.
 
 %prep
-%setup -q
+%setup -q -c
 
 %install
 rm -rf \$RPM_BUILD_ROOT
-mkdir -p \$RPM_BUILD_ROOT/usr/bin
-mkdir -p \$RPM_BUILD_ROOT/usr/share/%{name}
-mkdir -p \$RPM_BUILD_ROOT/usr/share/applications
-mkdir -p \$RPM_BUILD_ROOT/usr/share/icons/hicolor/256x256/apps
-
-cp -r * \$RPM_BUILD_ROOT/usr/share/%{name}/
-install -m 755 usr/bin/%{name} \$RPM_BUILD_ROOT/usr/bin/
-install -m 644 usr/share/applications/%{name}.desktop \$RPM_BUILD_ROOT/usr/share/applications/
-install -m 644 usr/share/icons/hicolor/256x256/apps/%{name}.png \$RPM_BUILD_ROOT/usr/share/icons/hicolor/256x256/apps/
+mkdir -p \$RPM_BUILD_ROOT
+cp -r * \$RPM_BUILD_ROOT/
 
 %files
 /usr/bin/%{name}
@@ -259,7 +252,7 @@ EOF
 tar -czf "$RPM_DIR/SOURCES/${APP_NAME}-${VERSION}.tar.gz" -C "$PACKAGE_DIR" .
 
 # 构建 RPM
-rpmbuild --define "_topdir $RPM_DIR" -ba "$RPM_DIR/SPECS/$APP_NAME.spec" 2>/dev/null || {
+rpmbuild --define "_topdir $RPM_DIR" -ba "$RPM_DIR/SPECS/$APP_NAME.spec" || {
     echo "⚠️  rpmbuild 不可用，跳过 .rpm 包创建"
 }
 
@@ -307,7 +300,7 @@ APPRUN_EOF
     fi
     
     # 构建 AppImage
-    appimagetool "$APPDIR" "$OUTPUT_DIR/$APP_NAME-v$VERSION-x86_64.AppImage"
+    ARCH=x86_64 appimagetool "$APPDIR" "$OUTPUT_DIR/$APP_NAME-v$VERSION-x86_64.AppImage"
     echo "✅ AppImage 创建完成！"
 else
     echo "⚠️  未安装 appimagetool，跳过 AppImage 创建"
