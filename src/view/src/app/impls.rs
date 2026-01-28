@@ -1,4 +1,4 @@
-//! CanViewApp implementation blocks
+﻿//! CanViewApp implementation blocks
 //!
 //! This file contains all impl blocks for CanViewApp.
 
@@ -3110,7 +3110,7 @@ impl Render for CanViewApp {
                                     .child(
                                         div()
                                             .px_3()
-                                            .window_control_area(WindowControlArea::App)
+                                            
                                             .py(px(1.5))
                                             .text_xs()
                                             .font_weight(FontWeight::MEDIUM)
@@ -3148,7 +3148,7 @@ impl Render for CanViewApp {
                                     .child(
                                         div()
                                             .px_3()
-                                            .window_control_area(WindowControlArea::App)
+                                            
                                             .py(px(1.5))
                                             .text_xs()
                                             .font_weight(FontWeight::MEDIUM)
@@ -3225,7 +3225,7 @@ impl Render for CanViewApp {
                             .child(
                                 div()
                                     .px_3()
-                                    .window_control_area(WindowControlArea::App)
+                                    
                                     .py(px(1.5))
                                     .text_xs()
                                     .font_weight(FontWeight::MEDIUM)
@@ -3286,7 +3286,7 @@ impl Render for CanViewApp {
                             .child(
                                 // Minimize button - Zed style
                                 div()
-                                    .window_control_area(WindowControlArea::App)
+                                    
                                     .w(px(28.)) // Slightly smaller
                                     .h(px(28.))
                                     .flex()
@@ -3305,7 +3305,7 @@ impl Render for CanViewApp {
                             .child(
                                 // Maximize/Restore button - Zed style
                                 div()
-                                    .window_control_area(WindowControlArea::App)
+                                    
                                     .w(px(28.)) // Slightly smaller
                                     .h(px(28.))
                                     .flex()
@@ -3333,7 +3333,7 @@ impl Render for CanViewApp {
                             .child(
                                 // Close button - Zed style
                                 div()
-                                    .window_control_area(WindowControlArea::App)
+                                    
                                     .w(px(28.)) // Slightly smaller
                                     .h(px(28.))
                                     .flex()
