@@ -3096,71 +3096,12 @@ impl Render for CanViewApp {
                     .child(
                         // Left: App branding and navigation tabs (draggable area)
                         div()
+                            .when(cfg!(target_os = "macos"), |div| div.pl(px(80.)))
                             .flex()
                             .items_center()
                             .h_full()
                             .gap_4()
                             .window_control_area(WindowControlArea::Drag)
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap_2()
-                                    .child(
-                                        // App logo icon - simplified CAN bus waveform
-                                        div()
-                                            .w(px(20.))
-                                            .h(px(20.))
-                                            .rounded(px(4.))
-                                            .bg(rgb(0x1e1e2e)) // Zed-style subtle background
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .gap(px(1.5))
-                                            .child(
-                                                div()
-                                                    .w(px(2.5))
-                                                    .h(px(2.5))
-                                                    .rounded(px(1.))
-                                                    .bg(rgb(0xa6e3a1)), // Zed green
-                                            )
-                                            .child(
-                                                div()
-                                                    .w(px(2.5))
-                                                    .h(px(2.5))
-                                                    .rounded(px(1.))
-                                                    .bg(rgb(0x7dcfff)), // Zed blue
-                                            )
-                                            .child(
-                                                div()
-                                                    .w(px(3.))
-                                                    .h(px(3.))
-                                                    .rounded(px(1.5))
-                                                    .bg(rgb(0xb4befe)), // Zed purple
-                                            )
-                                            .child(
-                                                div()
-                                                    .w(px(2.5))
-                                                    .h(px(2.5))
-                                                    .rounded(px(1.))
-                                                    .bg(rgb(0x7dcfff)),
-                                            )
-                                            .child(
-                                                div()
-                                                    .w(px(2.5))
-                                                    .h(px(2.5))
-                                                    .rounded(px(1.))
-                                                    .bg(rgb(0xa6e3a1)),
-                                            ),
-                                    )
-                                    .child(
-                                        div()
-                                            .text_color(rgb(0xcdd6f4)) // Zed's default text
-                                            .font_weight(FontWeight::SEMIBOLD)
-                                            .text_sm() // Smaller, more refined
-                                            .child("CANVIEW"),
-                                    ),
-                            )
                             .child(
                                 div()
                                     .flex()
