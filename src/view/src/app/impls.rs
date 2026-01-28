@@ -1482,7 +1482,6 @@ impl CanViewApp {
                                             scroll_handle_clone.scroll_to_item_strict(target_index, gpui::ScrollStrategy::Top);
                                         }
                                         cx.notify(view_for_scroll_track.entity_id());
-                                        cx.stop_propagation();
                                     })
                                     .child(
                                         // Thumb with drag functionality
@@ -1511,7 +1510,6 @@ impl CanViewApp {
                                                     });
                                                 });
 
-                                                cx.stop_propagation();
                                             }
                                             })
                                     )
@@ -1567,7 +1565,6 @@ impl CanViewApp {
                             .on_mouse_move({
                                 let view_for_scroll = view_for_scroll.clone();
                                 move |_event, _window, cx| {
-                                    cx.stop_propagation();
                                     view_for_scroll.update(cx, |app, cx| {
                                         app.mouse_over_filter_dropdown = true;
                                         cx.notify();
@@ -1578,7 +1575,6 @@ impl CanViewApp {
                             .on_mouse_up(gpui::MouseButton::Left, {
                                 let view_for_scroll = view_for_scroll.clone();
                                 move |_event, _window, cx| {
-                                    cx.stop_propagation();
                                     view_for_scroll.update(cx, |app, cx| {
                                         app.mouse_over_filter_dropdown = true;
                                         cx.notify();
@@ -1588,7 +1584,6 @@ impl CanViewApp {
                             .on_mouse_down(gpui::MouseButton::Left, {
                                 let view_for_scroll = view_for_scroll.clone();
                                 move |_event, _window, cx| {
-                                    cx.stop_propagation();
                                     view_for_scroll.update(cx, |app, cx| {
                                         app.mouse_over_filter_dropdown = true;
                                         cx.notify();
@@ -1597,7 +1592,6 @@ impl CanViewApp {
                             })
                             // Capture wheel events at container level and manually scroll
                             .on_scroll_wheel(move |event, _window, cx| {
-                                cx.stop_propagation();
 
                                 // Calculate scroll delta
                                 let delta_y = match event.delta {
@@ -1655,16 +1649,13 @@ impl CanViewApp {
                                                     .cursor_pointer()
                                                     // Block all mouse events from propagating to the main list
                                                     .on_mouse_move(move |_event, _window, cx| {
-                                                        cx.stop_propagation();
                                                     })
                                                     .on_mouse_up(gpui::MouseButton::Left, move |_event, _window, cx| {
-                                                        cx.stop_propagation();
                                                     })
                                                     .on_mouse_down(gpui::MouseButton::Left, {
                                                         let view = view_clone1.clone();
                                                         move |_event, _window, cx| {
                                                             eprintln!("Selected ID: {}", id);
-                                                            cx.stop_propagation();
                                                             view.update(cx, |app, cx| {
                                                                 app.id_filter = Some(id);
                                                                 app.id_filter_text = id.to_string().into();
@@ -1736,7 +1727,6 @@ impl CanViewApp {
                             .on_mouse_move({
                                 let view_for_scroll = view_for_scroll.clone();
                                 move |_event, _window, cx| {
-                                    cx.stop_propagation();
                                     view_for_scroll.update(cx, |app, cx| {
                                         app.mouse_over_filter_dropdown = true;
                                         cx.notify();
@@ -1747,7 +1737,6 @@ impl CanViewApp {
                             .on_mouse_up(gpui::MouseButton::Left, {
                                 let view_for_scroll = view_for_scroll.clone();
                                 move |_event, _window, cx| {
-                                    cx.stop_propagation();
                                     view_for_scroll.update(cx, |app, cx| {
                                         app.mouse_over_filter_dropdown = true;
                                         cx.notify();
@@ -1757,7 +1746,6 @@ impl CanViewApp {
                             .on_mouse_down(gpui::MouseButton::Left, {
                                 let view_for_scroll = view_for_scroll.clone();
                                 move |_event, _window, cx| {
-                                    cx.stop_propagation();
                                     view_for_scroll.update(cx, |app, cx| {
                                         app.mouse_over_filter_dropdown = true;
                                         cx.notify();
@@ -1766,7 +1754,6 @@ impl CanViewApp {
                             })
                             // Capture wheel events at container level and manually scroll
                             .on_scroll_wheel(move |event, _window, cx| {
-                                cx.stop_propagation();
 
                                 // Calculate scroll delta
                                 let delta_y = match event.delta {
@@ -1824,16 +1811,13 @@ impl CanViewApp {
                                                     .cursor_pointer()
                                                     // Block all mouse events from propagating to the main list
                                                     .on_mouse_move(move |_event, _window, cx| {
-                                                        cx.stop_propagation();
                                                     })
                                                     .on_mouse_up(gpui::MouseButton::Left, move |_event, _window, cx| {
-                                                        cx.stop_propagation();
                                                     })
                                                     .on_mouse_down(gpui::MouseButton::Left, {
                                                         let view = view_clone2.clone();
                                                         move |_event, _window, cx| {
                                                             eprintln!("Selected Channel: {}", channel);
-                                                            cx.stop_propagation();
                                                             view.update(cx, |app, cx| {
                                                                 app.channel_filter = Some(channel);
                                                                 app.channel_filter_text = channel.to_string().into();
@@ -1924,7 +1908,6 @@ impl CanViewApp {
                     .on_mouse_move({
                         let view_for_scroll = view_for_scroll.clone();
                         move |_event, _window, cx| {
-                            cx.stop_propagation();
                             view_for_scroll.update(cx, |app, cx| {
                                 app.mouse_over_filter_dropdown = true;
                                 cx.notify();
@@ -1935,7 +1918,6 @@ impl CanViewApp {
                     .on_mouse_up(gpui::MouseButton::Left, {
                         let view_for_scroll = view_for_scroll.clone();
                         move |_event, _window, cx| {
-                            cx.stop_propagation();
                             view_for_scroll.update(cx, |app, cx| {
                                 app.mouse_over_filter_dropdown = true;
                                 cx.notify();
@@ -1945,7 +1927,6 @@ impl CanViewApp {
                     .on_mouse_down(gpui::MouseButton::Left, {
                         let view_for_scroll = view_for_scroll.clone();
                         move |_event, _window, cx| {
-                            cx.stop_propagation();
                             view_for_scroll.update(cx, |app, cx| {
                                 app.mouse_over_filter_dropdown = true;
                                 cx.notify();
@@ -1954,7 +1935,6 @@ impl CanViewApp {
                     })
                     // Capture wheel events at container level and manually scroll
                     .on_scroll_wheel(move |event, _window, cx| {
-                        cx.stop_propagation();
 
                         // Calculate scroll delta
                         let delta_y = match event.delta {
@@ -2014,19 +1994,16 @@ impl CanViewApp {
                                             .cursor_pointer()
                                             // Block all mouse events from propagating to the main list
                                             .on_mouse_move(move |_event, _window, cx| {
-                                                cx.stop_propagation();
                                             })
                                             .on_mouse_up(
                                                 gpui::MouseButton::Left,
                                                 move |_event, _window, cx| {
-                                                    cx.stop_propagation();
                                                 },
                                             )
                                             .on_mouse_down(gpui::MouseButton::Left, {
                                                 let view = view.clone();
                                                 move |_event, _window, cx| {
                                                     eprintln!("Selected Channel: {}", channel);
-                                                    cx.stop_propagation();
                                                     view.update(cx, |app, cx| {
                                                         app.channel_filter = Some(channel);
                                                         app.channel_filter_text =
@@ -3092,7 +3069,8 @@ impl Render for CanViewApp {
                     .px_4()
                     .border_b_1()
                     .border_color(rgb(0x1a1a1a)) // Very subtle border
-                    .window_control_area(WindowControlArea::Drag)
+                    .relative()
+                    .child(div().absolute().inset_0().window_control_area(WindowControlArea::Drag))
                     .child(
                         // Left: App branding and navigation tabs (draggable area)
                         div()
@@ -3101,7 +3079,7 @@ impl Render for CanViewApp {
                             .items_center()
                             .h_full()
                             .gap_4()
-                            .window_control_area(WindowControlArea::Drag)
+                            
                             .child(
                                 div()
                                     .flex()
@@ -3137,7 +3115,7 @@ impl Render for CanViewApp {
                                             })
                                             .on_mouse_down(gpui::MouseButton::Left, {
                                                 let view = view.clone();
-                                                move |_, _, cx| {
+                                                move |_event, _, cx| {
                                                     view.update(cx, |view, _| {
                                                         view.current_view = AppView::LogView
                                                     });
@@ -3177,7 +3155,7 @@ impl Render for CanViewApp {
                                             })
                                             .on_mouse_down(gpui::MouseButton::Left, {
                                                 let view = view.clone();
-                                                move |_, _, cx| {
+                                                move |_event, _, cx| {
                                                     view.update(cx, |view, _| {
                                                         view.current_view = AppView::LibraryView
                                                     });
@@ -3194,7 +3172,7 @@ impl Render for CanViewApp {
                             .items_center()
                             .h_full()
                             .gap_4()
-                            .window_control_area(WindowControlArea::Drag)
+                            
                             .child(
                                 div()
                                     .text_xs()
@@ -3221,7 +3199,7 @@ impl Render for CanViewApp {
                             .items_center()
                             .h_full()
                             .gap_2()
-                            .window_control_area(WindowControlArea::Drag)
+                            
                             .child(
                                 div()
                                     .px_3()
@@ -3236,9 +3214,9 @@ impl Render for CanViewApp {
                                     .hover(|style| style.bg(rgb(0x252f3a))) // Subtle hover
                                     .on_mouse_down(gpui::MouseButton::Left, {
                                         let view = view.clone();
-                                        move |_, _, app| {
+                                        move |_event, _, cx| {
                                             let view = view.clone();
-                                            app.spawn(async move |cx| {
+                                            cx.spawn(async move |cx| {
                                                 if let Some(file) = rfd::AsyncFileDialog::new()
                                                     .add_filter("BLF Files", &["blf", "bin"])
                                                     .pick_file()
@@ -3297,7 +3275,7 @@ impl Render for CanViewApp {
                                     .child(div().w(px(10.)).h(px(1.)).bg(rgb(0x646473))) // Zed's muted
                                     .on_mouse_down(
                                         gpui::MouseButton::Left,
-                                        |_event, window, _app| {
+                                        |_event, window, cx| {
                                             window.minimize_window();
                                         },
                                     ),
@@ -3344,7 +3322,7 @@ impl Render for CanViewApp {
                                     .child(div().text_sm().text_color(rgb(0x646473)).child("×")) // Zed's muted
                                     .on_mouse_down(
                                         gpui::MouseButton::Left,
-                                        |_event, window, _app| {
+                                        |_event, window, cx| {
                                             window.remove_window();
                                         },
                                     ),
