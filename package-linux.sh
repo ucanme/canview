@@ -68,6 +68,8 @@ fi
 # 复制图标
 if [ -f "assets/ico/canview.png" ]; then
     cp "assets/ico/canview.png" "$PACKAGE_DIR/usr/share/icons/hicolor/256x256/apps/$APP_NAME.png"
+elif [ -f "assets/png/icon_256.png" ]; then
+    cp "assets/png/icon_256.png" "$PACKAGE_DIR/usr/share/icons/hicolor/256x256/apps/$APP_NAME.png"
 fi
 
 echo "✅ 文件复制完成！"
@@ -204,7 +206,7 @@ echo ""
 
 # 8. 创建 .rpm 包
 echo "📦 步骤 7: 创建 .rpm 包..."
-RPM_DIR="$OUTPUT_DIR/rpm-build"
+RPM_DIR="$(pwd)/$OUTPUT_DIR/rpm-build"
 rm -rf "$RPM_DIR"
 mkdir -p "$RPM_DIR"/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 

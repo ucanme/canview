@@ -124,24 +124,22 @@ begin
     Result := 1;
 end;
 
-// 初始化安装
+// 初始化安装与配置
 procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ConfigFile: String;
+  DefaultConfig: String;
 begin
-  if (CurStep=ssInstall) then
+  // 1. 检查并卸载旧版本 (安装开始前)
+  if (CurStep = ssInstall) then
   begin
     if (IsUpgrade()) then
     begin
       UnInstallOldVersion();
     end;
   end;
-end;
 
-// 创建默认配置文件
-procedure CurStepChanged(CurStep: TSetupStep);
-var
-  ConfigFile: String;
-  DefaultConfig: String;
-begin
+  // 2. 创建默认配置文件 (安装完成后)
   if CurStep = ssPostInstall then
   begin
     ConfigFile := ExpandConstant('{app}\config\default_config.json');
