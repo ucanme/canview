@@ -270,12 +270,15 @@ jobs:
     needs: [build-windows, build-macos, build-linux]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Get version from tag
         id: get_version
+        shell: bash
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
@@ -290,141 +293,41 @@ jobs:
         run: ls -R artifacts
 
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref }}
-          release_name: CANVIEW v${{ steps.get_version.outputs.VERSION }}
+          name: CANVIEW v${{ steps.get_version.outputs.VERSION }}
           body: |
             ## CANVIEW v${{ steps.get_version.outputs.VERSION }}
 
-            ### 下载
+            ### 🚀 下载
 
             #### Windows
-            - **安装程序**: `CANVIEW-Setup-v${{ steps.get_version.outputs.VERSION }}.exe` - 推荐，图形化安装
-            - **便携版**: `CANVIEW-v${{ steps.get_version.outputs.VERSION }}.zip` - 解压即用
+            - **安装程序**: `CANVIEW-Setup-v${{ steps.get_version.outputs.VERSION }}.exe` - 推荐
+            - **便携版**: `CANVIEW-v${{ steps.get_version.outputs.VERSION }}.zip`
 
             #### macOS
-            - **DMG 镜像**: `CANVIEW-v${{ steps.get_version.outputs.VERSION }}.dmg` - 推荐，拖拽安装
-            - **压缩包**: `CANVIEW-v${{ steps.get_version.outputs.VERSION }}-macos.tar.gz` - 解压到 Applications
+            - **DMG 镜像**: `CANVIEW-v${{ steps.get_version.outputs.VERSION }}.dmg`
+            - **压缩包**: `CANVIEW-v${{ steps.get_version.outputs.VERSION }}-macos.tar.gz`
 
             #### Linux
-            - **Debian/Ubuntu**: `canview_${{ steps.get_version.outputs.VERSION }}_amd64.deb` - 使用 apt 安装
-            - **Fedora/RHEL**: `canview-${{ steps.get_version.outputs.VERSION }}-1.*.rpm` - 使用 dnf/yum 安装
-            - **AppImage**: `canview-v${{ steps.get_version.outputs.VERSION }}-x86_64.AppImage` - 推荐，无需安装
-            - **通用包**: `canview-v${{ steps.get_version.outputs.VERSION }}-linux-amd64.tar.gz` - 所有发行版
-
-            ### 功能特性
-
-            - ✅ BLF 文件解析和查看
-            - ✅ DBC/LDF 数据库支持
-            - ✅ 信号库本地存储
-            - ✅ 多通道配置管理
-            - ✅ 自动配置保存/加载
-            - ✅ CAN/LIN 类型支持
-
-            ### 安装说明
-
-            详见各平台的安装文档。
+            - **AppImage**: `canview-v${{ steps.get_version.outputs.VERSION }}-x86_64.AppImage` - 推荐
+            - **Debian/Ubuntu**: `canview_${{ steps.get_version.outputs.VERSION }}_amd64.deb`
+            - **Fedora/RHEL**: `canview-${{ steps.get_version.outputs.VERSION }}-1.*.rpm`
+            - **通用包**: `canview-v${{ steps.get_version.outputs.VERSION }}-linux-amd64.tar.gz`
 
             ---
             **构建时间**: ${{ github.event.head_commit.timestamp }}
             **提交**: ${{ github.sha }}
+          files: |
+            artifacts/windows-installer/*.exe
+            artifacts/windows-zip/*.zip
+            artifacts/macos-dmg/*.dmg
+            artifacts/macos-tarball/*.tar.gz
+            artifacts/linux-deb/*.deb
+            artifacts/linux-rpm/*.rpm
+            artifacts/linux-appimage/*.AppImage
+            artifacts/linux-tarball/*.tar.gz
           draft: false
           prerelease: false
-
-      # 上传 Windows 文件
-      - name: Upload Windows Installer
-        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: artifacts/windows-installer/CANVIEW-Setup-v${{ steps.get_version.outputs.VERSION }}.exe
-          asset_name: CANVIEW-Setup-v${{ steps.get_version.outputs.VERSION }}.exe
-          asset_content_type: application/octet-stream
-        continue-on-error: true
-
-      - name: Upload Windows ZIP
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: artifacts/windows-zip/CANVIEW-v${{ steps.get_version.outputs.VERSION }}.zip
-          asset_name: CANVIEW-v${{ steps.get_version.outputs.VERSION }}.zip
-          asset_content_type: application/zip
-        continue-on-error: true
-
-      # 上传 macOS 文件
-      - name: Upload macOS DMG
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: artifacts/macos-dmg/CANVIEW-v${{ steps.get_version.outputs.VERSION }}.dmg
-          asset_name: CANVIEW-v${{ steps.get_version.outputs.VERSION }}.dmg
-          asset_content_type: application/octet-stream
-        continue-on-error: true
-
-      - name: Upload macOS tar.gz
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: artifacts/macos-tarball/CANVIEW-v${{ steps.get_version.outputs.VERSION }}-macos.tar.gz
-          asset_name: CANVIEW-v${{ steps.get_version.outputs.VERSION }}-macos.tar.gz
-          asset_content_type: application/gzip
-        continue-on-error: true
-
-      # 上传 Linux 文件
-      - name: Find and upload Linux DEB
-        shell: bash
-        run: |
-          DEB_FILE=$(find artifacts/linux-deb -name "*.deb" -type f | head -n 1)
-          if [ -n "$DEB_FILE" ]; then
-            echo "Found DEB: $DEB_FILE"
-            gh release upload ${{ github.ref_name }} "$DEB_FILE" --clobber
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
-      - name: Find and upload Linux RPM
-        shell: bash
-        run: |
-          RPM_FILE=$(find artifacts/linux-rpm -name "*.rpm" -type f | head -n 1)
-          if [ -n "$RPM_FILE" ]; then
-            echo "Found RPM: $RPM_FILE"
-            gh release upload ${{ github.ref_name }} "$RPM_FILE" --clobber
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
-      - name: Upload Linux tar.gz
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: artifacts/linux-tarball/canview-v${{ steps.get_version.outputs.VERSION }}-linux-amd64.tar.gz
-          asset_name: canview-v${{ steps.get_version.outputs.VERSION }}-linux-amd64.tar.gz
-          asset_content_type: application/gzip
-        continue-on-error: true
-
-      - name: Find and upload Linux AppImage
-        shell: bash
-        run: |
-          APPIMAGE_FILE=$(find artifacts/linux-appimage -name "*.AppImage" -type f | head -n 1)
-          if [ -n "$APPIMAGE_FILE" ]; then
-            echo "Found AppImage: $APPIMAGE_FILE"
-            gh release upload ${{ github.ref_name }} "$APPIMAGE_FILE" --clobber
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
