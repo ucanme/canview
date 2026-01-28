@@ -3065,59 +3065,66 @@ impl Render for CanViewApp {
                     .bg(rgb(0x0c0c0e)) // Zed's panel background
                     .flex()
                     .items_center()
-                    .justify_between()
                     .px_4()
                     .border_b_1()
                     .border_color(rgb(0x1a1a1a)) // Very subtle border
-                    .relative()
-                    .child(div().absolute().inset_0().window_control_area(WindowControlArea::Drag))
                     .child(
-                        // Left: App branding and navigation tabs (draggable area)
+                        // Left: App branding and navigation tabs
                         div()
-                            .when(cfg!(target_os = "macos"), |div| div.pl(px(80.)))
+                            .flex_none()
                             .flex()
                             .items_center()
                             .h_full()
                             .gap_4()
+                            .child(
+                                div().when(cfg!(target_os = "macos"), |div| {
+                                    div.w(px(80.)).window_control_area(WindowControlArea::Drag)
+                                }),
+                            )
                             
                             .child(
                                 div()
+                                    .h_full()
                                     .flex()
                                     .items_center()
-                                    .gap_0() // Tighter spacing like Zed
+                                    .gap_0()
                                     .child(
                                         div()
-                                            .px_3()
-                                            
-                                            .py(px(1.5))
+                                            .h_full()
+                                            .flex() // Center text
+                                            .items_center()
+                                            .px_4() // Larger horizontal padding
                                             .text_xs()
                                             .font_weight(FontWeight::MEDIUM)
                                             .cursor_pointer()
-                                            .rounded(px(3.)) // Smaller radius like Zed
+                                            // BG logic remains related to active state
                                             .bg(if self.current_view == AppView::LogView {
-                                                rgb(0x1e1e2e) // Zed-style active tab
+                                                rgb(0x1e1e2e)
                                             } else {
-                                                rgb(0x0c0c0e) // Transparent
+                                                rgb(0x0c0c0e)
                                             })
                                             .text_color(if self.current_view == AppView::LogView {
-                                                rgb(0xcdd6f4) // Zed's text
+                                                rgb(0xcdd6f4)
                                             } else {
-                                                rgb(0x646473) // Zed's muted
+                                                rgb(0x646473)
                                             })
                                             .hover(|style| {
                                                 if self.current_view != AppView::LogView {
                                                     style
-                                                        .bg(rgb(0x151515)) // Very subtle hover
+                                                        .bg(rgb(0x151515))
                                                         .text_color(rgb(0x9399b2))
                                                 } else {
                                                     style
                                                 }
                                             })
+                                            .id("logs_tab")
                                             .on_mouse_down(gpui::MouseButton::Left, {
                                                 let view = view.clone();
                                                 move |_event, _, cx| {
-                                                    view.update(cx, |view, _| {
-                                                        view.current_view = AppView::LogView
+                                                    cx.stop_propagation();
+                                                    view.update(cx, |this, cx| {
+                                                        this.current_view = AppView::LogView;
+                                                        cx.notify();
                                                     });
                                                 }
                                             })
@@ -3125,39 +3132,42 @@ impl Render for CanViewApp {
                                     )
                                     .child(
                                         div()
-                                            .px_3()
-                                            
-                                            .py(px(1.5))
+                                            .h_full()
+                                            .flex()
+                                            .items_center()
+                                            .px_4()
                                             .text_xs()
                                             .font_weight(FontWeight::MEDIUM)
                                             .cursor_pointer()
-                                            .rounded(px(3.)) // Smaller radius like Zed
                                             .bg(if self.current_view == AppView::LibraryView {
-                                                rgb(0x1e1e2e) // Zed-style active tab (blue)
+                                                rgb(0x1e1e2e)
                                             } else {
-                                                rgb(0x0c0c0e) // Transparent
+                                                rgb(0x0c0c0e)
                                             })
                                             .text_color(
                                                 if self.current_view == AppView::LibraryView {
-                                                    rgb(0xcdd6f4) // Zed's text
+                                                    rgb(0xcdd6f4)
                                                 } else {
-                                                    rgb(0x646473) // Zed's muted
+                                                    rgb(0x646473)
                                                 },
                                             )
                                             .hover(|style| {
                                                 if self.current_view != AppView::LibraryView {
                                                     style
-                                                        .bg(rgb(0x151515)) // Very subtle hover
+                                                        .bg(rgb(0x151515))
                                                         .text_color(rgb(0x9399b2))
                                                 } else {
                                                     style
                                                 }
                                             })
+                                            .id("library_tab")
                                             .on_mouse_down(gpui::MouseButton::Left, {
                                                 let view = view.clone();
                                                 move |_event, _, cx| {
-                                                    view.update(cx, |view, _| {
-                                                        view.current_view = AppView::LibraryView
+                                                    cx.stop_propagation();
+                                                    view.update(cx, |this, cx| {
+                                                        this.current_view = AppView::LibraryView;
+                                                        cx.notify();
                                                     });
                                                 }
                                             })
@@ -3165,9 +3175,12 @@ impl Render for CanViewApp {
                                     ),
                             ),
                     )
+                    .child(div().flex_1().window_control_area(WindowControlArea::Drag))
                     .child(
                         // Center: Status and stats - Zed style
                         div()
+                            .flex_none()
+                            // Removed Drag area from center to avoid confusion
                             .flex()
                             .items_center()
                             .h_full()
@@ -3192,9 +3205,11 @@ impl Render for CanViewApp {
                                     .child(format!("{} LIN", self.ldf_channels.len())),
                             ),
                     )
+                    .child(div().flex_1().window_control_area(WindowControlArea::Drag))
                     .child(
                         // Right: Action buttons and window controls
                         div()
+                            .flex_none()
                             .flex()
                             .items_center()
                             .h_full()
@@ -3212,9 +3227,11 @@ impl Render for CanViewApp {
                                     .rounded(px(3.)) // Smaller radius
                                     .cursor_pointer()
                                     .hover(|style| style.bg(rgb(0x252f3a))) // Subtle hover
+                                    .id("open_blf_btn")
                                     .on_mouse_down(gpui::MouseButton::Left, {
                                         let view = view.clone();
                                         move |_event, _, cx| {
+                                            cx.stop_propagation();
                                             let view = view.clone();
                                             cx.spawn(async move |cx| {
                                                 if let Some(file) = rfd::AsyncFileDialog::new()
@@ -3246,7 +3263,7 @@ impl Render for CanViewApp {
                                                     let _ = cx.update(|cx| {
                                                         view.update(cx, |view, cx| {
                                                             view.apply_blf_result(result);
-                                                            cx.notify(); // Notify that the window needs to be re-rendered
+                                                            cx.notify();
                                                         });
                                                     });
                                                 }
@@ -3273,12 +3290,18 @@ impl Render for CanViewApp {
                                     .cursor_pointer()
                                     .hover(|style| style.bg(rgb(0x121212))) // Very subtle hover
                                     .child(div().w(px(10.)).h(px(1.)).bg(rgb(0x646473))) // Zed's muted
+                                    .id("minimize_btn")
                                     .on_mouse_down(
                                         gpui::MouseButton::Left,
-                                        |_event, window, cx| {
-                                            window.minimize_window();
+                                        {
+                                            let view = view.clone();
+                                            move |_event, window, cx| {
+                                                cx.stop_propagation();
+                                                window.minimize_window();
+                                                view.update(cx, |_, cx| cx.notify());
+                                            }
                                         },
-                                    ),
+                                    )
                             )
                             .child(
                                 // Maximize/Restore button - Zed style
@@ -3298,15 +3321,17 @@ impl Render for CanViewApp {
                                             .border_1()
                                             .border_color(rgb(0x646473)), // Zed's muted
                                     )
+                                    .id("maximize_btn")
                                     .on_mouse_down(gpui::MouseButton::Left, {
                                         let view = view.clone();
                                         move |_event, window, cx| {
-                                            // Use our custom toggle that properly manages state
-                                            view.update(cx, |view, cx| {
-                                                view.toggle_maximize(window, cx);
+                                            cx.stop_propagation();
+                                            view.update(cx, |this, cx| {
+                                                this.toggle_maximize(window, cx);
+                                                cx.notify();
                                             });
                                         }
-                                    }),
+                                    })
                             )
                             .child(
                                 // Close button - Zed style
@@ -3322,10 +3347,11 @@ impl Render for CanViewApp {
                                     .child(div().text_sm().text_color(rgb(0x646473)).child("×")) // Zed's muted
                                     .on_mouse_down(
                                         gpui::MouseButton::Left,
-                                        |_event, window, cx| {
+                                        move |_event, window, cx| {
+                                            cx.stop_propagation();
                                             window.remove_window();
                                         },
-                                    ),
+                                    )
                             ),
                     ),
             )
