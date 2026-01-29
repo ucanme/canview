@@ -28,6 +28,12 @@
               "channel_id": 5,
               "channel_name": "6",
               "database_path": "C:\\Users\\Administrator\\RustroverProjects\\canview\\target\\release\\config\\signal_library\\11\\12\\sample.dbc"
+            },
+            {
+              "channel_type": "CAN",
+              "channel_id": 1,
+              "channel_name": "2",
+              "database_path": "C:\\Users\\Administrator\\RustroverProjects\\canview\\target\\release\\config\\signal_library\\11\\12\\test_can.dbc"
             }
           ]
         }

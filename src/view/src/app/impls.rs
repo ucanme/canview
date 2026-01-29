@@ -54,6 +54,7 @@ impl CanViewApp {
             filter_scroll_handle: gpui::UniformListScrollHandle::new(),
             // Initialize mouse tracking
             mouse_over_filter_dropdown: false,
+            mouse_down_on_filter_dropdown: false,
             dropdown_just_opened: false,
             // Channel filter
             channel_filter: None,
@@ -626,6 +627,7 @@ impl CanViewApp {
             filter_scroll_offset: px(0.0),
             filter_scroll_handle: gpui::UniformListScrollHandle::new(),
             mouse_over_filter_dropdown: false,
+            mouse_down_on_filter_dropdown: false,
             dropdown_just_opened: false,
             // Channel filter
             channel_filter: None,
@@ -715,7 +717,7 @@ impl CanViewApp {
                 self.show_version_input,
                 &self.new_library_name,
                 &self.new_version_name,
-                &self.focused_library_input,
+                &None, // focused_library_input is deprecated
                 self.library_cursor_position,
                 self.new_version_cursor_position,
                 self.library_name_input.as_ref(),
@@ -815,6 +817,7 @@ impl CanViewApp {
 
         // Clone view for use in event handlers
         let view_for_mouse_move = view.clone();
+        let view_for_mouse_down = view.clone();
         let view_for_mouse_up = view.clone();
         let view_for_scrollbar = view.clone();
         let view_for_keyboard = view.clone();
@@ -1027,28 +1030,23 @@ impl CanViewApp {
                 }
                 cx.notify(view_for_mouse_move.entity_id());
             })
+            // Global mouse down handler
+            .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
+                view_for_mouse_down.update(cx, |app, _cx| {
+                    eprintln!("Global mouse_down: show_id={}, show_ch={}",
+                        app.show_id_filter_input, app.show_channel_filter_input);
+                });
+            })
             // Global mouse up handler - this will catch mouse up anywhere
             .on_mouse_up(MouseButton::Left, move |_event, _window, cx| {
                 // Always clear drag state on mouse up, anywhere in the window
                 view_for_mouse_up.update(cx, |app, _cx| {
                     app.scrollbar_drag_state = None;
 
-                    // Close filter dropdowns if clicking outside
-                    // Check if dropdown was just opened (in which case, don't close it)
-                    if !app.dropdown_just_opened && !app.mouse_over_filter_dropdown {
-                        // Close ID filter dropdown if open
-                        if app.show_id_filter_input {
-                            app.show_id_filter_input = false;
-                        }
-                        // Close channel filter dropdown if open
-                        if app.show_channel_filter_input {
-                            app.show_channel_filter_input = false;
-                        }
-                    }
-
-                    // Reset flags after processing
-                    app.mouse_over_filter_dropdown = false;
-                    app.dropdown_just_opened = false;
+                    // NOTE: Dropdown closing is now handled by the overlay, not here
+                    // This prevents the dropdown from being closed immediately after opening
+                    eprintln!("Global mouse_up: show_id={}, show_ch={}",
+                        app.show_id_filter_input, app.show_channel_filter_input);
                 });
             })
             .child(
@@ -1130,12 +1128,8 @@ impl CanViewApp {
                                                     } else {
                                                         eprintln!("Before: show_channel_filter_input={}", app.show_channel_filter_input);
                                                         app.show_channel_filter_input = !app.show_channel_filter_input;
-                                                        eprintln!("After: show_channel_filter_input={}", app.show_channel_filter_input);
-
-                                                        // If we're opening the dropdown, set the flag to prevent immediate close
-                                                        if app.show_channel_filter_input {
-                                                            app.dropdown_just_opened = true;
-                                                        }
+                                                        eprintln!("After: show_channel_filter_input={}",
+                                                            app.show_channel_filter_input);
                                                     }
                                                     cx.notify();
                                                 });
@@ -1230,12 +1224,8 @@ impl CanViewApp {
                                                         } else {
                                                             eprintln!("Before: show_id_filter_input={}", app.show_id_filter_input);
                                                             app.show_id_filter_input = !app.show_id_filter_input;
-                                                            eprintln!("After: show_id_filter_input={}", app.show_id_filter_input);
-
-                                                            // If we're opening the dropdown, set the flag to prevent immediate close
-                                                            if app.show_id_filter_input {
-                                                                app.dropdown_just_opened = true;
-                                                            }
+                                                            eprintln!("After: show_id_filter_input={}",
+                                                                app.show_id_filter_input);
                                                         }
                                                         cx.notify();
                                                     });
@@ -1275,8 +1265,8 @@ impl CanViewApp {
                     .flex()
                     .flex_col()
                     .relative()
+                    // Show placeholder when no messages
                     .when(self.messages.is_empty(), |parent| {
-                        // Show placeholder when no messages
                         parent.child(
                             div()
                                 .flex_1()
@@ -1291,8 +1281,8 @@ impl CanViewApp {
                                 )
                         )
                     })
+                    // Show messages - always use uniform_list for better performance
                     .when(!filtered_messages.is_empty(), |parent| {
-                        // Show all messages with uniform_list - it should support scrolling
                         let display_count = filtered_messages.len();
                         let view_entity = view.clone();
 
@@ -1322,7 +1312,7 @@ impl CanViewApp {
                                                     &ldf_channels,
                                                     start_time,
                                                     id_display_decimal,
-                                                    view_entity.read(cx).show_id_filter_input,  // Disable hover when filter dropdown is open
+                                                    view_entity.read(cx).show_id_filter_input,
                                                 )
                                             } else {
                                                 div().into_any_element()
@@ -1516,6 +1506,23 @@ impl CanViewApp {
                             )
                     })
             )
+            // Full-screen overlay to catch clicks outside dropdown
+            .when(self.show_id_filter_input || self.show_channel_filter_input, |parent| {
+                let view_for_overlay = view.clone();
+                parent.child(
+                    div()
+                        .absolute()
+                        .inset_0()
+                        .on_mouse_down(gpui::MouseButton::Left, move |_event, _window, cx| {
+                            eprintln!("Overlay clicked - closing dropdowns");
+                            view_for_overlay.update(cx, |app, cx| {
+                                app.show_id_filter_input = false;
+                                app.show_channel_filter_input = false;
+                                cx.notify();
+                            });
+                        })
+                )
+            })
             // Filter dropdown - SHOW ALL IDs WITH SCROLL
             .when(self.show_id_filter_input, |parent| {
                 // Calculate ALL unique IDs from messages
@@ -1547,90 +1554,80 @@ impl CanViewApp {
                         let filter_scroll_handle = self.filter_scroll_handle.clone();
                         let filter_scroll_handle_for_uniform = filter_scroll_handle.clone();
 
+                        // Outer wrapper to catch and stop scroll event propagation
                         div()
                             .absolute()
                             .left(px(filter_left))
                             .top(px(32.))
                             .w(px(150.))
                             .h(px(300.))
-                            .bg(rgb(0x1f2937))
-                            .border_1()
-                            .border_color(rgb(0x3b82f6))
-                            .rounded(px(4.))
-                            .shadow_lg()
-                            .flex()
-                            .flex_col()
-                            .overflow_hidden()  // Important: clip content
-                            // Track mouse move to disable main list hover when over dropdown
-                            .on_mouse_move({
-                                let view_for_scroll = view_for_scroll.clone();
-                                move |_event, _window, cx| {
-                                    view_for_scroll.update(cx, |app, cx| {
-                                        app.mouse_over_filter_dropdown = true;
-                                        cx.notify();
-                                    });
-                                }
-                            })
-                            // Block all mouse events from reaching the main list
-                            .on_mouse_up(gpui::MouseButton::Left, {
-                                let view_for_scroll = view_for_scroll.clone();
-                                move |_event, _window, cx| {
-                                    view_for_scroll.update(cx, |app, cx| {
-                                        app.mouse_over_filter_dropdown = true;
-                                        cx.notify();
-                                    });
-                                }
-                            })
-                            .on_mouse_down(gpui::MouseButton::Left, {
-                                let view_for_scroll = view_for_scroll.clone();
-                                move |_event, _window, cx| {
-                                    view_for_scroll.update(cx, |app, cx| {
-                                        app.mouse_over_filter_dropdown = true;
-                                        cx.notify();
-                                    });
-                                }
-                            })
-                            // Capture wheel events at container level and manually scroll
-                            .on_scroll_wheel(move |event, _window, cx| {
-
-                                // Calculate scroll delta
-                                let delta_y = match event.delta {
-                                    gpui::ScrollDelta::Lines(point) => point.y * 24.0,
-                                    gpui::ScrollDelta::Pixels(pixels) => f32::from(pixels.y),
-                                };
-
-                                // Get current scroll offset
-                                let current_offset = view_for_scroll.read(cx).filter_scroll_offset;
-                                let current_offset_f32 = f32::from(current_offset);
-
-                                // Calculate new scroll position
-                                let row_height = 24.0;
-                                let total_items = id_list_for_wheel.len();
-                                let container_height = 300.0;
-                                let total_height = total_items as f32 * row_height;
-                                let max_scroll = (total_height - container_height).max(0.0);
-
-                                let new_offset = (current_offset_f32 - delta_y).clamp(0.0, max_scroll);
-
-                                // Update state
-                                view_for_scroll.update(cx, |app, cx| {
-                                    app.filter_scroll_offset = px(new_offset);
-                                    cx.notify();
-                                });
-
-                                // Manually scroll the uniform_list using the persistent handle
-                                let target_index = ((new_offset / row_height).round() as usize)
-                                    .clamp(0, total_items.saturating_sub(1));
-
-                                filter_scroll_handle.scroll_to_item_strict(
-                                    target_index,
-                                    gpui::ScrollStrategy::Top
-                                );
-
-                                eprintln!("Manual scroll: delta={:.2}, offset={:.2} -> {:.2}, index={}",
-                                    delta_y, current_offset_f32, new_offset, target_index);
+                            .on_scroll_wheel(move |_event, _window, _cx| {
+                                // Stop propagation - don't let scroll events reach parent list
                             })
                             .child(
+                                div()
+                                    .w_full()
+                                    .h_full()
+                                    .bg(rgb(0x1f2937))
+                                    .border_1()
+                                    .border_color(rgb(0x3b82f6))
+                                    .rounded(px(4.))
+                                    .shadow_lg()
+                                    .flex()
+                                    .flex_col()
+                                    .overflow_hidden()  // Important: clip content
+                                    // Track mouse enter/leave to know when we're over the dropdown
+                                    // Don't handle mouse_down/mouse_up - let them bubble to parent
+                                    .on_mouse_move({
+                                        let view_for_scroll = view_for_scroll.clone();
+                                        move |_event, _window, cx| {
+                                            view_for_scroll.update(cx, |app, cx| {
+                                                app.mouse_over_filter_dropdown = true;
+                                                cx.notify();
+                                            });
+                                        }
+                                    })
+                                    // Capture wheel events at container level and manually scroll
+                                    .on_scroll_wheel(move |event, _window, cx| {
+
+                                        // Calculate scroll delta
+                                        let delta_y = match event.delta {
+                                            gpui::ScrollDelta::Lines(point) => point.y * 24.0,
+                                            gpui::ScrollDelta::Pixels(pixels) => f32::from(pixels.y),
+                                        };
+
+                                        // Get current scroll offset
+                                        let current_offset = view_for_scroll.read(cx).filter_scroll_offset;
+                                        let current_offset_f32 = f32::from(current_offset);
+
+                                        // Calculate new scroll position
+                                        let row_height = 24.0;
+                                        let total_items = id_list_for_wheel.len();
+                                        let container_height = 300.0;
+                                        let total_height = total_items as f32 * row_height;
+                                        let max_scroll = (total_height - container_height).max(0.0);
+
+                                        let new_offset = (current_offset_f32 - delta_y).clamp(0.0, max_scroll);
+
+                                        // Update state
+                                        view_for_scroll.update(cx, |app, cx| {
+                                            app.filter_scroll_offset = px(new_offset);
+                                            cx.notify();
+                                        });
+
+                                        // Manually scroll the uniform_list using the persistent handle
+                                        let target_index = ((new_offset / row_height).round() as usize)
+                                            .clamp(0, total_items.saturating_sub(1));
+
+                                        filter_scroll_handle.scroll_to_item_strict(
+                                            target_index,
+                                            gpui::ScrollStrategy::Top
+                                        );
+
+                                        eprintln!("Manual scroll: delta={:.2}, offset={:.2} -> {:.2}, index={}",
+                                            delta_y, current_offset_f32, new_offset, target_index);
+                                    })
+                                    .child(
                                 uniform_list(
                                     "filter-dropdown",
                                     id_list_clone.len(),
@@ -1673,7 +1670,8 @@ impl CanViewApp {
                                 )
                                 .track_scroll(&filter_scroll_handle_for_uniform)
                                 .flex_1()
-                            )
+                            )  // End of inner div
+                            )  // End of outer wrapper div
                     }
                 )
             })
@@ -1709,90 +1707,80 @@ impl CanViewApp {
                         let filter_scroll_handle = self.channel_filter_scroll_handle.clone();
                         let filter_scroll_handle_for_uniform = filter_scroll_handle.clone();
 
+                        // Outer wrapper to catch and stop scroll event propagation
                         div()
                             .absolute()
                             .left(px(filter_left))
                             .top(px(32.))
                             .w(px(120.))
                             .h(px(300.))
-                            .bg(rgb(0x1f2937))
-                            .border_1()
-                            .border_color(rgb(0x3b82f6))
-                            .rounded(px(4.))
-                            .shadow_lg()
-                            .flex()
-                            .flex_col()
-                            .overflow_hidden()
-                            // Track mouse move to disable main list hover when over dropdown
-                            .on_mouse_move({
-                                let view_for_scroll = view_for_scroll.clone();
-                                move |_event, _window, cx| {
-                                    view_for_scroll.update(cx, |app, cx| {
-                                        app.mouse_over_filter_dropdown = true;
-                                        cx.notify();
-                                    });
-                                }
-                            })
-                            // Block all mouse events from reaching the main list
-                            .on_mouse_up(gpui::MouseButton::Left, {
-                                let view_for_scroll = view_for_scroll.clone();
-                                move |_event, _window, cx| {
-                                    view_for_scroll.update(cx, |app, cx| {
-                                        app.mouse_over_filter_dropdown = true;
-                                        cx.notify();
-                                    });
-                                }
-                            })
-                            .on_mouse_down(gpui::MouseButton::Left, {
-                                let view_for_scroll = view_for_scroll.clone();
-                                move |_event, _window, cx| {
-                                    view_for_scroll.update(cx, |app, cx| {
-                                        app.mouse_over_filter_dropdown = true;
-                                        cx.notify();
-                                    });
-                                }
-                            })
-                            // Capture wheel events at container level and manually scroll
-                            .on_scroll_wheel(move |event, _window, cx| {
-
-                                // Calculate scroll delta
-                                let delta_y = match event.delta {
-                                    gpui::ScrollDelta::Lines(point) => point.y * 24.0,
-                                    gpui::ScrollDelta::Pixels(pixels) => f32::from(pixels.y),
-                                };
-
-                                // Get current scroll offset
-                                let current_offset = view_for_scroll.read(cx).channel_filter_scroll_offset;
-                                let current_offset_f32 = f32::from(current_offset);
-
-                                // Calculate new scroll position
-                                let row_height = 24.0;
-                                let total_items = channel_list_for_wheel.len();
-                                let container_height = 300.0;
-                                let total_height = total_items as f32 * row_height;
-                                let max_scroll = (total_height - container_height).max(0.0);
-
-                                let new_offset = (current_offset_f32 - delta_y).clamp(0.0, max_scroll);
-
-                                // Update state
-                                view_for_scroll.update(cx, |app, cx| {
-                                    app.channel_filter_scroll_offset = px(new_offset);
-                                    cx.notify();
-                                });
-
-                                // Manually scroll the uniform_list using the persistent handle
-                                let target_index = ((new_offset / row_height).round() as usize)
-                                    .clamp(0, total_items.saturating_sub(1));
-
-                                filter_scroll_handle.scroll_to_item_strict(
-                                    target_index,
-                                    gpui::ScrollStrategy::Top
-                                );
-
-                                eprintln!("Channel filter scroll: delta={:.2}, offset={:.2} -> {:.2}, index={}",
-                                    delta_y, current_offset_f32, new_offset, target_index);
+                            .on_scroll_wheel(move |_event, _window, _cx| {
+                                // Stop propagation - don't let scroll events reach parent list
                             })
                             .child(
+                                div()
+                                    .w_full()
+                                    .h_full()
+                                    .bg(rgb(0x1f2937))
+                                    .border_1()
+                                    .border_color(rgb(0x3b82f6))
+                                    .rounded(px(4.))
+                                    .shadow_lg()
+                                    .flex()
+                                    .flex_col()
+                                    .overflow_hidden()
+                                    // Track mouse enter/leave to know when we're over the dropdown
+                                    // Don't handle mouse_down/mouse_up - let them bubble to parent
+                                    .on_mouse_move({
+                                        let view_for_scroll = view_for_scroll.clone();
+                                        move |_event, _window, cx| {
+                                            view_for_scroll.update(cx, |app, cx| {
+                                                app.mouse_over_filter_dropdown = true;
+                                                cx.notify();
+                                            });
+                                        }
+                                    })
+                                    // Capture wheel events at container level and manually scroll
+                                    .on_scroll_wheel(move |event, _window, cx| {
+
+                                        // Calculate scroll delta
+                                        let delta_y = match event.delta {
+                                            gpui::ScrollDelta::Lines(point) => point.y * 24.0,
+                                            gpui::ScrollDelta::Pixels(pixels) => f32::from(pixels.y),
+                                        };
+
+                                        // Get current scroll offset
+                                        let current_offset = view_for_scroll.read(cx).channel_filter_scroll_offset;
+                                        let current_offset_f32 = f32::from(current_offset);
+
+                                        // Calculate new scroll position
+                                        let row_height = 24.0;
+                                        let total_items = channel_list_for_wheel.len();
+                                        let container_height = 300.0;
+                                        let total_height = total_items as f32 * row_height;
+                                        let max_scroll = (total_height - container_height).max(0.0);
+
+                                        let new_offset = (current_offset_f32 - delta_y).clamp(0.0, max_scroll);
+
+                                        // Update state
+                                        view_for_scroll.update(cx, |app, cx| {
+                                            app.channel_filter_scroll_offset = px(new_offset);
+                                            cx.notify();
+                                        });
+
+                                        // Manually scroll the uniform_list using the persistent handle
+                                        let target_index = ((new_offset / row_height).round() as usize)
+                                            .clamp(0, total_items.saturating_sub(1));
+
+                                        filter_scroll_handle.scroll_to_item_strict(
+                                            target_index,
+                                            gpui::ScrollStrategy::Top
+                                        );
+
+                                        eprintln!("Channel filter scroll: delta={:.2}, offset={:.2} -> {:.2}, index={}",
+                                            delta_y, current_offset_f32, new_offset, target_index);
+                                    })
+                                    .child(
                                 uniform_list(
                                     "channel-filter-dropdown",
                                     channel_list_clone.len(),
@@ -1835,7 +1823,8 @@ impl CanViewApp {
                                 )
                                 .track_scroll(&filter_scroll_handle_for_uniform)
                                 .flex_1()
-                            )
+                            )  // End of inner div
+                            )  // End of outer wrapper div
                     }
                 )
             })
@@ -1904,27 +1893,9 @@ impl CanViewApp {
                     .flex()
                     .flex_col()
                     .overflow_hidden()
-                    // Track mouse move to disable main list hover when over dropdown
+                    // Track mouse enter/leave to know when we're over the dropdown
+                    // Don't handle mouse_down/mouse_up - let them bubble to parent
                     .on_mouse_move({
-                        let view_for_scroll = view_for_scroll.clone();
-                        move |_event, _window, cx| {
-                            view_for_scroll.update(cx, |app, cx| {
-                                app.mouse_over_filter_dropdown = true;
-                                cx.notify();
-                            });
-                        }
-                    })
-                    // Block all mouse events from reaching the main list
-                    .on_mouse_up(gpui::MouseButton::Left, {
-                        let view_for_scroll = view_for_scroll.clone();
-                        move |_event, _window, cx| {
-                            view_for_scroll.update(cx, |app, cx| {
-                                app.mouse_over_filter_dropdown = true;
-                                cx.notify();
-                            });
-                        }
-                    })
-                    .on_mouse_down(gpui::MouseButton::Left, {
                         let view_for_scroll = view_for_scroll.clone();
                         move |_event, _window, cx| {
                             view_for_scroll.update(cx, |app, cx| {

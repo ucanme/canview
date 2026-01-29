@@ -81,6 +81,7 @@ pub struct CanViewApp {
     pub filter_scroll_offset: Pixels,
     pub filter_scroll_handle: UniformListScrollHandle,
     pub mouse_over_filter_dropdown: bool,
+    pub mouse_down_on_filter_dropdown: bool,
     pub dropdown_just_opened: bool,
 
     // Channel filter
@@ -176,6 +177,7 @@ impl CanViewApp {
             filter_scroll_offset: gpui::px(0.0),
             filter_scroll_handle: UniformListScrollHandle::new(),
             mouse_over_filter_dropdown: false,
+            mouse_down_on_filter_dropdown: false,
             dropdown_just_opened: false,
             channel_filter: None,
             channel_filter_text: gpui::SharedString::from(""),
