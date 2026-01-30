@@ -1604,7 +1604,7 @@ impl CanViewApp {
                                         let current_offset_f32 = f32::from(current_offset);
 
                                         // Calculate new scroll position
-                                        let row_height = 24.0;
+                                        let row_height = 20.0;
                                         let total_items = id_list_for_wheel.len();
                                         let container_height = 300.0;
                                         let total_height = total_items as f32 * row_height;
@@ -1640,10 +1640,12 @@ impl CanViewApp {
                                                 let id = id_list_clone[index];
                                                 div()
                                                     .w_full()
+                                                    .h(px(20.))
+                                                    .flex()
+                                                    .items_center()
                                                     .px_3()
-                                                    .py_2()
-                                                    .h(px(24.))
                                                     .text_sm()
+                                                    .line_height(px(20.))
                                                     .text_color(rgb(0xffffff))
                                                     .hover(|style| style.bg(rgb(0x374151)))
                                                     .cursor_pointer()
@@ -1716,7 +1718,7 @@ impl CanViewApp {
                             .absolute()
                             .left(px(filter_left))
                             .top(px(32.))
-                            .w(px(120.))
+                            .w(px(150.))
                             .h(px(300.))
                             .on_scroll_wheel(move |_event, _window, cx| {
                                 // Stop propagation - don't let scroll events reach parent list
@@ -1760,7 +1762,7 @@ impl CanViewApp {
                                         let current_offset_f32 = f32::from(current_offset);
 
                                         // Calculate new scroll position
-                                        let row_height = 24.0;
+                                        let row_height = 20.0;
                                         let total_items = channel_list_for_wheel.len();
                                         let container_height = 300.0;
                                         let total_height = total_items as f32 * row_height;
@@ -1796,10 +1798,12 @@ impl CanViewApp {
                                                 let channel = channel_list_clone[index];
                                                 div()
                                                     .w_full()
+                                                    .h(px(20.))
+                                                    .flex()
+                                                    .items_center()
                                                     .px_3()
-                                                    .py_2()
-                                                    .h(px(24.))
                                                     .text_sm()
+                                                    .line_height(px(20.))
                                                     .text_color(rgb(0xffffff))
                                                     .hover(|style| style.bg(rgb(0x374151)))
                                                     .cursor_pointer()
@@ -1885,12 +1889,13 @@ impl CanViewApp {
                 // Clone the scroll handle for use in closures
                 let filter_scroll_handle = self.channel_filter_scroll_handle.clone();
                 let filter_scroll_handle_for_uniform = filter_scroll_handle.clone();
+                let view_for_selection = view.clone();
 
                 div()
                     .absolute()
                     .left(px(filter_left))
                     .top(px(32.))
-                    .w(px(120.))
+                    .w(px(150.))
                     .h(px(300.))
                     .bg(rgb(0x1f2937))
                     .border_1()
@@ -1926,7 +1931,7 @@ impl CanViewApp {
                         let current_offset_f32 = f32::from(current_offset);
 
                         // Calculate new scroll position
-                        let row_height = 24.0;
+                        let row_height = 20.0;
                         let total_items = channel_list_for_wheel.len();
                         let container_height = 300.0;
                         let total_height = total_items as f32 * row_height;
@@ -1964,10 +1969,12 @@ impl CanViewApp {
                                         let channel = channel_list_clone[index];
                                         div()
                                             .w_full()
+                                            .h(px(20.))
+                                            .flex()
+                                            .items_center()
                                             .px_3()
-                                            .py_2()
-                                            .h(px(24.))
                                             .text_sm()
+                                            .line_height(px(20.))
                                             .text_color(rgb(0xffffff))
                                             .hover(|style| style.bg(rgb(0x374151)))
                                             .cursor_pointer()
@@ -1980,11 +1987,11 @@ impl CanViewApp {
                                                 },
                                             )
                                             .on_mouse_down(gpui::MouseButton::Left, {
-                                                let view = view.clone();
+                                                let view = view_for_selection.clone();
                                                 move |_event, _window, cx| {
                                                     cx.stop_propagation();
                                                     eprintln!("Selected Channel: {}", channel);
-                                                    view.update(cx, |app, cx| {
+                                                    view.update(cx, |app: &mut CanViewApp, cx: &mut Context<CanViewApp>| {
                                                         app.channel_filter = Some(channel);
                                                         app.channel_filter_text =
                                                             channel.to_string().into();
