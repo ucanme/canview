@@ -1487,6 +1487,7 @@ impl CanViewApp {
                                             .on_mouse_down(gpui::MouseButton::Left, {
                                                 let view_for_thumb = view_for_scrollbar_inner.clone();
                                                 move |event, _window, cx| {
+                                                    cx.stop_propagation();
                                                     // Initialize drag state
                                                     let start_y = event.position.y;
                                                     let start_scroll_offset = f32::from(view_for_thumb.read(cx).scroll_offset);
@@ -1561,8 +1562,9 @@ impl CanViewApp {
                             .top(px(32.))
                             .w(px(150.))
                             .h(px(300.))
-                            .on_scroll_wheel(move |_event, _window, _cx| {
+                            .on_scroll_wheel(move |_event, _window, cx| {
                                 // Stop propagation - don't let scroll events reach parent list
+                                cx.stop_propagation();
                             })
                             .child(
                                 div()
@@ -1589,6 +1591,7 @@ impl CanViewApp {
                                     })
                                     // Capture wheel events at container level and manually scroll
                                     .on_scroll_wheel(move |event, _window, cx| {
+                                        cx.stop_propagation();
 
                                         // Calculate scroll delta
                                         let delta_y = match event.delta {
@@ -1652,6 +1655,7 @@ impl CanViewApp {
                                                     .on_mouse_down(gpui::MouseButton::Left, {
                                                         let view = view_clone1.clone();
                                                         move |_event, _window, cx| {
+                                                            cx.stop_propagation();
                                                             eprintln!("Selected ID: {}", id);
                                                             view.update(cx, |app, cx| {
                                                                 app.id_filter = Some(id);
@@ -1714,8 +1718,9 @@ impl CanViewApp {
                             .top(px(32.))
                             .w(px(120.))
                             .h(px(300.))
-                            .on_scroll_wheel(move |_event, _window, _cx| {
+                            .on_scroll_wheel(move |_event, _window, cx| {
                                 // Stop propagation - don't let scroll events reach parent list
+                                cx.stop_propagation();
                             })
                             .child(
                                 div()
@@ -1742,6 +1747,7 @@ impl CanViewApp {
                                     })
                                     // Capture wheel events at container level and manually scroll
                                     .on_scroll_wheel(move |event, _window, cx| {
+                                        cx.stop_propagation();
 
                                         // Calculate scroll delta
                                         let delta_y = match event.delta {
@@ -1805,6 +1811,7 @@ impl CanViewApp {
                                                     .on_mouse_down(gpui::MouseButton::Left, {
                                                         let view = view_clone2.clone();
                                                         move |_event, _window, cx| {
+                                                            cx.stop_propagation();
                                                             eprintln!("Selected Channel: {}", channel);
                                                             view.update(cx, |app, cx| {
                                                                 app.channel_filter = Some(channel);
@@ -1906,6 +1913,7 @@ impl CanViewApp {
                     })
                     // Capture wheel events at container level and manually scroll
                     .on_scroll_wheel(move |event, _window, cx| {
+                        cx.stop_propagation();
 
                         // Calculate scroll delta
                         let delta_y = match event.delta {
@@ -1974,6 +1982,7 @@ impl CanViewApp {
                                             .on_mouse_down(gpui::MouseButton::Left, {
                                                 let view = view.clone();
                                                 move |_event, _window, cx| {
+                                                    cx.stop_propagation();
                                                     eprintln!("Selected Channel: {}", channel);
                                                     view.update(cx, |app, cx| {
                                                         app.channel_filter = Some(channel);
