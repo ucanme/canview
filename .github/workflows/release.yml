@@ -61,7 +61,7 @@ jobs:
         shell: pwsh
         run: |
           $VERSION = "${{ steps.get_version.outputs.VERSION }}"
-          .\package.ps1 -Version $VERSION
+          .\scripts\package.ps1 -Version $VERSION
 
       - name: Install Inno Setup
         run: |
@@ -79,7 +79,7 @@ jobs:
           # 等待 Inno Setup 安装完成
           Start-Sleep -Seconds 10
           $env:PATH += ";C:\Program Files (x86)\Inno Setup 6"
-          .\build-installer.ps1 -Version $VERSION -InnoSetupPath "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          .\scripts\build-installer.ps1 -Version $VERSION -InnoSetupPath "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 
       - name: Upload Windows ZIP
         uses: actions/upload-artifact@v4
@@ -141,8 +141,8 @@ jobs:
 
       - name: Build and Package
         run: |
-          chmod +x package-macos.sh
-          ./package-macos.sh ${{ steps.get_version.outputs.VERSION }}
+          chmod +x scripts/package-macos.sh
+          ./scripts/package-macos.sh ${{ steps.get_version.outputs.VERSION }}
 
       - name: Upload macOS DMG
         uses: actions/upload-artifact@v4
@@ -235,8 +235,8 @@ jobs:
         env:
           APPIMAGE_EXTRACT_AND_RUN: 1
         run: |
-          chmod +x package-linux.sh
-          ./package-linux.sh ${{ steps.get_version.outputs.VERSION }}
+          chmod +x scripts/package-linux.sh
+          ./scripts/package-linux.sh ${{ steps.get_version.outputs.VERSION }}
 
       - name: Upload Linux DEB
         uses: actions/upload-artifact@v4
