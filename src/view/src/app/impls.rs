@@ -3039,302 +3039,237 @@ impl Render for CanViewApp {
                 }
             })
             .child(
-                // Unified top bar with all options - Zed style
-                div()
-                    .h(px(48.)) // Slightly shorter, more like Zed
-                    .bg(rgb(0x0c0c0e)) // Zed's panel background
-                    .flex()
-                    .items_center()
-                    .px_4()
-                    .border_b_1()
-                    .border_color(rgb(0x1a1a1a)) // Very subtle border
-                    .child(
-                        // Left: App branding and navigation tabs
-                        div()
-                            .flex_none()
+                // Unified top bar - Redesigned
+                {
+                    // Define button styles helper
+                    let btn_style = |active: bool| {
+                        let base = div()
+                            .px_3()
+                            .h(px(24.)) // Fixed small height
                             .flex()
                             .items_center()
-                            .h_full()
-                            .gap_4()
-                            .child(
-                                div().when(cfg!(target_os = "macos"), |div| {
-                                    div.w(px(80.)).window_control_area(WindowControlArea::Drag)
-                                }),
-                            )
-                            
-                            .child(
-                                div()
-                                    .h_full()
-                                    .flex()
-                                    .items_center()
-                                    .gap_0()
-                                    .child(
-                                        div()
-                                            .h_full()
-                                            .flex() // Center text
-                                            .items_center()
-                                            .px_4() // Larger horizontal padding
-                                            .text_xs()
-                                            .font_weight(FontWeight::MEDIUM)
-                                            .cursor_pointer()
-                                            // BG logic remains related to active state
-                                            .bg(if self.current_view == AppView::LogView {
-                                                rgb(0x1e1e2e)
-                                            } else {
-                                                rgb(0x0c0c0e)
-                                            })
-                                            .text_color(if self.current_view == AppView::LogView {
-                                                rgb(0xcdd6f4)
-                                            } else {
-                                                rgb(0x646473)
-                                            })
-                                            .hover(|style| {
-                                                if self.current_view != AppView::LogView {
-                                                    style
-                                                        .bg(rgb(0x151515))
-                                                        .text_color(rgb(0x9399b2))
-                                                } else {
-                                                    style
-                                                }
-                                            })
-                                            .id("logs_tab")
-                                            .on_mouse_down(gpui::MouseButton::Left, {
-                                                let view = view.clone();
-                                                move |_event, _, cx| {
-                                                    cx.stop_propagation();
-                                                    view.update(cx, |this, cx| {
-                                                        this.current_view = AppView::LogView;
-                                                        cx.notify();
-                                                    });
-                                                }
-                                            })
-                                            .child("Logs"),
-                                    )
-                                    .child(
-                                        div()
-                                            .h_full()
-                                            .flex()
-                                            .items_center()
-                                            .px_4()
-                                            .text_xs()
-                                            .font_weight(FontWeight::MEDIUM)
-                                            .cursor_pointer()
-                                            .bg(if self.current_view == AppView::LibraryView {
-                                                rgb(0x1e1e2e)
-                                            } else {
-                                                rgb(0x0c0c0e)
-                                            })
-                                            .text_color(
-                                                if self.current_view == AppView::LibraryView {
-                                                    rgb(0xcdd6f4)
-                                                } else {
-                                                    rgb(0x646473)
-                                                },
-                                            )
-                                            .hover(|style| {
-                                                if self.current_view != AppView::LibraryView {
-                                                    style
-                                                        .bg(rgb(0x151515))
-                                                        .text_color(rgb(0x9399b2))
-                                                } else {
-                                                    style
-                                                }
-                                            })
-                                            .id("library_tab")
-                                            .on_mouse_down(gpui::MouseButton::Left, {
-                                                let view = view.clone();
-                                                move |_event, _, cx| {
-                                                    cx.stop_propagation();
-                                                    view.update(cx, |this, cx| {
-                                                        this.current_view = AppView::LibraryView;
-                                                        cx.notify();
-                                                    });
-                                                }
-                                            })
-                                            .child("Library"),
-                                    ),
-                            ),
-                    )
-                    .child(div().flex_1().window_control_area(WindowControlArea::Drag))
-                    .child(
-                        // Center: Status and stats - Zed style
-                        div()
-                            .flex_none()
-                            // Removed Drag area from center to avoid confusion
-                            .flex()
-                            .items_center()
-                            .h_full()
-                            .gap_4()
-                            
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(rgb(0x646473)) // Zed's muted
-                                    .child(self.status_msg.clone()),
-                            )
-                            .child(div().w(px(1.0)).h(px(12.0)).bg(rgb(0x1a1a1a))) // Subtle divider
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap_2() // Tighter spacing
-                                    .text_xs()
-                                    .text_color(rgb(0x9ca3af))
-                                    .child(format!("{} msgs", self.messages.len()))
-                                    .child(format!("{} DBC", self.dbc_channels.len()))
-                                    .child(format!("{} LIN", self.ldf_channels.len())),
-                            ),
-                    )
-                    .child(div().flex_1().window_control_area(WindowControlArea::Drag))
-                    .child(
-                        // Right: Action buttons and window controls
-                        div()
-                            .flex_none()
-                            .flex()
-                            .items_center()
-                            .h_full()
-                            .gap_2()
-                            
-                            .child(
-                                div()
-                                    .px_3()
-                                    
-                                    .py(px(1.5))
-                                    .text_xs()
-                                    .font_weight(FontWeight::MEDIUM)
-                                    .text_color(rgb(0xcdd6f4)) // Zed's text
-                                    .bg(rgb(0x1a1f2e)) // Zed-style subtle green
-                                    .rounded(px(3.)) // Smaller radius
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0x252f3a))) // Subtle hover
-                                    .id("open_blf_btn")
-                                    .on_mouse_down(gpui::MouseButton::Left, {
+                            .rounded(px(4.))
+                            .text_xs()
+                            .font_weight(FontWeight::MEDIUM)
+                            .cursor_pointer();
+
+                        if active {
+                            base.bg(rgb(0x1e1e2e)).text_color(rgb(0xcdd6f4))
+                        } else {
+                            base.bg(gpui::transparent_black())
+                                .text_color(rgb(0x646473))
+                                .hover(|s| s.bg(rgb(0x151515)).text_color(rgb(0x9399b2)))
+                        }
+                    };
+
+                    // Action button style
+                    let action_btn_style = div()
+                        .px_3()
+                        .h(px(24.))
+                        .flex()
+                        .items_center()
+                        .rounded(px(4.))
+                        .text_xs()
+                        .font_weight(FontWeight::MEDIUM)
+                        .cursor_pointer()
+                        .bg(rgb(0x1a1f2e))
+                        .text_color(rgb(0xcdd6f4))
+                        .hover(|s| s.bg(rgb(0x252f3a)));
+
+                    let app_buttons = div()
+                        .flex()
+                        .items_center()
+                        .gap_2()
+                        .child(
+                            btn_style(self.current_view == AppView::LogView)
+                                .id("logs_tab")
+                                .on_mouse_down(gpui::MouseButton::Left, {
+                                    let view = view.clone();
+                                    move |_event, _, cx| {
+                                        cx.stop_propagation();
+                                        view.update(cx, |this, cx| {
+                                            this.current_view = AppView::LogView;
+                                            cx.notify();
+                                        });
+                                    }
+                                })
+                                .child("Logs"),
+                        )
+                        .child(
+                            btn_style(self.current_view == AppView::LibraryView)
+                                .id("library_tab")
+                                .on_mouse_down(gpui::MouseButton::Left, {
+                                    let view = view.clone();
+                                    move |_event, _, cx| {
+                                        cx.stop_propagation();
+                                        view.update(cx, |this, cx| {
+                                            this.current_view = AppView::LibraryView;
+                                            cx.notify();
+                                        });
+                                    }
+                                })
+                                .child("Library"),
+                        )
+                        .child(
+                            action_btn_style
+                                .id("open_blf_btn")
+                                .on_mouse_down(gpui::MouseButton::Left, {
+                                    let view = view.clone();
+                                    move |_event, _, cx| {
+                                        cx.stop_propagation();
                                         let view = view.clone();
-                                        move |_event, _, cx| {
-                                            cx.stop_propagation();
-                                            let view = view.clone();
-                                            cx.spawn(async move |cx| {
-                                                if let Some(file) = rfd::AsyncFileDialog::new()
-                                                    .add_filter("BLF Files", &["blf", "bin"])
-                                                    .pick_file()
-                                                    .await
-                                                {
-                                                    let path = file.path().to_owned();
+                                        cx.spawn(async move |cx| {
+                                            if let Some(file) = rfd::AsyncFileDialog::new()
+                                                .add_filter("BLF Files", &["blf", "bin"])
+                                                .pick_file()
+                                                .await
+                                            {
+                                                let path = file.path().to_owned();
 
-                                                    let _ = cx.update(|cx| {
-                                                        view.update(cx, |view, _| {
-                                                            view.status_msg =
-                                                                "Loading BLF...".into();
-                                                        });
+                                                let _ = cx.update(|cx| {
+                                                    view.update(cx, |view, _| {
+                                                        view.status_msg = "Loading BLF...".into();
                                                     });
+                                                });
 
-                                                    let result = cx
-                                                        .background_executor()
-                                                        .spawn(async move {
-                                                            read_blf_from_file(&path).map_err(|e| {
-                                                                anyhow::Error::msg(format!(
-                                                                    "{:?}",
-                                                                    e
-                                                                ))
-                                                            })
+                                                let result = cx
+                                                    .background_executor()
+                                                    .spawn(async move {
+                                                        read_blf_from_file(&path).map_err(|e| {
+                                                            anyhow::Error::msg(format!("{:?}", e))
                                                         })
-                                                        .await;
+                                                    })
+                                                    .await;
 
-                                                    let _ = cx.update(|cx| {
-                                                        view.update(cx, |view, cx| {
-                                                            view.apply_blf_result(result);
-                                                            cx.notify();
-                                                        });
+                                                let _ = cx.update(|cx| {
+                                                    view.update(cx, |view, cx| {
+                                                        view.apply_blf_result(result);
+                                                        cx.notify();
                                                     });
-                                                }
-                                                Ok::<(), anyhow::Error>(())
-                                            })
-                                            .detach();
-                                        }
-                                    })
-                                    .child("Open BLF"),
-                            )
-                            .child(
-                                // Window controls separator
-                                div().w(px(12.)), // Smaller separator
-                            )
-                            .child(
-                                // Minimize button - Zed style
-                                div()
-                                    
-                                    .w(px(28.)) // Slightly smaller
-                                    .h(px(28.))
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0x121212))) // Very subtle hover
-                                    .child(div().w(px(10.)).h(px(1.)).bg(rgb(0x646473))) // Zed's muted
-                                    .id("minimize_btn")
-                                    .on_mouse_down(
-                                        gpui::MouseButton::Left,
-                                        {
-                                            let view = view.clone();
-                                            move |_event, window, cx| {
-                                                cx.stop_propagation();
-                                                window.minimize_window();
-                                                view.update(cx, |_, cx| cx.notify());
+                                                });
                                             }
-                                        },
-                                    )
-                            )
-                            .child(
-                                // Maximize/Restore button - Zed style
-                                div()
-                                    
-                                    .w(px(28.)) // Slightly smaller
-                                    .h(px(28.))
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0x121212))) // Very subtle hover
-                                    .child(
-                                        div()
-                                            .w(px(9.))
-                                            .h(px(9.))
-                                            .border_1()
-                                            .border_color(rgb(0x646473)), // Zed's muted
-                                    )
-                                    .id("maximize_btn")
-                                    .on_mouse_down(gpui::MouseButton::Left, {
-                                        let view = view.clone();
-                                        move |_event, window, cx| {
-                                            cx.stop_propagation();
-                                            view.update(cx, |this, cx| {
-                                                this.toggle_maximize(window, cx);
-                                                cx.notify();
-                                            });
-                                        }
-                                    })
-                            )
-                            .child(
-                                // Close button - Zed style
-                                div()
-                                    
-                                    .w(px(28.)) // Slightly smaller
-                                    .h(px(28.))
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0x3a1a1a))) // Subtle red hover
-                                    .child(div().text_sm().text_color(rgb(0x646473)).child("×")) // Zed's muted
-                                    .on_mouse_down(
-                                        gpui::MouseButton::Left,
-                                        move |_event, window, cx| {
-                                            cx.stop_propagation();
-                                            window.remove_window();
-                                        },
-                                    )
-                            ),
-                    ),
-            )
+                                            Ok::<(), anyhow::Error>(())
+                                        })
+                                        .detach();
+                                    }
+                                })
+                                .child("Open BLF"),
+                        );
+
+                    div()
+                        .h(px(36.)) // Height reduced
+                        .bg(rgb(0x0c0c0e))
+                        .flex()
+                        .items_center()
+                        .px_4()
+                        .border_b_1()
+                        .border_color(rgb(0x1a1a1a))
+                        .child(if cfg!(target_os = "macos") {
+                            div()
+                                .flex()
+                                .w_full()
+                                .items_center()
+                                .child(
+                                    div()
+                                        .w(px(80.))
+                                        .window_control_area(WindowControlArea::Drag),
+                                )
+                                .child(
+                                    div()
+                                        .flex_1()
+                                        .window_control_area(WindowControlArea::Drag),
+                                )
+                                .child(app_buttons)
+                        } else {
+                            div()
+                                .flex()
+                                .w_full()
+                                .items_center()
+                                .child(app_buttons)
+                                .child(
+                                    div()
+                                        .flex_1()
+                                        .window_control_area(WindowControlArea::Drag),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .h_full()
+                                        .child(
+                                            div()
+                                                .w(px(36.))
+                                                .h_full()
+                                                .flex()
+                                                .items_center()
+                                                .justify_center()
+                                                .cursor_pointer()
+                                                .hover(|style| style.bg(rgb(0x1f1f1f)))
+                                                .on_mouse_down(
+                                                    gpui::MouseButton::Left,
+                                                    {
+                                                        let view = view.clone();
+                                                        move |_event, window, cx| {
+                                                            cx.stop_propagation();
+                                                            window.minimize_window();
+                                                            view.update(cx, |_, cx| cx.notify());
+                                                        }
+                                                    },
+                                                )
+                                                .child(div().w(px(10.)).h(px(1.)).bg(rgb(0x9ca3af))),
+                                        )
+                                        .child(
+                                            div()
+                                                .w(px(36.))
+                                                .h_full()
+                                                .flex()
+                                                .items_center()
+                                                .justify_center()
+                                                .cursor_pointer()
+                                                .hover(|style| style.bg(rgb(0x1f1f1f)))
+                                                .on_mouse_down(
+                                                    gpui::MouseButton::Left,
+                                                    {
+                                                        let view = view.clone();
+                                                        move |_event, window, cx| {
+                                                            cx.stop_propagation();
+                                                            view.update(cx, |this, cx| {
+                                                                this.toggle_maximize(window, cx);
+                                                                cx.notify();
+                                                            });
+                                                        }
+                                                    },
+                                                )
+                                                .child(
+                                                    div()
+                                                        .w(px(10.))
+                                                        .h(px(10.))
+                                                        .border_1()
+                                                        .border_color(rgb(0x9ca3af)),
+                                                ),
+                                        )
+                                        .child(
+                                            div()
+                                                .w(px(36.))
+                                                .h_full()
+                                                .flex()
+                                                .items_center()
+                                                .justify_center()
+                                                .cursor_pointer()
+                                                .hover(|style| style.bg(rgb(0xc53030)))
+                                                .on_mouse_down(
+                                                    gpui::MouseButton::Left,
+                                                    move |_event, window, _| {
+                                                        window.remove_window();
+                                                    },
+                                                )
+                                                .child(
+                                                    div().text_sm().text_color(rgb(0x9ca3af)).child("✕"),
+                                                ),
+                                        ),
+                                )
+                        })
+                })
             .child(
                 // Content area - Zed style
                 div()
