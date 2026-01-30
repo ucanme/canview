@@ -3181,12 +3181,12 @@ impl Render for CanViewApp {
                                         .w(px(80.))
                                         .window_control_area(WindowControlArea::Drag),
                                 )
+                                .child(app_buttons)
                                 .child(
                                     div()
                                         .flex_1()
                                         .window_control_area(WindowControlArea::Drag),
                                 )
-                                .child(app_buttons)
                         } else {
                             div()
                                 .flex()
