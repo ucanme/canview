@@ -66,7 +66,8 @@ Write-Host ""
 Write-Host "🔨 步骤 4: 构建安装程序..." -ForegroundColor Green
 
 # 更新版本号
-$issContent = Get-Content "installer.iss" -Raw
+$issSource = Join-Path $PSScriptRoot "installer.iss"
+$issContent = Get-Content $issSource -Raw
 $issContent = $issContent -replace '#define MyAppVersion ".*"', "#define MyAppVersion `"$Version`""
 $issContent | Out-File -FilePath "installer.iss" -Encoding UTF8 -Force
 
