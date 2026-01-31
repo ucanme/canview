@@ -56,8 +56,7 @@ Source: "sample.blf"; DestDir: "{app}\samples"; Flags: ignoreversion; Check: Fil
 ; 文档
 Source: "README.md"; DestDir: "{app}\docs"; Flags: ignoreversion isreadme; Check: FileExists('README.md')
 Source: "BUILD.md"; DestDir: "{app}\docs"; Flags: ignoreversion; Check: FileExists('BUILD.md')
-Source: "PACKAGING_GUIDE.md"; DestDir: "{app}\docs"; Flags: ignoreversion; Check: FileExists('PACKAGING_GUIDE.md')
-Source: "LIBRARY_MANAGEMENT_COMPLETE.md"; DestDir: "{app}\docs"; Flags: ignoreversion; Check: FileExists('LIBRARY_MANAGEMENT_COMPLETE.md')
+
 
 ; 资源文件
 Source: "assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: DirExists('assets')
