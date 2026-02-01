@@ -245,21 +245,26 @@ impl CanViewApp {
                 }
                 println!("===================\n");
 
-                // Parse start time
+                // Parse start time with nanosecond precision
                 let st = result.file_stats.measurement_start_time.clone();
+                println!("\n起始时间解析:");
+                println!("  原始 SystemTime: {:?}", st);
+                
                 let date_opt =
                     chrono::NaiveDate::from_ymd_opt(st.year as i32, st.month as u32, st.day as u32);
-                let time_opt = chrono::NaiveTime::from_hms_milli_opt(
+                let time_opt = chrono::NaiveTime::from_hms_nano_opt(
                     st.hour as u32,
                     st.minute as u32,
                     st.second as u32,
-                    st.milliseconds as u32,
+                    st.milliseconds as u32 * 1_000_000, // Convert milliseconds to nanoseconds
                 );
 
                 if let (Some(date), Some(time)) = (date_opt, time_opt) {
                     self.start_time = Some(chrono::NaiveDateTime::new(date, time));
+                    println!("  ✅ 解析成功: {:?}", self.start_time);
                 } else {
                     self.start_time = None;
+                    println!("  ❌ 解析失败");
                 }
 
                 self.messages = result.objects;
@@ -2038,6 +2043,17 @@ impl CanViewApp {
         })
     }
 
+    /// Convert BLF timestamp to seconds based on object_flags
+    fn convert_timestamp_to_seconds(timestamp: u64, flags: u32) -> f64 {
+        if flags & 0x01 != 0 {
+            // TimeTenMics: 10 microseconds per tick
+            timestamp as f64 / 100_000.0
+        } else {
+            // TimeOneNans (default): 1 nanosecond per tick
+            timestamp as f64 / 1_000_000_000.0
+        }
+    }
+
     fn get_message_strings(
         msg: &LogObject,
         start_time: Option<chrono::NaiveDateTime>,
@@ -2054,13 +2070,14 @@ impl CanViewApp {
         match msg {
             LogObject::CanMessage(can_msg) => {
                 let timestamp = can_msg.header.object_time_stamp;
+                let flags = can_msg.header.object_flags;
+                let seconds = Self::convert_timestamp_to_seconds(timestamp, flags);
+                
                 let time_str = if let Some(start) = start_time {
-                    let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
-                    // Format: YYYY-MM-DD HH:MM:SS.mmmmmm (microseconds)
+                    let nanos = (seconds * 1_000_000_000.0) as i64;
+                    let msg_time = start + chrono::Duration::nanoseconds(nanos);
                     msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
                 } else {
-                    // If no start time, show nanoseconds as seconds with microsecond precision
-                    let seconds = timestamp as f64 / 1_000_000_000.0;
                     format!("{:.6}", seconds)
                 };
 
@@ -2084,11 +2101,14 @@ impl CanViewApp {
             }
             LogObject::CanMessage2(can_msg) => {
                 let timestamp = can_msg.header.object_time_stamp;
+                let flags = can_msg.header.object_flags;
+                let seconds = Self::convert_timestamp_to_seconds(timestamp, flags);
+                
                 let time_str = if let Some(start) = start_time {
-                    let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                    let nanos = (seconds * 1_000_000_000.0) as i64;
+                    let msg_time = start + chrono::Duration::nanoseconds(nanos);
                     msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
                 } else {
-                    let seconds = timestamp as f64 / 1_000_000_000.0;
                     format!("{:.6}", seconds)
                 };
 
@@ -2112,11 +2132,14 @@ impl CanViewApp {
             }
             LogObject::CanErrorFrame(err) => {
                 let timestamp = err.header.object_time_stamp;
+                let flags = err.header.object_flags;
+                let seconds = Self::convert_timestamp_to_seconds(timestamp, flags);
+                
                 let time_str = if let Some(start) = start_time {
-                    let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                    let nanos = (seconds * 1_000_000_000.0) as i64;
+                    let msg_time = start + chrono::Duration::nanoseconds(nanos);
                     msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
                 } else {
-                    let seconds = timestamp as f64 / 1_000_000_000.0;
                     format!("{:.6}", seconds)
                 };
 
@@ -2131,11 +2154,14 @@ impl CanViewApp {
             }
             LogObject::CanFdMessage(fd_msg) => {
                 let timestamp = fd_msg.header.object_time_stamp;
+                let flags = fd_msg.header.object_flags;
+                let seconds = Self::convert_timestamp_to_seconds(timestamp, flags);
+                
                 let time_str = if let Some(start) = start_time {
-                    let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                    let nanos = (seconds * 1_000_000_000.0) as i64;
+                    let msg_time = start + chrono::Duration::nanoseconds(nanos);
                     msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
                 } else {
-                    let seconds = timestamp as f64 / 1_000_000_000.0;
                     format!("{:.6}", seconds)
                 };
 
@@ -2159,11 +2185,14 @@ impl CanViewApp {
             }
             LogObject::CanFdMessage64(fd_msg) => {
                 let timestamp = fd_msg.header.object_time_stamp;
+                let flags = fd_msg.header.object_flags;
+                let seconds = Self::convert_timestamp_to_seconds(timestamp, flags);
+                
                 let time_str = if let Some(start) = start_time {
-                    let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                    let nanos = (seconds * 1_000_000_000.0) as i64;
+                    let msg_time = start + chrono::Duration::nanoseconds(nanos);
                     msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
                 } else {
-                    let seconds = timestamp as f64 / 1_000_000_000.0;
                     format!("{:.6}", seconds)
                 };
 
@@ -2187,11 +2216,14 @@ impl CanViewApp {
             }
             LogObject::CanOverloadFrame(ov) => {
                 let timestamp = ov.header.object_time_stamp;
+                let flags = ov.header.object_flags;
+                let seconds = Self::convert_timestamp_to_seconds(timestamp, flags);
+                
                 let time_str = if let Some(start) = start_time {
-                    let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                    let nanos = (seconds * 1_000_000_000.0) as i64;
+                    let msg_time = start + chrono::Duration::nanoseconds(nanos);
                     msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
                 } else {
-                    let seconds = timestamp as f64 / 1_000_000_000.0;
                     format!("{:.6}", seconds)
                 };
 
@@ -2206,12 +2238,15 @@ impl CanViewApp {
             }
             LogObject::LinMessage(lin_msg) => {
                 let timestamp = lin_msg.header.object_time_stamp;
+                let flags = lin_msg.header.object_flags;
+                let seconds = Self::convert_timestamp_to_seconds(timestamp, flags);
+                
                 let time_str = if let Some(start) = start_time {
-                    let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
-                    // Format: YYYY-MM-DD HH:MM:SS.mmmmmm (microseconds)
+                    let nanos = (seconds * 1_000_000_000.0) as i64;
+                    let msg_time = start + chrono::Duration::nanoseconds(nanos);
                     msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
                 } else {
-                    format!("{:.6}", timestamp as f64 / 1_000_000_000.0)
+                    format!("{:.6}", seconds)
                 };
 
                 let actual_data_len = lin_msg.data.len().min(lin_msg.dlc as usize);
@@ -2234,11 +2269,14 @@ impl CanViewApp {
             }
             LogObject::LinMessage2(lin_msg) => {
                 let timestamp = lin_msg.header.object_time_stamp;
+                let flags = lin_msg.header.object_flags;
+                let seconds = Self::convert_timestamp_to_seconds(timestamp, flags);
+                
                 let time_str = if let Some(start) = start_time {
-                    let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                    let nanos = (seconds * 1_000_000_000.0) as i64;
+                    let msg_time = start + chrono::Duration::nanoseconds(nanos);
                     msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
                 } else {
-                    let seconds = timestamp as f64 / 1_000_000_000.0;
                     format!("{:.6}", seconds)
                 };
 

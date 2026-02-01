@@ -13,4 +13,5 @@ pub struct Series {
     pub unit: Option<String>,
     pub points: Vec<DataPoint>,
     pub color: Hsla,
+    pub time_labels: Vec<String>, // Pre-formatted time strings for x-axis
 }

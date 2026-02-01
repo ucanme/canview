@@ -7,6 +7,7 @@ use gpui_component::chart::LineChart;
 use gpui_component::{h_flex, v_flex};
 use gpui_component::scroll::ScrollableElement;
 use std::sync::Arc;
+use chrono::{Timelike, Datelike};
 
 /// Render the plot view with signal charts
 pub fn render_plot_view(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoElement {
@@ -157,8 +158,10 @@ fn render_toolbar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoEl
                         .rounded(px(4.0))
                         .cursor_pointer()
                         .hover(|s| s.bg(rgb(0x2563eb)))
-                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this: &mut CanViewApp, _, _, cx| {
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this: &mut CanViewApp, _event: &gpui::MouseDownEvent, _window, cx| {
+                            eprintln!("🔄 Redraw button clicked - extracting series data...");
                             this.plot_data = crate::ui::views::chart_view::extract_series_data(this);
+                            eprintln!("✅ Data extraction complete, series count: {}", this.plot_data.len());
                             cx.notify();
                         }))
                         .child(
@@ -400,6 +403,10 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
     let is_dragging = app.is_dragging_zoom;
     let drag_start = app.zoom_drag_start_x;
     let drag_current = app.zoom_drag_current_x;
+    let start_time = app.start_time;
+
+    // Constant offsets based on layout (Sidebar: 320px)
+    let sidebar_offset = px(320.0); 
 
     div()
         .size_full()
@@ -410,19 +417,24 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                 .gap_4()
                 .child(render_legend(&series_data))
                 .children(series_data.iter().map(|series| {
-                    render_single_chart(series)
+                    render_single_chart(series, start_time)
                 }))
         )
         // Zoom Box Overlay Layer
         .when(is_dragging, |this| {
             if let (Some(start), Some(current)) = (drag_start, drag_current) {
-                let left = start.min(current);
-                let width = (start - current).abs();
+                // Convert global mouse coordinates to local container coordinates
+                let left_global = start.min(current);
+                let right_global = start.max(current);
+                
+                let left_local = (left_global - sidebar_offset).max(px(0.0));
+                let width = right_global - left_global; // Width is the delta
+                
                 this.child(
                     div()
                         .absolute()
                         .top_0()
-                        .left(left)
+                        .left(left_local)
                         .w(width)
                         .h_full()
                         .bg(rgba(0x3b82f633)) // Light blue with transparency
@@ -495,21 +507,33 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
 }
 
 /// Render a single chart for one signal
-fn render_single_chart(series: &Series) -> impl IntoElement {
-    // Find the time range for this specific series to determine precision
-    let mut min_t = f64::MAX;
-    let mut max_t = f64::MIN;
-    for p in series.points.iter() {
-        if p.time < min_t { min_t = p.time; }
-        if p.time > max_t { max_t = p.time; }
+fn render_single_chart(series: &Series, _start_time: Option<chrono::NaiveDateTime>) -> impl IntoElement {
+    // Safety check: ensure we have points
+    if series.points.is_empty() {
+        return div()
+            .flex()
+            .flex_col()
+            .h(px(250.0))
+            .bg(rgb(0x18181b))
+            .border_1()
+            .border_color(rgb(0x27272a))
+            .rounded_lg()
+            .p_4()
+            .child(
+                div()
+                    .text_sm()
+                    .text_color(rgb(0xa1a1aa))
+                    .child("No data points available")
+            );
     }
-    let range = max_t - min_t;
-    
-    // Adjust precision based on range
-    let precision = if range < 0.01 { 4 }
-                    else if range < 0.1 { 3 }
-                    else if range < 1.0 { 2 }
-                    else { 1 };
+
+    // Clone time labels for use in closure
+    let time_labels = series.time_labels.clone();
+
+    // Calculate time range for debug display
+    let min_time = series.points.iter().map(|p| p.time).fold(f64::INFINITY, f64::min);
+    let max_time = series.points.iter().map(|p| p.time).fold(f64::NEG_INFINITY, f64::max);
+    let time_span = max_time - min_time;
 
     div()
         .flex()
@@ -525,7 +549,15 @@ fn render_single_chart(series: &Series) -> impl IntoElement {
                 .text_sm()
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_color(series.color)
-                .child(format!("{} {}", series.name, series.unit.as_ref().map(|u| format!("[{}]", u)).unwrap_or_default()))
+                .child(format!(
+                    "{} {} | {} pts | {:.3}s-{:.3}s (span: {:.3}s)", 
+                    series.name, 
+                    series.unit.as_ref().map(|u| format!("[{}]", u)).unwrap_or_default(),
+                    series.points.len(),
+                    min_time,
+                    max_time,
+                    time_span
+                ))
         )
         .child(
             div()
@@ -534,7 +566,8 @@ fn render_single_chart(series: &Series) -> impl IntoElement {
                 .child(
                     LineChart::<DataPoint, SharedString, f64>::new(series.points.clone())
                         .x(move |d| {
-                            let time_str = format!("{:.precision$}s", d.time, precision = precision);
+                            // Use pre-calculated time label
+                            let time_str = time_labels.get(d.index).map(|s| s.as_str()).unwrap_or("N/A");
                             
                             // Hack: Use zero-width characters to make each time string unique
                             // while keeping it visually identical for labels.
@@ -589,24 +622,25 @@ fn render_legend(series_data: &[Series]) -> impl IntoElement {
 
 /// Extract series data from application state - SAFE VERSION
 pub fn extract_series_data(app: &CanViewApp) -> Arc<[Series]> {
-    eprintln!("=== Extract Series Data (SAFE) ===");
+    eprintln!("🔍 Starting data extraction...");
     
     // Limit processing to avoid stack overflow, but high enough for complete logs
     const MAX_SIGNALS: usize = 20;
     const MAX_MESSAGES: usize = 10_000_000;
+    const MAX_RAW_POINTS: usize = 1_000_000; // Max points: 1M (needed for 10min @ 1ms = 600K points)
+    const SAMPLING_INTERVAL_MS: f64 = 1.0; // 1ms sampling interval
     
     let signal_count = app.selected_signals.len().min(MAX_SIGNALS);
     let message_count = app.messages.len().min(MAX_MESSAGES);
     
-    eprintln!("Processing {} signals from {} messages", signal_count, message_count);
+    eprintln!("📊 Processing {} signals from {} messages", signal_count, message_count);
     
     if signal_count == 0 || message_count == 0 {
-        eprintln!("No data to process");
+        eprintln!("⚠️  No data to process");
         return Arc::from([]);
     }
 
-    // Use Vec to allocate on heap
-    let mut all_series: Vec<Series> = Vec::new();
+    let mut all_series: Vec<Series> = Vec::with_capacity(signal_count);
     
     let colors = [
         hsla(217.0 / 360.0, 0.91, 0.6, 1.0),
@@ -619,12 +653,12 @@ pub fn extract_series_data(app: &CanViewApp) -> Arc<[Series]> {
 
     // Process each signal
     for (idx, sig_id) in app.selected_signals.iter().take(signal_count).enumerate() {
-        eprintln!("  Signal {}: {}", idx, sig_id);
+        eprintln!("  📡 Signal {}: {}", idx + 1, sig_id);
         
         // Parse signal ID: BUS:CHANNEL:MSG_ID:SIG_NAME or BUS:MSG_ID:SIG_NAME (compat)
         let parts: Vec<&str> = sig_id.split(':').collect();
         if parts.len() < 3 {
-            eprintln!("    Skip: invalid format");
+            eprintln!("    ❌ Skip: invalid format");
             continue;
         }
 
@@ -642,80 +676,225 @@ pub fn extract_series_data(app: &CanViewApp) -> Arc<[Series]> {
         
         let msg_id = match msg_id_res {
             Ok(id) => id,
-            Err(_) => continue,
+            Err(_) => {
+                eprintln!("    ❌ Skip: invalid message ID");
+                continue;
+            }
         };
 
         let target_channel = channel_filter.and_then(|s| s.parse::<u16>().ok());
         let mut unit = None;
         let mut points = Vec::new();
+        let mut collected = 0;
 
-        // Scan messages for this signal
+        // Single pass: collect points with early termination if too many
         for msg in app.messages.iter().take(message_count) {
-            match bus_type {
-                "CAN" => {
-                        let (m_id, ch, timestamp, data) = match msg {
-                            LogObject::CanMessage(m) => (m.id, m.channel, m.header.object_time_stamp, m.data.as_slice()),
-                            LogObject::CanMessage2(m) => (m.id, m.channel, m.header.object_time_stamp, m.data.as_slice()),
-                            LogObject::CanFdMessage(m) => (m.id, m.channel, m.header.object_time_stamp, m.data.as_slice()),
-                            LogObject::CanFdMessage64(m) => (m.id, m.channel as u16, m.header.object_time_stamp, m.data.as_slice()),
-                            _ => continue,
-                        };
+            // Early termination to prevent memory issues
+            if collected >= MAX_RAW_POINTS {
+                eprintln!("    ⚠️  Reached max raw points limit (1M), stopping collection");
+                break;
+            }
 
-                    if m_id == msg_id {
-                        let time = timestamp as f64 / 1_000_000.0;
+            if bus_type != "CAN" {
+                continue;
+            }
+
+            let (m_id, ch, timestamp, data, flags) = match msg {
+                LogObject::CanMessage(m) => (m.id, m.channel, m.header.object_time_stamp, m.data.as_slice(), m.header.object_flags),
+                LogObject::CanMessage2(m) => (m.id, m.channel, m.header.object_time_stamp, m.data.as_slice(), m.header.object_flags),
+                LogObject::CanFdMessage(m) => (m.id, m.channel, m.header.object_time_stamp, m.data.as_slice(), m.header.object_flags),
+                LogObject::CanFdMessage64(m) => (m.id, m.channel as u16, m.header.object_time_stamp, m.data.as_slice(), m.header.object_flags),
+                _ => continue,
+            };
+
+            if m_id != msg_id {
+                continue;
+            }
+
+            // Check channel filter
+            if let Some(ch_filter) = target_channel {
+                if ch != ch_filter {
+                    continue;
+                }
+            }
+
+            // Convert timestamp to seconds based on object_flags
+            // TimeTenMics (0x01) = 10 microseconds per tick
+            // TimeOneNans (0x02) = 1 nanosecond per tick
+            let time = if flags & 0x01 != 0 {
+                // 10 microseconds per tick
+                if collected == 0 {
+                    eprintln!("    🕐 Using 10 microsecond timestamp (flags: 0x{:08X})", flags);
+                }
+                timestamp as f64 / 100_000.0
+            } else {
+                // Default to nanoseconds (most common)
+                if collected == 0 {
+                    eprintln!("    🕐 Using nanosecond timestamp (flags: 0x{:08X})", flags);
+                }
+                timestamp as f64 / 1_000_000_000.0
+            };
+
+            
+            // Apply zoom filter if active
+            if let Some(start) = app.plot_zoom_start {
+                if time < start { continue; }
+            }
+            if let Some(end) = app.plot_zoom_end {
+                if time > end { continue; }
+            }
+
+            // Try to decode the signal
+            if let Some(dbc) = app.dbc_channels.get(&ch) {
+                if let Some(dbc_msg) = dbc.messages.get(&m_id) {
+                    if let Some(sig) = dbc_msg.signals.get(sig_name) {
+                        // Extract unit if not already done
+                        if unit.is_none() && !sig.unit.is_empty() {
+                            unit = Some(sig.unit.clone());
+                        }
                         
-                        // Apply zoom filter if active
-                        if let Some(start) = app.plot_zoom_start {
-                            if time < start { continue; }
-                        }
-                        if let Some(end) = app.plot_zoom_end {
-                            if time > end { continue; }
-                        }
+                        let val = sig.decode(data);
+                        points.push(DataPoint { time, value: val, index: 0 });
+                        collected += 1;
+                    }
+                }
+            }
+        }
 
-                        if let Some(ch_filter) = target_channel {
-                            if ch != ch_filter {
-                                continue;
-                            }
+        eprintln!("    📈 Collected {} raw points", points.len());
+
+        if points.is_empty() {
+            eprintln!("    ⚠️  No points found for this signal");
+            continue;
+        }
+
+        // Show time range
+        let min_time = points.iter().map(|p| p.time).fold(f64::INFINITY, f64::min);
+        let max_time = points.iter().map(|p| p.time).fold(f64::NEG_INFINITY, f64::max);
+        eprintln!("    ⏱️  Time range: {:.3}s to {:.3}s (span: {:.3}s)", min_time, max_time, max_time - min_time);
+
+        // Apply 1ms sampling if data is too dense
+        if points.len() > 1 {
+            let time_span = points.last().unwrap().time - points[0].time;
+            let avg_interval_ms = (time_span * 1000.0) / (points.len() as f64);
+            
+            if avg_interval_ms < SAMPLING_INTERVAL_MS {
+                eprintln!("    🔽 Applying 1ms sampling (avg interval: {:.3}ms)", avg_interval_ms);
+                
+                // Group points into 1ms buckets and keep one per bucket
+                let mut sampled = Vec::new();
+                let start_time = points[0].time;
+                let mut current_bucket = 0i64;
+                let mut bucket_point: Option<DataPoint> = None;
+                
+                for point in points.iter() {
+                    let time_ms = (point.time - start_time) * 1000.0;
+                    let bucket = (time_ms / SAMPLING_INTERVAL_MS).floor() as i64;
+                    
+                    if bucket != current_bucket {
+                        // New bucket, save previous bucket's point
+                        if let Some(p) = bucket_point {
+                            sampled.push(p);
                         }
-                        if let Some(dbc) = app.dbc_channels.get(&ch) {
-                            if let Some(dbc_msg) = dbc.messages.get(&m_id) {
-                                if let Some(sig) = dbc_msg.signals.get(sig_name) {
-                                    // Extract unit if not already done
-                                    if unit.is_none() && !sig.unit.is_empty() {
-                                        unit = Some(sig.unit.clone());
-                                    }
-                                    
-                                    let val = sig.decode(data);
-                                    points.push(DataPoint { time, value: val, index: 0 });
-                                }
+                        current_bucket = bucket;
+                        bucket_point = Some(*point);
+                    } else {
+                        // Same bucket, keep the point closest to bucket start
+                        if let Some(existing) = bucket_point {
+                            let existing_offset = (existing.time - start_time) * 1000.0 - (current_bucket as f64 * SAMPLING_INTERVAL_MS);
+                            let new_offset = time_ms - (bucket as f64 * SAMPLING_INTERVAL_MS);
+                            if new_offset < existing_offset {
+                                bucket_point = Some(*point);
                             }
                         }
                     }
                 }
-                _ => {}
+                
+                // Don't forget the last bucket
+                if let Some(p) = bucket_point {
+                    sampled.push(p);
+                }
+                
+                eprintln!("    ✅ Sampled to {} points", sampled.len());
+                points = sampled;
+            } else {
+                eprintln!("    ✅ Data already sparse enough (avg interval: {:.3}ms)", avg_interval_ms);
             }
         }
 
-        // Downsample if too many points
-        if points.len() > 1000 {
-            let step = points.len() / 1000;
-            points = points.into_iter().step_by(step).take(1000).collect();
-        }
-        
-        // Assign indices after downsampling for correct label spacing
+        // Assign indices for label spacing
         for (i, p) in points.iter_mut().enumerate() {
             p.index = i;
         }
 
-        if !points.is_empty() {
-            all_series.push(Series {
-                name: sig_name.to_string(),
-                unit,
-                points: points.into(),
-                color: colors[idx % colors.len()],
-            });
+        // Pre-calculate time labels (absolute or relative)
+        let mut time_labels = Vec::with_capacity(points.len());
+        
+        if let Some(start_time) = app.start_time {
+            // Calculate precision based on time range
+            let mut min_t = points[0].time;
+            let mut max_t = points[0].time;
+            for p in points.iter().skip(1) {
+                if p.time < min_t { min_t = p.time; }
+                if p.time > max_t { max_t = p.time; }
+            }
+            let range = (max_t - min_t).abs();
+            let precision = if range < 0.01 { 4 }
+                           else if range < 0.1 { 3 }
+                           else if range < 1.0 { 2 }
+                           else { 1 };
+            
+            // Convert start_time to total seconds since midnight
+            let start_hour = start_time.hour() as f64;
+            let start_min = start_time.minute() as f64;
+            let start_sec = start_time.second() as f64;
+            let start_nano = start_time.nanosecond() as f64;
+            let start_total_seconds = start_hour * 3600.0 + start_min * 60.0 + start_sec + start_nano / 1_000_000_000.0;
+            
+            // Extract date components
+            let year = start_time.year();
+            let month = start_time.month();
+            let day = start_time.day();
+            
+            // Convert each point to absolute time using pure math
+            for point in points.iter() {
+                let abs_seconds = start_total_seconds + point.time;
+                
+                // Handle day overflow (wrap at 24 hours)
+                let abs_seconds = abs_seconds % 86400.0;
+                
+                let hours = (abs_seconds / 3600.0).floor() as u32;
+                let remaining = abs_seconds % 3600.0;
+                let minutes = (remaining / 60.0).floor() as u32;
+                let seconds = remaining % 60.0;
+                
+                let label = match precision {
+                    4 => format!("{:04}-{:02}-{:02} {:02}:{:02}:{:06.4}", year, month, day, hours, minutes, seconds),
+                    3 => format!("{:04}-{:02}-{:02} {:02}:{:02}:{:06.3}", year, month, day, hours, minutes, seconds),
+                    2 => format!("{:04}-{:02}-{:02} {:02}:{:02}:{:05.2}", year, month, day, hours, minutes, seconds),
+                    1 => format!("{:04}-{:02}-{:02} {:02}:{:02}:{:04.1}", year, month, day, hours, minutes, seconds),
+                    _ => format!("{:04}-{:02}-{:02} {:02}:{:02}:{:02}", year, month, day, hours, minutes, seconds.floor() as u32),
+                };
+                time_labels.push(label);
+            }
+        } else {
+            // Use relative time
+            for point in points.iter() {
+                time_labels.push(format!("{:.2}s", point.time));
+            }
         }
+
+        eprintln!("    ✅ Final point count: {}", points.len());
+
+        all_series.push(Series {
+            name: sig_name.to_string(),
+            unit,
+            points: points.into(),
+            color: colors[idx % colors.len()],
+            time_labels,
+        });
     }
 
+    eprintln!("✅ Extraction complete: {} series generated", all_series.len());
     Arc::from(all_series)
 }

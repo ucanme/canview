@@ -8,6 +8,28 @@ use gpui::{Pixels, px};
 use parser::dbc::DbcDatabase;
 use parser::ldf::LdfDatabase;
 
+/// Convert BLF timestamp to seconds based on object_flags
+///
+/// BLF timestamps can be in two units:
+/// - TimeTenMics (0x01): 10 microseconds per tick
+/// - TimeOneNans (0x02): 1 nanosecond per tick (default)
+///
+/// # Arguments
+/// * `timestamp` - The raw timestamp value
+/// * `flags` - The object_flags from the message header
+///
+/// # Returns
+/// The timestamp converted to seconds as f64
+fn convert_timestamp_to_seconds(timestamp: u64, flags: u32) -> f64 {
+    if flags & 0x01 != 0 {
+        // TimeTenMics: 10 microseconds per tick
+        timestamp as f64 / 100_000.0
+    } else {
+        // TimeOneNans (default): 1 nanosecond per tick
+        timestamp as f64 / 1_000_000_000.0
+    }
+}
+
 /// Calculate column widths for the message table
 ///
 /// This function analyzes all messages and determines the optimal width
@@ -127,13 +149,15 @@ pub fn get_message_strings(
     match msg {
         LogObject::CanMessage(can_msg) => {
             let timestamp = can_msg.header.object_time_stamp;
+            let flags = can_msg.header.object_flags;
+            let seconds = convert_timestamp_to_seconds(timestamp, flags);
+            
             let time_str = if let Some(start) = start_time {
-                let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                let nanos = (seconds * 1_000_000_000.0) as i64;
+                let msg_time = start + chrono::Duration::nanoseconds(nanos);
                 // Format: YYYY-MM-DD HH:MM:SS.mmmmmm (microseconds)
                 msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
             } else {
-                // If no start time, show nanoseconds as seconds with microsecond precision
-                let seconds = timestamp as f64 / 1_000_000_000.0;
                 format!("{:.6}", seconds)
             };
 
@@ -157,11 +181,14 @@ pub fn get_message_strings(
         }
         LogObject::CanMessage2(can_msg) => {
             let timestamp = can_msg.header.object_time_stamp;
+            let flags = can_msg.header.object_flags;
+            let seconds = convert_timestamp_to_seconds(timestamp, flags);
+            
             let time_str = if let Some(start) = start_time {
-                let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                let nanos = (seconds * 1_000_000_000.0) as i64;
+                let msg_time = start + chrono::Duration::nanoseconds(nanos);
                 msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
             } else {
-                let seconds = timestamp as f64 / 1_000_000_000.0;
                 format!("{:.6}", seconds)
             };
 
@@ -185,11 +212,14 @@ pub fn get_message_strings(
         }
         LogObject::CanErrorFrame(err) => {
             let timestamp = err.header.object_time_stamp;
+            let flags = err.header.object_flags;
+            let seconds = convert_timestamp_to_seconds(timestamp, flags);
+            
             let time_str = if let Some(start) = start_time {
-                let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                let nanos = (seconds * 1_000_000_000.0) as i64;
+                let msg_time = start + chrono::Duration::nanoseconds(nanos);
                 msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
             } else {
-                let seconds = timestamp as f64 / 1_000_000_000.0;
                 format!("{:.6}", seconds)
             };
 
@@ -204,11 +234,14 @@ pub fn get_message_strings(
         }
         LogObject::CanFdMessage(fd_msg) => {
             let timestamp = fd_msg.header.object_time_stamp;
+            let flags = fd_msg.header.object_flags;
+            let seconds = convert_timestamp_to_seconds(timestamp, flags);
+            
             let time_str = if let Some(start) = start_time {
-                let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                let nanos = (seconds * 1_000_000_000.0) as i64;
+                let msg_time = start + chrono::Duration::nanoseconds(nanos);
                 msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
             } else {
-                let seconds = timestamp as f64 / 1_000_000_000.0;
                 format!("{:.6}", seconds)
             };
 
@@ -232,11 +265,14 @@ pub fn get_message_strings(
         }
         LogObject::CanFdMessage64(fd_msg) => {
             let timestamp = fd_msg.header.object_time_stamp;
+            let flags = fd_msg.header.object_flags;
+            let seconds = convert_timestamp_to_seconds(timestamp, flags);
+            
             let time_str = if let Some(start) = start_time {
-                let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                let nanos = (seconds * 1_000_000_000.0) as i64;
+                let msg_time = start + chrono::Duration::nanoseconds(nanos);
                 msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
             } else {
-                let seconds = timestamp as f64 / 1_000_000_000.0;
                 format!("{:.6}", seconds)
             };
 
@@ -260,11 +296,14 @@ pub fn get_message_strings(
         }
         LogObject::CanOverloadFrame(ov) => {
             let timestamp = ov.header.object_time_stamp;
+            let flags = ov.header.object_flags;
+            let seconds = convert_timestamp_to_seconds(timestamp, flags);
+            
             let time_str = if let Some(start) = start_time {
-                let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                let nanos = (seconds * 1_000_000_000.0) as i64;
+                let msg_time = start + chrono::Duration::nanoseconds(nanos);
                 msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
             } else {
-                let seconds = timestamp as f64 / 1_000_000_000.0;
                 format!("{:.6}", seconds)
             };
 
@@ -279,12 +318,16 @@ pub fn get_message_strings(
         }
         LogObject::LinMessage(lin_msg) => {
             let timestamp = lin_msg.header.object_time_stamp;
+            let flags = lin_msg.header.object_flags;
+            let seconds = convert_timestamp_to_seconds(timestamp, flags);
+            
             let time_str = if let Some(start) = start_time {
-                let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                let nanos = (seconds * 1_000_000_000.0) as i64;
+                let msg_time = start + chrono::Duration::nanoseconds(nanos);
                 // Format: YYYY-MM-DD HH:MM:SS.mmmmmm (microseconds)
                 msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
             } else {
-                format!("{:.6}", timestamp as f64 / 1_000_000_000.0)
+                format!("{:.6}", seconds)
             };
 
             let actual_data_len = lin_msg.data.len().min(lin_msg.dlc as usize);
@@ -307,11 +350,14 @@ pub fn get_message_strings(
         }
         LogObject::LinMessage2(lin_msg) => {
             let timestamp = lin_msg.header.object_time_stamp;
+            let flags = lin_msg.header.object_flags;
+            let seconds = convert_timestamp_to_seconds(timestamp, flags);
+            
             let time_str = if let Some(start) = start_time {
-                let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);
+                let nanos = (seconds * 1_000_000_000.0) as i64;
+                let msg_time = start + chrono::Duration::nanoseconds(nanos);
                 msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
             } else {
-                let seconds = timestamp as f64 / 1_000_000_000.0;
                 format!("{:.6}", seconds)
             };
 
