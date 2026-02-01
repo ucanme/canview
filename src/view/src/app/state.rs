@@ -27,6 +27,7 @@ pub enum AppView {
     LogView,
     ConfigView,
     LibraryView,
+    PlotView,
 }
 
 /// State for tracking scrollbar drag operation
@@ -49,6 +50,7 @@ pub struct CanViewApp {
     pub app_config: AppConfig,
     pub selected_signals: Vec<String>,
     pub start_time: Option<chrono::NaiveDateTime>,
+    pub plot_data: std::sync::Arc<[crate::models::Series]>,
 
     // Configuration
     pub config_dir: Option<PathBuf>,
@@ -90,6 +92,9 @@ pub struct CanViewApp {
     pub show_channel_filter_input: bool,
     pub channel_filter_scroll_offset: Pixels,
     pub channel_filter_scroll_handle: UniformListScrollHandle,
+
+    // Signal filter
+    pub signal_filter_text: gpui::SharedString,
 
     // Status message
     pub status_msg: gpui::SharedString,
@@ -137,6 +142,13 @@ pub struct CanViewApp {
     pub library_focus_handle: Option<gpui::FocusHandle>,
     #[deprecated(note = "Not needed with gpui-component Input")]
     pub ime_handler_registered: bool,
+
+    // Plot zoom state
+    pub plot_zoom_start: Option<f64>,
+    pub plot_zoom_end: Option<f64>,
+    pub is_dragging_zoom: bool,
+    pub zoom_drag_start_x: Option<Pixels>,
+    pub zoom_drag_current_x: Option<Pixels>,
 }
 
 /// Library dialog type
@@ -159,6 +171,7 @@ impl CanViewApp {
             app_config: AppConfig::default(),
             selected_signals: Vec::new(),
             start_time: None,
+            plot_data: std::sync::Arc::from([]),
             config_dir: None,
             config_file_path: None,
             signal_storage: crate::library::SignalLibraryStorage::new().ok(),
@@ -184,6 +197,7 @@ impl CanViewApp {
             show_channel_filter_input: false,
             channel_filter_scroll_offset: gpui::px(0.0),
             channel_filter_scroll_handle: UniformListScrollHandle::new(),
+            signal_filter_text: gpui::SharedString::from(""),
             library_manager: LibraryManager::new(),
             selected_library_id: None,
             selected_version_id: None, // Initialize selected version ID
@@ -219,6 +233,12 @@ impl CanViewApp {
             ),
             library_focus_handle: None,
             ime_handler_registered: false,
+            // Plot zoom state
+            plot_zoom_start: None,
+            plot_zoom_end: None,
+            is_dragging_zoom: false,
+            zoom_drag_start_x: None,
+            zoom_drag_current_x: None,
         }
     }
 }

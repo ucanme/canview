@@ -244,6 +244,7 @@ fn render_library_item(
     let library_id = library.id.clone();
 
     div()
+        .id(format!("lib-{}", library_id))
         .px_3()
         .py_1p5()
         .h(px(32.))
@@ -259,11 +260,18 @@ fn render_library_item(
         .justify_between()
         .on_mouse_down(
             gpui::MouseButton::Left,
-            cx.listener(move |this, _event, _window, cx| {
-                this.selected_library_id = Some(library_id.clone());
-                // Reset add channel input when switching libraries
-                this.hide_add_channel_input(cx);
-                cx.notify();
+            cx.listener({
+                let library_id = library_id.clone();
+                move |this, _event, _window, cx| {
+                    cx.stop_propagation();
+                    eprintln!("🖱️ Selected library: {}", library_id);
+                    this.selected_library_id = Some(library_id.clone());
+                    // Reset selected version when library changes
+                    this.selected_version_id = None;
+                    // Reset add channel input when switching libraries
+                    this.hide_add_channel_input(cx);
+                    cx.notify();
+                }
             }),
         )
         .child(
@@ -303,6 +311,7 @@ fn render_library_item(
 /// 渲染添加库按钮 - Zed IDE 风格
 fn render_add_library_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoElement {
     div()
+        .id("add-lib-btn")
         .px_3()
         .py_1p5()
         .h(px(32.))
@@ -314,6 +323,8 @@ fn render_add_library_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoEl
         .on_mouse_down(
             gpui::MouseButton::Left,
             cx.listener(|this, _event, window, cx| {
+                cx.stop_propagation();
+                eprintln!("🖱️ Add library button clicked");
                 // Initialize input state when showing input
                 if this.library_name_input.is_none() {
                     let input = cx
@@ -487,6 +498,7 @@ fn render_version_item(
     let stats = version.get_stats();
 
     div()
+        .id(format!("ver-{}", version_name))
         .px_3()
         .py_1p5()
         .h(px(32.))
@@ -502,12 +514,17 @@ fn render_version_item(
         .justify_between()
         .on_mouse_down(
             gpui::MouseButton::Left,
-            cx.listener(move |this, _event, _window, cx| {
-                this.selected_version_id = Some(version_name.clone());
-                this.status_msg = format!("Selected version: {}", version_name).into();
-                // Ensure add channel input is hidden when determining selection
-                this.hide_add_channel_input(cx);
-                cx.notify();
+            cx.listener({
+                let version_name = version_name.clone();
+                move |this, _event, _window, cx| {
+                    cx.stop_propagation();
+                    eprintln!("🖱️ Selected version: {}", version_name);
+                    this.selected_version_id = Some(version_name.clone());
+                    this.status_msg = format!("Selected version: {}", version_name).into();
+                    // Ensure add channel input is hidden when determining selection
+                    this.hide_add_channel_input(cx);
+                    cx.notify();
+                }
             }),
         )
         .child(
@@ -608,9 +625,40 @@ fn render_right_column(
                         )
                         .child(
                             div()
-                                .text_xs()
-                                .text_color(rgb(0x646473)) // Zed muted
-                                .child(format!("{} channels", channel_count)),
+                                .flex()
+                                .items_center()
+                                .gap_3()
+                                .child(
+                                    div()
+                                        .text_xs()
+                                        .text_color(rgb(0x646473)) // Zed muted
+                                        .child(format!("{} channels", channel_count)),
+                                )
+                                .when_some(selected_version, |this, version| {
+                                    let lib_id = selected_library_id.clone().unwrap_or_default();
+                                    let ver_name = version.name.clone();
+                                    this.child(
+                                        div()
+                                            .px_2()
+                                            .py_1()
+                                            .bg(rgb(0x3b82f6))
+                                            .rounded(px(4.0))
+                                            .cursor_pointer()
+                                            .hover(|s| s.bg(rgb(0x2563eb)))
+                                            .id("apply-version-btn")
+                                            .on_mouse_down(gpui::MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                                cx.stop_propagation();
+                                                this.apply_version_to_mappings(&lib_id, &ver_name, cx);
+                                            }))
+                                            .child(
+                                                div()
+                                                    .text_xs()
+                                                    .font_weight(FontWeight::BOLD)
+                                                    .text_color(rgb(0xffffff))
+                                                    .child("Apply to Plot")
+                                            )
+                                    )
+                                }),
                         ),
                 ),
         )
@@ -1350,6 +1398,7 @@ fn render_add_version_input_row(
 /// 渲染添加版本按钮 - 简洁单行形式
 fn render_add_version_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoElement {
     div()
+        .id("add-version-btn")
         .px_3()
         .py_1() // 减少padding，更紧凑
         .mb_1()
@@ -1368,6 +1417,8 @@ fn render_add_version_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoEl
         .on_mouse_down(
             gpui::MouseButton::Left,
             cx.listener(|this, _event, window, cx| {
+                cx.stop_propagation();
+                eprintln!("🖱️ Add version button clicked");
                 // Initialize input state when showing input
                 if this.version_name_input.is_none() {
                     let input = cx.new(|cx| {

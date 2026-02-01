@@ -13,6 +13,7 @@ use parser::dbc::DbcDatabase;
 use parser::ldf::LdfDatabase;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use gpui_component::scroll::ScrollableElement;
 
 impl CanViewApp {
     pub fn new() -> Self {
@@ -25,6 +26,7 @@ impl CanViewApp {
             app_config: AppConfig::default(),
             selected_signals: Vec::new(),
             start_time: None,
+            plot_data: std::sync::Arc::from([]),
             config_dir: None,
             config_file_path: None,
             signal_storage: crate::library::SignalLibraryStorage::new().ok(),
@@ -62,6 +64,7 @@ impl CanViewApp {
             show_channel_filter_input: false,
             channel_filter_scroll_offset: px(0.0),
             channel_filter_scroll_handle: gpui::UniformListScrollHandle::new(),
+            signal_filter_text: "".into(),
             // Library management
             library_manager: LibraryManager::new(),
             selected_library_id: None,
@@ -98,6 +101,11 @@ impl CanViewApp {
             ),
             library_focus_handle: None,
             ime_handler_registered: false,
+            plot_zoom_start: None,
+            plot_zoom_end: None,
+            is_dragging_zoom: false,
+            zoom_drag_start_x: None,
+            zoom_drag_current_x: None,
         };
 
         // 🔧 启动时加载配置
@@ -167,6 +175,15 @@ impl CanViewApp {
                                 total_channels
                             )
                             .into();
+
+                            // 🔄 自动加载每个通道激活的版本
+                            for mapping in &config.mappings {
+                                if let (Some(lib_id), Some(ver_name)) = (&mapping.library_id, &mapping.version_name) {
+                                    eprintln!("  🔄 自动加载通道 {} 的库 {} 版本 {}", mapping.channel_id, lib_id, ver_name);
+                                    // Actually, we can just load it directly since we don't need UI context for the core load
+                                    self.internal_load_library_version(mapping.channel_id, lib_id, ver_name);
+                                }
+                            }
                         } else {
                             self.status_msg =
                                 "Configuration loaded (no libraries configured).".into();
@@ -609,6 +626,7 @@ impl CanViewApp {
             app_config,
             selected_signals,
             start_time,
+            plot_data: std::sync::Arc::from([]),
             config_dir,
             config_file_path,
             signal_storage: crate::library::SignalLibraryStorage::new().ok(),
@@ -635,6 +653,7 @@ impl CanViewApp {
             show_channel_filter_input: false,
             channel_filter_scroll_offset: px(0.0),
             channel_filter_scroll_handle: gpui::UniformListScrollHandle::new(),
+            signal_filter_text: "".into(),
             // Library management
             library_manager: LibraryManager::new(),
             selected_library_id: None,
@@ -671,6 +690,11 @@ impl CanViewApp {
             ),
             library_focus_handle: None,
             ime_handler_registered: false,
+            plot_zoom_start: None,
+            plot_zoom_end: None,
+            is_dragging_zoom: false,
+            zoom_drag_start_x: None,
+            zoom_drag_current_x: None,
         };
 
         // Load startup config (this will reset some state, so do it carefully)
@@ -2674,6 +2698,7 @@ impl CanViewApp {
             .into_any_element()
     }
 
+
     fn render_config_view(&self, cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .size_full()
@@ -3118,6 +3143,27 @@ impl Render for CanViewApp {
                                 .child("Library"),
                         )
                         .child(
+                            btn_style(self.current_view == AppView::PlotView)
+                                .id("plot_tab")
+                                .on_mouse_down(gpui::MouseButton::Left, {
+                                    let view = view.clone();
+                                    move |_event, _, cx| {
+                                        eprintln!("DEBUG: Plot button clicked");
+                                        cx.stop_propagation();
+                                        view.update(cx, |this, cx| {
+                                            eprintln!("DEBUG: Switching to PlotView");
+                                            this.current_view = AppView::PlotView;
+                                            eprintln!("DEBUG: Extracting data...");
+                                            this.plot_data = crate::ui::views::chart_view::extract_series_data(this);
+                                            eprintln!("DEBUG: Data extracted, notifying");
+                                            cx.notify();
+                                            eprintln!("DEBUG: Notify complete");
+                                        });
+                                    }
+                                })
+                                .child("Plot"),
+                        )
+                        .child(
                             action_btn_style
                                 .id("open_blf_btn")
                                 .on_mouse_down(gpui::MouseButton::Left, {
@@ -3288,8 +3334,10 @@ impl Render for CanViewApp {
                             self.render_log_view(cx.entity().clone()).into_any_element()
                         }
                         AppView::ConfigView => self.render_config_view(cx).into_any_element(),
-
                         AppView::LibraryView => self.render_library_view(cx).into_any_element(),
+                        AppView::PlotView => {
+                            crate::ui::views::chart_view::render_plot_view(self, cx).into_any_element()
+                        }
                     }),
             )
             .child(
@@ -3514,6 +3562,15 @@ impl CanViewApp {
         // Reset add channel input state when loading a new version
         self.hide_add_channel_input(cx);
         
+        self.internal_load_library_version(1, library_id, version_name);
+        
+        cx.notify();
+    }
+
+    /// Apply a version to mappings and load it
+    pub fn apply_version_to_mappings(&mut self, library_id: &str, version_name: &str, cx: &mut Context<Self>) {
+        eprintln!("🖱️ Applying version {} of {} to mappings", version_name, library_id);
+        
         let library = match self.library_manager.find_library(library_id) {
             Some(lib) => lib,
             None => {
@@ -3522,12 +3579,60 @@ impl CanViewApp {
                 return;
             }
         };
-
+        
         let version = match library.get_version(version_name) {
             Some(ver) => ver,
             None => {
                 self.status_msg = "Version not found".into();
                 cx.notify();
+                return;
+            }
+        };
+
+        // Update mappings
+        for channel_db in &version.channel_databases {
+            if let Some(mapping) = self.app_config.mappings.iter_mut().find(|m| m.channel_id == channel_db.channel_id) {
+                mapping.library_id = Some(library_id.to_string());
+                mapping.version_name = Some(version_name.to_string());
+                mapping.channel_type = library.channel_type;
+            } else {
+                self.app_config.mappings.push(crate::models::ChannelMapping {
+                    channel_id: channel_db.channel_id,
+                    channel_type: library.channel_type,
+                    library_id: Some(library_id.to_string()),
+                    version_name: Some(version_name.to_string()),
+                    path: String::new(),
+                    description: String::new(),
+                });
+            }
+        }
+
+        // Load into memory
+        self.internal_load_library_version(1, library_id, version_name);
+        
+        // Save config
+        self.save_config(cx);
+        
+        self.status_msg = format!("✅ Applied version {} to all plot channels", version_name).into();
+        cx.notify();
+    }
+
+    /// Internal method to load a library version without GPUI context
+    fn internal_load_library_version(&mut self, default_channel_id: u16, library_id: &str, version_name: &str) {
+        eprintln!("DEBUG: Internal load library version: lib={}, ver={}, ch={}", library_id, version_name, default_channel_id);
+        
+        let library = match self.library_manager.find_library(library_id) {
+            Some(lib) => lib,
+            None => {
+                self.status_msg = "Library not found".into();
+                return;
+            }
+        };
+
+        let version = match library.get_version(version_name) {
+            Some(ver) => ver,
+            None => {
+                self.status_msg = "Version not found".into();
                 return;
             }
         };
@@ -3545,10 +3650,12 @@ impl CanViewApp {
                 Ok(database) => {
                     match database {
                         crate::library::Database::Dbc(dbc) => {
-                            self.dbc_channels.insert(1, dbc);
+                            eprintln!("DEBUG: Inserting DBC into channel {}", default_channel_id);
+                            self.dbc_channels.insert(default_channel_id, dbc);
                         }
                         crate::library::Database::Ldf(ldf) => {
-                            self.ldf_channels.insert(1, ldf);
+                            eprintln!("DEBUG: Inserting LDF into channel {}", default_channel_id);
+                            self.ldf_channels.insert(default_channel_id, ldf);
                         }
                     }
                     self.status_msg =
@@ -3567,9 +3674,11 @@ impl CanViewApp {
                 {
                     Ok(database) => match database {
                         crate::library::Database::Dbc(dbc) => {
+                            eprintln!("DEBUG: Inserting DBC into channel {}", channel_db.channel_id);
                             self.dbc_channels.insert(channel_db.channel_id, dbc);
                         }
                         crate::library::Database::Ldf(ldf) => {
+                            eprintln!("DEBUG: Inserting LDF into channel {}", channel_db.channel_id);
                             self.ldf_channels.insert(channel_db.channel_id, ldf);
                         }
                     },
@@ -3588,8 +3697,9 @@ impl CanViewApp {
             )
             .into();
         }
-
-        cx.notify();
+        
+        eprintln!("DEBUG: Current DBC channels: {:?}", self.dbc_channels.keys());
+        eprintln!("DEBUG: Current LDF channels: {:?}", self.ldf_channels.keys());
     }
 
     // ========== Channel Configuration Methods ==========

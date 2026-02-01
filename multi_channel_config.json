@@ -40,7 +40,40 @@
       ]
     }
   ],
-  "mappings": [],
+  "mappings": [
+    {
+      "channel_type": "CAN",
+      "channel_id": 3,
+      "path": "",
+      "description": "",
+      "library_id": "lib_ce686878cc271bea",
+      "version_name": "12"
+    },
+    {
+      "channel_type": "CAN",
+      "channel_id": 4,
+      "path": "",
+      "description": "",
+      "library_id": "lib_ce686878cc271bea",
+      "version_name": "12"
+    },
+    {
+      "channel_type": "CAN",
+      "channel_id": 5,
+      "path": "",
+      "description": "",
+      "library_id": "lib_ce686878cc271bea",
+      "version_name": "12"
+    },
+    {
+      "channel_type": "CAN",
+      "channel_id": 1,
+      "path": "",
+      "description": "",
+      "library_id": "lib_ce686878cc271bea",
+      "version_name": "12"
+    }
+  ],
   "active_library_id": null,
   "active_version_name": null
 }
