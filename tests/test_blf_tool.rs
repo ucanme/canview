@@ -10,6 +10,7 @@ use blf::{
     CanFdMessage, CanFdMessage64, CanMessage, CanMessage2, FileStatistics, LogContainer, LogObject,
     ObjectHeader, ObjectType, SystemTime,
 };
+use byteorder::{LittleEndian, WriteBytesExt};
 use std::env;
 use std::fs::File;
 use std::io::Write;
@@ -260,12 +261,12 @@ fn generate_test_messages() -> Vec<LogObject> {
     }
 
     // 4. CAN FD Message64 (最重要的测试)
-    for (dlc, valid_bytes) in [(8, 8), (15, 64), (9, 12), (13, 32)].iter() {
+    for (dlc, valid_bytes) in [(8u8, 8usize), (15u8, 64usize), (9u8, 12usize), (13u8, 32usize)].iter() {
         messages.push(LogObject::CanFdMessage64(CanFdMessage64 {
-            header: create_test_header(ObjectType::CanFdMessage64, 120 + valid_bytes, timestamp),
+            header: create_test_header(ObjectType::CanFdMessage64, 120 + *valid_bytes as u32, timestamp),
             channel: 3,
             dlc: *dlc,
-            valid_data_bytes: *valid_bytes,
+            valid_data_bytes: *valid_bytes as u8,
             tx_count: 0,
             id: 0x400 + *dlc as u32,
             frame_length: 3000,
@@ -294,16 +295,22 @@ fn generate_test_messages() -> Vec<LogObject> {
 }
 
 fn create_test_header(obj_type: ObjectType, size: u32, timestamp: u64) -> ObjectHeader {
+    use blf::ObjectHeaderBase;
     ObjectHeader {
-        signature: 0x4A424F4C,
-        header_size: 32,
-        header_version: 1,
-        object_size: size,
-        object_type: obj_type,
+        base: ObjectHeaderBase {
+            signature: 0x4A424F4C,
+            header_size: 32,
+            header_version: 1,
+            object_size: size,
+            object_type: obj_type,
+        },
         object_flags: 0x02,
+        client_index: 0,
+        object_version: 0,
         object_time_stamp: timestamp,
         original_time_stamp: None,
         time_stamp_status: None,
+        reserved: 0,
     }
 }
 
@@ -328,31 +335,36 @@ fn serialize_messages_to_container(messages: &[LogObject]) -> Vec<u8> {
     let mut buffer = Vec::new();
 
     let container_header = ObjectHeader {
-        signature: 0x4A424F4C,
-        header_size: 32,
-        header_version: 1,
-        object_size: 0,
-        object_type: ObjectType::LogContainer,
+        base: blf::ObjectHeaderBase {
+            signature: 0x4A424F4C,
+            header_size: 32,
+            header_version: 1,
+            object_size: 0,
+            object_type: ObjectType::LogContainer,
+        },
         object_flags: 0x02,
+        client_index: 0,
+        object_version: 0,
         object_time_stamp: 0,
         original_time_stamp: None,
         time_stamp_status: None,
+        reserved: 0,
     };
 
     buffer
-        .write_u32::<LittleEndian>(container_header.signature)
+        .write_u32::<LittleEndian>(container_header.base.signature)
         .unwrap();
     buffer
-        .write_u16::<LittleEndian>(container_header.header_size)
+        .write_u16::<LittleEndian>(container_header.base.header_size)
         .unwrap();
     buffer
-        .write_u16::<LittleEndian>(container_header.header_version)
+        .write_u16::<LittleEndian>(container_header.base.header_version)
         .unwrap();
     buffer
-        .write_u32::<LittleEndian>(container_header.object_size)
+        .write_u32::<LittleEndian>(container_header.base.object_size)
         .unwrap();
     buffer
-        .write_u32::<LittleEndian>(container_header.object_type as u32)
+        .write_u32::<LittleEndian>(container_header.base.object_type as u32)
         .unwrap();
     buffer
         .write_u32::<LittleEndian>(container_header.object_flags)
@@ -459,18 +471,18 @@ fn serialize_message(buffer: &mut Vec<u8>, msg: &LogObject) {
 fn write_object_header(buffer: &mut Vec<u8>, header: &ObjectHeader) {
     use byteorder::{LittleEndian, WriteBytesExt};
 
-    buffer.write_u32::<LittleEndian>(header.signature).unwrap();
+    buffer.write_u32::<LittleEndian>(header.base.signature).unwrap();
     buffer
-        .write_u16::<LittleEndian>(header.header_size)
+        .write_u16::<LittleEndian>(header.base.header_size)
         .unwrap();
     buffer
-        .write_u16::<LittleEndian>(header.header_version)
+        .write_u16::<LittleEndian>(header.base.header_version)
         .unwrap();
     buffer
-        .write_u32::<LittleEndian>(header.object_size)
+        .write_u32::<LittleEndian>(header.base.object_size)
         .unwrap();
     buffer
-        .write_u32::<LittleEndian>(header.object_type as u32)
+        .write_u32::<LittleEndian>(header.base.object_type as u32)
         .unwrap();
     buffer
         .write_u32::<LittleEndian>(header.object_flags)
@@ -586,7 +598,7 @@ fn verify_can_fd_64() {
             header: create_test_header(ObjectType::CanFdMessage64, 120, 1000),
             channel: 1,
             dlc,
-            valid_data_bytes,
+            valid_data_bytes: valid_bytes,
             tx_count: 0,
             id: 0x123,
             frame_length: 5000,

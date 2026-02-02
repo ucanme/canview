@@ -20,8 +20,8 @@ pub fn render_database_preview(
     div()
         .flex()
         .flex_col()
-        .size_full()
-        .bg(rgb(0x1e1e2e))
+        .w_full()
+        .bg(rgb(0x18181b)) // Match sidebar background
         .child(
             // Toolbar
             div()
@@ -103,8 +103,7 @@ pub fn render_database_preview(
         .child(
             // Content area
             div()
-                .flex_1()
-                .overflow_y_scrollbar()
+                .w_full()
                 .child(match database {
                     Database::Dbc(dbc) => render_dbc_content(dbc, filter_text, id_prefix, selected_signals, cx).into_any_element(),
                     Database::Ldf(ldf) => render_ldf_content(ldf, filter_text, id_prefix, selected_signals, cx).into_any_element(),

@@ -19,6 +19,7 @@
 /// let formatted = format_timestamp(timestamp, None);
 /// assert_eq!(formatted, "1.500000");
 /// ```
+#[allow(dead_code)]
 pub fn format_timestamp(timestamp: u64, start_time: Option<chrono::NaiveDateTime>) -> String {
     if let Some(start) = start_time {
         let msg_time = start + chrono::Duration::nanoseconds(timestamp as i64);

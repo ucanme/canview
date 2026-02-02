@@ -413,6 +413,7 @@ pub fn get_message_strings(
 ///
 /// # Returns
 /// A GPUI element that can be rendered in the message table
+#[allow(dead_code)]
 pub fn render_message_row_static_with_widths(
     msg: &LogObject,
     index: usize,

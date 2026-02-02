@@ -7,7 +7,8 @@ use blf::{BlfParser, read_blf_from_file};
 fn main() {
     println!("=== Testing can.blf File Parsing ===\n");
 
-    // Enable debug mode by creating parser with_debug    let parser = BlfParser::with_debug();
+    // Enable debug mode by creating parser with_debug
+    let parser = BlfParser::with_debug();
 
     // Read the file
     println!("Reading can.blf...\n");
@@ -74,7 +75,7 @@ fn main() {
 
                                     // Try to read the container
                                     use blf::LogContainer;
-                                    match LogContainer::read(&mut cursor, header.clone()) {
+                                    match LogContainer::read(&mut cursor, header.base) {
                                         Ok(container) => {
                                             println!("✓ Successfully read LogContainer");
                                             println!(

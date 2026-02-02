@@ -149,6 +149,21 @@ pub struct CanViewApp {
     pub is_dragging_zoom: bool,
     pub zoom_drag_start_x: Option<Pixels>,
     pub zoom_drag_current_x: Option<Pixels>,
+    
+    // Plot display settings
+    pub show_plot_points: bool,
+
+    // Plot interaction state
+    pub hover_point: Option<HoverPoint>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct HoverPoint {
+    pub time: f64,
+    pub value: f64,
+    pub x_px: Pixels,
+    pub y_px: Pixels,
+    pub series_name: String,
 }
 
 /// Library dialog type
@@ -239,6 +254,9 @@ impl CanViewApp {
             is_dragging_zoom: false,
             zoom_drag_start_x: None,
             zoom_drag_current_x: None,
+            // Plot display settings
+            show_plot_points: true,
+            hover_point: None,
         }
     }
 }

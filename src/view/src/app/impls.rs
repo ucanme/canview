@@ -106,6 +106,8 @@ impl CanViewApp {
             is_dragging_zoom: false,
             zoom_drag_start_x: None,
             zoom_drag_current_x: None,
+            show_plot_points: true,
+            hover_point: None,
         };
 
         // 🔧 启动时加载配置
@@ -700,6 +702,8 @@ impl CanViewApp {
             is_dragging_zoom: false,
             zoom_drag_start_x: None,
             zoom_drag_current_x: None,
+            show_plot_points: true,
+            hover_point: None,
         };
 
         // Load startup config (this will reset some state, so do it carefully)
@@ -3681,6 +3685,27 @@ impl CanViewApp {
         if channel_dbs.is_empty() {
             // Use the default path (backward compatibility)
             let path = &version.path;
+            
+            // Check if path is empty
+            if path.trim().is_empty() {
+                self.status_msg = format!(
+                    "❌ Database path is empty for version '{}'. Please add a database file in the Library view.",
+                    version_name
+                ).into();
+                eprintln!("ERROR: Empty database path for version '{}'", version_name);
+                return;
+            }
+            
+            // Check if file exists
+            if !std::path::Path::new(path).exists() {
+                self.status_msg = format!(
+                    "❌ Database file not found: {}. Please check the file path in Library view.",
+                    path
+                ).into();
+                eprintln!("ERROR: Database file not found: {}", path);
+                return;
+            }
+            
             match self
                 .library_manager
                 .load_database(path, library.channel_type)
@@ -3697,15 +3722,37 @@ impl CanViewApp {
                         }
                     }
                     self.status_msg =
-                        format!("Loaded version {} of {}", version_name, library.name).into();
+                        format!("✅ Loaded version {} of {}", version_name, library.name).into();
                 }
                 Err(e) => {
-                    self.status_msg = format!("Error loading database: {}", e).into();
+                    self.status_msg = format!("❌ Error loading database: {}", e).into();
+                    eprintln!("ERROR: Failed to load database from '{}': {}", path, e);
                 }
             }
         } else {
             // Load all configured channels
             for channel_db in channel_dbs {
+                // Check if path is empty
+                if channel_db.database_path.trim().is_empty() {
+                    self.status_msg = format!(
+                        "❌ Database path is empty for channel {}. Please add a database file in the Library view.",
+                        channel_db.channel_id
+                    ).into();
+                    eprintln!("ERROR: Empty database path for channel {}", channel_db.channel_id);
+                    continue;
+                }
+                
+                // Check if file exists
+                if !std::path::Path::new(&channel_db.database_path).exists() {
+                    self.status_msg = format!(
+                        "❌ Database file not found for channel {}: {}",
+                        channel_db.channel_id, channel_db.database_path
+                    ).into();
+                    eprintln!("ERROR: Database file not found for channel {}: {}", 
+                        channel_db.channel_id, channel_db.database_path);
+                    continue;
+                }
+                
                 match self
                     .library_manager
                     .load_database(&channel_db.database_path, library.channel_type)
@@ -3722,8 +3769,10 @@ impl CanViewApp {
                     },
                     Err(e) => {
                         self.status_msg =
-                            format!("Error loading channel {}: {}", channel_db.channel_id, e)
+                            format!("❌ Error loading channel {}: {}", channel_db.channel_id, e)
                                 .into();
+                        eprintln!("ERROR: Failed to load database for channel {} from '{}': {}", 
+                            channel_db.channel_id, channel_db.database_path, e);
                     }
                 }
             }

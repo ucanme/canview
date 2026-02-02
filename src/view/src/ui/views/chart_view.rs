@@ -171,6 +171,26 @@ fn render_toolbar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoEl
                                 .child("Redraw Plot")
                         )
                 )
+                .child(
+                    div()
+                        .px_2()
+                        .py_1()
+                        .bg(if app.show_plot_points { rgb(0x10b981) } else { rgb(0x6b7280) })
+                        .rounded(px(4.0))
+                        .cursor_pointer()
+                        .hover(|s| s.bg(if app.show_plot_points { rgb(0x059669) } else { rgb(0x4b5563) }))
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this: &mut CanViewApp, _, _, cx| {
+                            this.show_plot_points = !this.show_plot_points;
+                            eprintln!("📊 Plot points display: {}", if this.show_plot_points { "ON" } else { "OFF" });
+                            cx.notify();
+                        }))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(rgb(0xffffff))
+                                .child(if app.show_plot_points { "Points: ON" } else { "Points: OFF" })
+                        )
+                )
         )
 }
 
@@ -404,6 +424,7 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
     let drag_start = app.zoom_drag_start_x;
     let drag_current = app.zoom_drag_current_x;
     let start_time = app.start_time;
+    let show_points = app.show_plot_points;
 
     // Constant offsets based on layout (Sidebar: 320px)
     let sidebar_offset = px(320.0); 
@@ -417,7 +438,7 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                 .gap_4()
                 .child(render_legend(&series_data))
                 .children(series_data.iter().map(|series| {
-                    render_single_chart(series, start_time)
+                    render_single_chart(series, start_time, show_points)
                 }))
         )
         // Zoom Box Overlay Layer
@@ -507,7 +528,11 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
 }
 
 /// Render a single chart for one signal
-fn render_single_chart(series: &Series, _start_time: Option<chrono::NaiveDateTime>) -> impl IntoElement {
+fn render_single_chart(
+    series: &Series, 
+    _start_time: Option<chrono::NaiveDateTime>, 
+    show_points: bool
+) -> impl IntoElement {
     // Safety check: ensure we have points
     if series.points.is_empty() {
         return div()
@@ -534,6 +559,14 @@ fn render_single_chart(series: &Series, _start_time: Option<chrono::NaiveDateTim
     let min_time = series.points.iter().map(|p| p.time).fold(f64::INFINITY, f64::min);
     let max_time = series.points.iter().map(|p| p.time).fold(f64::NEG_INFINITY, f64::max);
     let time_span = max_time - min_time;
+
+    // Calculate optimal step for showing labels (aim for ~4 labels)
+    let total_points = series.points.len();
+    let label_step = if total_points <= 10 {
+        1
+    } else {
+        total_points / 4
+    };
 
     div()
         .flex()
@@ -563,30 +596,49 @@ fn render_single_chart(series: &Series, _start_time: Option<chrono::NaiveDateTim
             div()
                 .flex_1()
                 .py_2()
-                .child(
-                    LineChart::<DataPoint, SharedString, f64>::new(series.points.clone())
+                .child({
+                    let mut chart = LineChart::<DataPoint, SharedString, f64>::new(series.points.clone())
                         .x(move |d| {
-                            // Use pre-calculated time label
-                            let time_str = time_labels.get(d.index).map(|s| s.as_str()).unwrap_or("N/A");
-                            
                             // Hack: Use zero-width characters to make each time string unique
                             // while keeping it visually identical for labels.
-                            // This ensures ScalePoint treats them as distinct positions.
                             let mut unique_suffix = String::new();
                             let mut val = d.index;
-                            for _ in 0..10 { // 10 bits is enough for 1024 points
+                            // ERROR FIX: Increased from 10 to 20 bits. 
+                            // 10 bits only supported 1024 points, causing collisions for 5753 points.
+                            // 20 bits supports ~1 million points (2^20), insuring uniqueness.
+                            for _ in 0..20 { 
                                 unique_suffix.push(if val % 2 == 0 { '\u{200B}' } else { '\u{200C}' });
                                 val /= 2;
                             }
-                            format!("{}{}", time_str, unique_suffix).into()
+                            
+                            // Determine if we should show the label
+                            let should_show = d.index == 0 || // Always show first
+                                              d.index == total_points - 1 || // Always show last
+                                              d.index % label_step == 0; // Show periodic
+                            
+                            let label_text = if should_show {
+                                time_labels.get(d.index).map(|s| s.as_str()).unwrap_or("N/A")
+                            } else {
+                                "" // Empty string for hidden labels
+                            };
+
+                            format!("{}{}", label_text, unique_suffix).into()
                         })
                         .y(|d| d.value)
                         .stroke(series.color)
                         .linear()
-                        .tick_margin(if series.points.len() > 10 { series.points.len() / 2 } else { 1 }) // Only 2 labels per chart for maximum legibility
-                )
+                        .tick_margin(1); // Always "try" to draw every tick, but most will be empty strings
+                    
+                    // Add dots on data points if enabled
+                    if show_points {
+                        chart = chart.dot();
+                    }
+                    
+                    chart
+                })
         )
 }
+
 
 /// Render legend showing all series
 fn render_legend(series_data: &[Series]) -> impl IntoElement {
@@ -663,9 +715,13 @@ pub fn extract_series_data(app: &CanViewApp) -> Arc<[Series]> {
         }
 
         let (bus_type, channel_filter, msg_id_str, sig_name) = if parts.len() >= 4 {
-            (parts[0], Some(parts[1]), parts[2], parts[3])
+            let bus_type = parts[0];
+            let channel_id = parts[1];
+            let msg_id = parts[2];
+            let sig_name = parts[3..].join(":");
+            (bus_type, Some(channel_id.to_string()), msg_id.to_string(), sig_name)
         } else {
-            (parts[0], None, parts[1], parts[2])
+            (parts[0], None, parts[1].to_string(), parts[2].to_string())
         };
 
         let msg_id_res = if msg_id_str.starts_with("0x") {
@@ -695,15 +751,17 @@ pub fn extract_series_data(app: &CanViewApp) -> Arc<[Series]> {
                 break;
             }
 
-            if bus_type != "CAN" {
+            if bus_type != "CAN" && bus_type != "LIN" {
                 continue;
             }
 
-            let (m_id, ch, timestamp, data, flags) = match msg {
-                LogObject::CanMessage(m) => (m.id, m.channel, m.header.object_time_stamp, m.data.as_slice(), m.header.object_flags),
-                LogObject::CanMessage2(m) => (m.id, m.channel, m.header.object_time_stamp, m.data.as_slice(), m.header.object_flags),
-                LogObject::CanFdMessage(m) => (m.id, m.channel, m.header.object_time_stamp, m.data.as_slice(), m.header.object_flags),
-                LogObject::CanFdMessage64(m) => (m.id, m.channel as u16, m.header.object_time_stamp, m.data.as_slice(), m.header.object_flags),
+            let (m_id, ch, timestamp, data, flags): (u32, u16, u64, &[u8], u32) = match msg {
+                LogObject::CanMessage(m) => (m.id, m.channel, m.header.object_time_stamp, &m.data, m.header.object_flags),
+                LogObject::CanMessage2(m) => (m.id, m.channel, m.header.object_time_stamp, &m.data, m.header.object_flags),
+                LogObject::CanFdMessage(m) => (m.id, m.channel, m.header.object_time_stamp, &m.data, m.header.object_flags),
+                LogObject::CanFdMessage64(m) => (m.id, m.channel as u16, m.header.object_time_stamp, &m.data, m.header.object_flags),
+                LogObject::LinMessage(m) => (m.id as u32, m.channel, m.header.object_time_stamp, &m.data, m.header.object_flags),
+                LogObject::LinMessage2(m) => (0u32, 0u16, m.header.object_time_stamp, &m.data, m.header.object_flags),
                 _ => continue,
             };
 
@@ -745,17 +803,33 @@ pub fn extract_series_data(app: &CanViewApp) -> Arc<[Series]> {
             }
 
             // Try to decode the signal
-            if let Some(dbc) = app.dbc_channels.get(&ch) {
-                if let Some(dbc_msg) = dbc.messages.get(&m_id) {
-                    if let Some(sig) = dbc_msg.signals.get(sig_name) {
-                        // Extract unit if not already done
-                        if unit.is_none() && !sig.unit.is_empty() {
-                            unit = Some(sig.unit.clone());
+            if bus_type == "CAN" {
+                if let Some(dbc) = app.dbc_channels.get(&ch) {
+                    if let Some(dbc_msg) = dbc.messages.get(&m_id) {
+                        if let Some(sig) = dbc_msg.signals.get(&sig_name) {
+                            if unit.is_none() && !sig.unit.is_empty() {
+                                unit = Some(sig.unit.clone());
+                            }
+                            let val = sig.decode(data);
+                            points.push(DataPoint { time, value: val, index: 0 });
+                            collected += 1;
                         }
-                        
-                        let val = sig.decode(data);
-                        points.push(DataPoint { time, value: val, index: 0 });
-                        collected += 1;
+                    }
+                }
+            } else if bus_type == "LIN" {
+                if let Some(ldf) = app.ldf_channels.get(&ch) {
+                    if let Some(frame) = ldf.frames.get(&m_id.to_string()) {
+                        // Find signal in frame mappings
+                        if let Some(mapping) = frame.signals.iter().find(|s| s.signal_name == sig_name) {
+                            if let Some(sig) = ldf.signals.get(&mapping.signal_name) {
+                                if unit.is_none() {
+                                    unit = Some("".to_string()); // LIN usually doesn't have units in this parser
+                                }
+                                let val = sig.decode(data, mapping.offset) as f64;
+                                points.push(DataPoint { time, value: val, index: 0 });
+                                collected += 1;
+                            }
+                        }
                     }
                 }
             }
