@@ -155,6 +155,9 @@ pub struct CanViewApp {
 
     // Plot interaction state
     pub hover_point: Option<HoverPoint>,
+    pub plot_hover_time: Option<f64>,
+    pub plot_hover_x: Option<Pixels>,
+    pub plot_width_px: Pixels,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -257,6 +260,9 @@ impl CanViewApp {
             // Plot display settings
             show_plot_points: true,
             hover_point: None,
+            plot_hover_time: None,
+            plot_hover_x: None,
+            plot_width_px: gpui::px(0.0),
         }
     }
 }

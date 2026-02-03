@@ -108,6 +108,9 @@ impl CanViewApp {
             zoom_drag_current_x: None,
             show_plot_points: true,
             hover_point: None,
+            plot_hover_time: None,
+            plot_hover_x: None,
+            plot_width_px: px(0.0),
         };
 
         // 🔧 启动时加载配置
@@ -704,6 +707,9 @@ impl CanViewApp {
             zoom_drag_current_x: None,
             show_plot_points: true,
             hover_point: None,
+            plot_hover_time: None,
+            plot_hover_x: None,
+            plot_width_px: px(0.0),
         };
 
         // Load startup config (this will reset some state, so do it carefully)

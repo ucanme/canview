@@ -425,9 +425,13 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
     let drag_current = app.zoom_drag_current_x;
     let start_time = app.start_time;
     let show_points = app.show_plot_points;
+    let hover_x = app.plot_hover_x;
+    let hover_time = app.plot_hover_time;
 
-    // Constant offsets based on layout (Sidebar: 320px)
+    // Constant offsets based on layout (Sidebar: 320px, Padding: 16px)
     let sidebar_offset = px(320.0); 
+    let padding = px(16.0);
+    let chart_start_x = sidebar_offset + padding;
 
     div()
         .size_full()
@@ -448,7 +452,7 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                 let left_global = start.min(current);
                 let right_global = start.max(current);
                 
-                let left_local = (left_global - sidebar_offset).max(px(0.0));
+                let left_local = (left_global - chart_start_x).max(px(0.0));
                 let width = right_global - left_global; // Width is the delta
                 
                 this.child(
@@ -466,20 +470,85 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                 this
             }
         })
-        // Global Canvas Interactions for Zooming
-        .on_mouse_down(MouseButton::Left, cx.listener(|this: &mut CanViewApp, event: &MouseDownEvent, _, cx| {
+        // Hover Line and Tooltip
+        .when_some(hover_x.zip(hover_time), |this, (hx, ht)| {
+             // Calculate local position relative to canvas
+             let local_x = hx - chart_start_x;
+             let chart_width = app.plot_width_px;
+             
+             this.child(
+                 div()
+                     .absolute()
+                     .top_0()
+                     .left(local_x)
+                     .w(px(1.0))
+                     .h_full()
+                     .bg(rgb(0xd4d4d8)) // Light gray line
+                     .opacity(0.8)
+             )
+             .child(
+                 render_hover_tooltip(hx, ht, &series_data, chart_start_x, chart_width, app.start_time)
+             )
+        })
+        // Global Canvas Interactions
+        .on_mouse_down(MouseButton::Left, cx.listener(move |this: &mut CanViewApp, event: &MouseDownEvent, _, cx| {
              this.is_dragging_zoom = true;
              this.zoom_drag_start_x = Some(event.position.x);
              this.zoom_drag_current_x = Some(event.position.x);
              cx.notify();
         }))
-        .on_mouse_move(cx.listener(|this: &mut CanViewApp, event: &MouseMoveEvent, _, cx| {
+        .on_mouse_move(cx.listener(move |this: &mut CanViewApp, event: &MouseMoveEvent, window, cx| {
+            // Handle Zoom Dragging
             if this.is_dragging_zoom {
                 this.zoom_drag_current_x = Some(event.position.x);
                 cx.notify();
             }
+
+            // Handle Hover
+            // We need to calculate time based on mouse position
+            let mouse_x = event.position.x;
+            
+            // Calculate visible width
+            let window_width = window.bounds().size.width;
+            let chart_width_px = window_width - chart_start_x - padding;
+            this.plot_width_px = chart_width_px;
+            
+            // Bounds check
+            if mouse_x >= chart_start_x && mouse_x <= (window_width - padding) {
+                this.plot_hover_x = Some(mouse_x);
+                
+                // Determine time range
+                let (min_t, max_t) = if let (Some(s), Some(e)) = (this.plot_zoom_start, this.plot_zoom_end) {
+                    (s, e)
+                } else {
+                    let mut min_t = f64::MAX;
+                    let mut max_t = f64::MIN;
+                    for series in this.plot_data.iter() {
+                        for p in series.points.iter() {
+                            if p.time < min_t { min_t = p.time; }
+                            if p.time > max_t { max_t = p.time; }
+                        }
+                    }
+                    if min_t == f64::MAX { (0.0, 1.0) } else { (min_t, max_t) }
+                };
+                
+                // Interpolate
+                let rel_x = (mouse_x - chart_start_x) / chart_width_px;
+                let rel_x = f32::max(0.0, f32::min(1.0, rel_x)); // Clamp
+                
+                let time_range = max_t - min_t;
+                let time = min_t + time_range * rel_x as f64;
+                
+                this.plot_hover_time = Some(time);
+                cx.notify();
+            } else if this.plot_hover_x.is_some() {
+                 // Clear hover if moved out (approximate)
+                 this.plot_hover_x = None;
+                 this.plot_hover_time = None;
+                 cx.notify();
+            }
         }))
-        .on_mouse_up(MouseButton::Left, cx.listener(|this: &mut CanViewApp, event: &MouseUpEvent, window, cx| {
+        .on_mouse_up(MouseButton::Left, cx.listener(move |this: &mut CanViewApp, event: &MouseUpEvent, window, cx| {
             if !this.is_dragging_zoom { return; }
             
             if let Some(start_x) = this.zoom_drag_start_x {
@@ -497,16 +566,17 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                             if p.time > max_t { max_t = p.time; }
                         }
                     }
+                    
+                    if min_t == f64::MAX { min_t = 0.0; max_t = 1.0; }
 
                     if min_t < max_t {
                         // Assuming the plot area is roughly the width of the canvas minus sidebars
-                        // Sidebar is 320px. Chart area starts after that.
                         let window_width = window.bounds().size.width;
-                        let plot_width = f32::from(window_width - px(320.0) - px(32.0)); // 320 sidebar + some padding
+                        let plot_width = f32::from(window_width - chart_start_x - padding); 
                         
                         // Map relative x to time
-                        let start_rel = f32::from(x1 - px(320.0) - px(16.0)) / plot_width; // 16px is p_4 of the main area
-                        let end_rel = f32::from(x2 - px(320.0) - px(16.0)) / plot_width;
+                        let start_rel = f32::from(x1 - chart_start_x) / plot_width; 
+                        let end_rel = f32::from(x2 - chart_start_x) / plot_width;
                         
                         let t_range = max_t - min_t;
                         let new_start = min_t + t_range * start_rel as f64;
@@ -525,6 +595,129 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
             cx.notify();
         }))
         .into_any_element()
+}
+
+/// Helper to format time as relative (seconds) or absolute (based on file start time)
+fn format_time_relative_or_absolute(time: f64, start_time: Option<chrono::NaiveDateTime>) -> String {
+    if let Some(st) = start_time {
+        use chrono::{Timelike, Datelike};
+        // Convert start_time to total seconds since midnight
+        let start_hour = st.hour() as f64;
+        let start_min = st.minute() as f64;
+        let start_sec = st.second() as f64;
+        let start_nano = st.nanosecond() as f64;
+        let start_total_seconds = start_hour * 3600.0 + start_min * 60.0 + start_sec + start_nano / 1_000_000_000.0;
+        
+        // Calculate absolute time for this point
+        let abs_seconds = start_total_seconds + time;
+        
+        // Handle day overflow (wrap at 24 hours) - purely for display
+        let display_seconds = abs_seconds % 86400.0;
+        
+        let hours = (display_seconds / 3600.0).floor() as u32;
+        let remaining = display_seconds % 3600.0;
+        let minutes = (remaining / 60.0).floor() as u32;
+        let seconds = remaining % 60.0;
+        
+        format!("{:04}-{:02}-{:02} {:02}:{:02}:{:06.3}", 
+            st.year(), st.month(), st.day(), 
+            hours, minutes, seconds)
+    } else {
+        format!("Time: {:.3}s", time)
+    }
+}
+
+/// Render tooltip for hover over chart
+fn render_hover_tooltip(
+    hover_x: Pixels, 
+    hover_time: f64, 
+    series_data: &[Series],
+    offset_x: Pixels,
+    chart_width: Pixels,
+    start_time: Option<chrono::NaiveDateTime>
+) -> impl IntoElement {
+    // Collect values near this time
+    let mut values = Vec::new();
+    for series in series_data {
+        // Simple linear search or binary search
+        if series.points.is_empty() { continue; }
+        
+        // Find closest point
+        // Optimize: verify logic using partition_point for sorted data
+        let idx = series.points.partition_point(|p| p.time < hover_time);
+        
+        let p_after = series.points.get(idx);
+        let p_before = if idx > 0 { series.points.get(idx - 1) } else { None };
+        
+        // Find closest
+        let val = match (p_before, p_after) {
+            (Some(b), Some(a)) => {
+                let diff_b = (hover_time - b.time).abs();
+                let diff_a = (a.time - hover_time).abs();
+                if diff_b < diff_a { b.value } else { a.value }
+            },
+            (Some(b), None) => b.value,
+            (None, Some(a)) => a.value,
+            (None, None) => 0.0,
+        };
+        
+        values.push((series.clone(), val));
+    }
+
+    // Determine tooltip position
+    // local coordinates
+    let local_x = hover_x - offset_x;
+    
+    // Check if we need to flip to left
+    let tooltip_width_estimate = px(220.0); // Rough estimate
+    let space_right = chart_width - local_x;
+    
+    let (tooltip_left, align_right) = if space_right < tooltip_width_estimate {
+        // Not enough space, place to left of cursor
+        (local_x - tooltip_width_estimate - px(10.0), true)
+    } else {
+        // Place to right
+        (local_x + px(10.0), false)
+    };
+    
+    div()
+        .absolute()
+        .top(px(20.0))
+        .left(tooltip_left)
+        .bg(rgba(0x18181be6)) // Dark bg with transparency
+        .border_1()
+        .border_color(rgb(0x3f3f46))
+        .rounded_md()
+        .shadow_md()
+        .p_3()
+        .flex()
+        .flex_col()
+        .gap_2()
+        .child(
+            div()
+                .text_xs()
+                .font_weight(FontWeight::BOLD)
+                .text_color(rgb(0xe4e4e7))
+                .child(format_time_relative_or_absolute(hover_time, start_time))
+        )
+        .children(values.into_iter().map(|(series, val)| {
+             div()
+                 .flex()
+                 .items_center()
+                 .gap_2()
+                 .child(
+                     div()
+                         .size(px(8.0))
+                         .rounded_full()
+                         .bg(series.color)
+                 )
+                 .child(
+                     div()
+                         .text_xs()
+                         .text_color(rgb(0xd4d4d8))
+                         .child(format!("{}: {:.2} {}", series.name, val, series.unit.as_deref().unwrap_or("")))
+                 )
+        }))
 }
 
 /// Render a single chart for one signal
