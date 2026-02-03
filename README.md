@@ -53,6 +53,9 @@
 - **Advanced Filtering**: Filter by ID, channel, or message type
 - **Configuration Management**: Organize databases into libraries with version control
 - **Flexible Display**: Toggle between hexadecimal and decimal ID display
+- **Signal Plotting**: Interactive line charts for signal visualization with zoom and hover support
+- **Smart Tooltips**: Real-time signal values, units, and absolute wall-clock time display on chart hover
+- **Zoom & Pan**: Draggable zoom range for detailed signal analysis
 
 ### 🎨 User Interface
 - **Clean & Modern**: Intuitive dark theme interface
@@ -67,6 +70,9 @@
 
 ### BLF Logs Viewer
 ![BLF Logs Viewer](assets/blf_logs_screenshot.png)
+
+### Signal Plotter
+![Signal Plotter](assets/plot_screen.png)
 
 ---
 
@@ -416,8 +422,8 @@ Contributions are welcome! Please follow these steps:
 - [x] Signal decoding
 - [x] Configuration management
 - [x] Cross-platform builds
-- [ ] Signal charting/plots
-- [ ] Real-time streaming mode
+- [x] Signal charting/plots (Zoom, Hover, Absolute Time)
+- [ ] Real-time streaming mode (In Progress)
 - [ ] Export to CSV/JSON
 - [ ] Search functionality
 - [ ] Message bookmarks
@@ -452,7 +458,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🗺️ Roadmap
 
 ### Version 0.2.0 (Planned)
-- [ ] Signal plotting and charting
+- [x] Signal plotting and charting
 - [ ] Real-time data streaming
 - [ ] Enhanced search functionality
 - [ ] Message bookmarks and annotations

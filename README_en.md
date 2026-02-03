@@ -16,6 +16,9 @@ The project is organized into three main components:
 ### BLF Logs Viewer
 ![BLF Logs Screenshot](assets/blf_logs_screenshot.png)
 
+### Signal Plotter
+![Signal Plotter](assets/plot_screen.png)
+
 ## Features
 
 ### 📚 BLF Parser Library (`blf`)
@@ -45,6 +48,11 @@ The project is organized into three main components:
     - **JSON Config**: Save and load your channel mappings and library configurations.
 - **Custom Scrollbar**: Smooth scrolling with drag support for large log files.
 - **Interactive UI**: Click-to-filter on ID and channel columns.
+- **Signal Plotting**:
+    - Interactive line charts for signal visualization with zoom and hover support.
+    - **Smart Tooltips**: Real-time signal values, units, and **absolute wall-clock time** display on chart hover.
+    - **Zoom & Pan**: Drag-to-zoom functionality for detailed signal analysis.
+
 
 ## Quick Start
 
