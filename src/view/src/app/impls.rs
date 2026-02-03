@@ -3265,6 +3265,7 @@ impl Render for CanViewApp {
                         .px_4()
                         .border_b_1()
                         .border_color(rgb(0x1a1a1a))
+                        .window_control_area(WindowControlArea::Drag)
                         .child(if cfg!(target_os = "macos") {
                             div()
                                 .flex()
@@ -3273,13 +3274,11 @@ impl Render for CanViewApp {
                                 .child(
                                     div()
                                         .w(px(80.))
-                                        .window_control_area(WindowControlArea::Drag),
                                 )
                                 .child(app_buttons)
                                 .child(
                                     div()
                                         .flex_1()
-                                        .window_control_area(WindowControlArea::Drag),
                                 )
                         } else {
                             div()
@@ -3290,7 +3289,6 @@ impl Render for CanViewApp {
                                 .child(
                                     div()
                                         .flex_1()
-                                        .window_control_area(WindowControlArea::Drag),
                                 )
                                 .child(
                                     div()
@@ -3360,7 +3358,8 @@ impl Render for CanViewApp {
                                                 .hover(|style| style.bg(rgb(0xc53030)))
                                                 .on_mouse_down(
                                                     gpui::MouseButton::Left,
-                                                    move |_event, window, _| {
+                                                    move |_event, window, cx| {
+                                                        cx.stop_propagation();
                                                         window.remove_window();
                                                     },
                                                 )
