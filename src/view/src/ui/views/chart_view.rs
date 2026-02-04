@@ -46,7 +46,7 @@ pub fn render_plot_view(window: &mut Window, app: &mut CanViewApp, cx: &mut Cont
                         .overflow_y_scrollbar()
                         .child(
                             if !has_data {
-                                render_empty_state()
+                                render_empty_state(app)
                             } else {
                                 render_chart_canvas(app, series_data, cx)
                             }
@@ -264,7 +264,8 @@ fn render_signal_sidebar(window: &mut Window, app: &mut CanViewApp, cx: &mut Con
                     
                     for sig in signals {
                         if filter_text.is_empty() || sig.name.to_lowercase().contains(&filter_text) || matches_msg {
-                            let signal_id = format!("CAN:{}:{}", ch_id, sig.name);
+                            // Fix ID format: BUS:CHANNEL:MSG_ID:SIG_NAME
+                            let signal_id = format!("CAN:{}:{}:{}", ch_id, msg.id, sig.name);
                             channel_items.push(SidebarItem::SignalItem {
                                 name: sig.name.clone(),
                                 id: signal_id.clone(),
@@ -320,7 +321,8 @@ fn render_signal_sidebar(window: &mut Window, app: &mut CanViewApp, cx: &mut Con
 
                     for mapping in &frame.signals {
                         if filter_text.is_empty() || mapping.signal_name.to_lowercase().contains(&filter_text) || matches_frame {
-                            let signal_id = format!("LIN:{}:{}", ch_id, mapping.signal_name);
+                            // Fix ID format for LIN as well: LIN:CHANNEL:FRAME_ID:SIG_NAME
+                            let signal_id = format!("LIN:{}:{}:{}", ch_id, frame.id, mapping.signal_name);
                             let sig_size = ldf.signals.get(&mapping.signal_name).map(|s| s.size).unwrap_or(0);
                             channel_items.push(SidebarItem::SignalItem {
                                 name: mapping.signal_name.clone(),
@@ -636,7 +638,10 @@ fn render_sidebar_item(item: &SidebarItem, view: Entity<CanViewApp>) -> AnyEleme
 }
 
 /// Render empty state when no data is available
-fn render_empty_state() -> AnyElement {
+fn render_empty_state(app: &CanViewApp) -> AnyElement {
+    let msg_count = app.messages.len();
+    let sel_count = app.selected_signals.len();
+
     div()
         .flex()
         .flex_col()
@@ -655,6 +660,12 @@ fn render_empty_state() -> AnyElement {
                 .text_color(rgb(0x52525b))
                 .text_sm()
                 .child("请在信号选择(Signals)中选择信号，点击Plot按钮加载数据")
+        )
+        .child(
+            div()
+                .text_color(rgb(0xef4444))
+                .text_xs()
+                .child(format!("Debug: Messages={}, Selected={}", msg_count, sel_count))
         )
         .into_any_element()
 }
@@ -982,7 +993,7 @@ fn render_single_chart(
                 div()
                     .text_sm()
                     .text_color(rgb(0xa1a1aa))
-                    .child("No data points available")
+                    .child(format!("No data points for '{}'. Check Channel ID match (DBC vs Log) or Time Range.", series.name))
             );
     }
 
