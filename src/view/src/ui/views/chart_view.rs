@@ -463,6 +463,7 @@ fn render_signal_sidebar(window: &mut Window, app: &mut CanViewApp, cx: &mut Con
                                 }).collect::<Vec<_>>()
                             }
                         )
+                        .size_full()
                         .into_any_element()
                     }
                 )
@@ -484,6 +485,7 @@ fn render_signal_sidebar(window: &mut Window, app: &mut CanViewApp, cx: &mut Con
                             .cursor_pointer()
                             .hover(|s| s.bg(rgb(0x2563eb)))
                             .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                eprintln!("Redraw button clicked!");
                                 this.plot_data = crate::ui::views::chart_view::extract_series_data(this);
                                 cx.notify();
                             }))
