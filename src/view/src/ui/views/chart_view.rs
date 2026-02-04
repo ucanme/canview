@@ -1,16 +1,17 @@
 use crate::app::CanViewApp;
+use gpui_component::input::{Input, InputState};
 use crate::models::{DataPoint, Series};
 use blf::LogObject;
 use gpui::prelude::*;
 use gpui::*;
 use gpui_component::chart::LineChart;
-use gpui_component::{h_flex, v_flex};
+use gpui_component::v_flex;
 use gpui_component::scroll::ScrollableElement;
 use std::sync::Arc;
 use chrono::{Timelike, Datelike};
 
 /// Render the plot view with signal charts
-pub fn render_plot_view(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoElement {
+pub fn render_plot_view(window: &mut Window, app: &mut CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoElement {
     let series_data = app.plot_data.clone();
     let has_data = !series_data.is_empty();
 
@@ -28,7 +29,7 @@ pub fn render_plot_view(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl 
                 .border_color(rgb(0x27272a))
                 .flex()
                 .flex_col()
-                .child(render_signal_sidebar(app, cx))
+                .child(render_signal_sidebar(window, app, cx))
         )
         .child(
             // Right Main Area: Charts
@@ -123,7 +124,7 @@ fn render_toolbar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoEl
                         .hover(|s| s.bg(rgb(0x1e1b4b)))
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this: &mut CanViewApp, _, _, cx| {
                             // Simple zoom into middle 50%
-                             let (current_start, current_end) = if this.plot_zoom_start.is_some() || this.plot_zoom_end.is_some() {
+                             let (_current_start, _current_end) = if this.plot_zoom_start.is_some() || this.plot_zoom_end.is_some() {
                                 (this.plot_zoom_start.unwrap_or(0.0), this.plot_zoom_end.unwrap_or(3600.0)) // FIXME: get real end
                              } else {
                                 // Find min/max time from all points if possible, or use a default
@@ -194,32 +195,195 @@ fn render_toolbar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoEl
         )
 }
 
-/// Render the signal selection sidebar
-fn render_signal_sidebar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoElement {
-    // 1. Get all databases already loaded in memory
-    let mut loaded_channels = std::collections::HashSet::new();
-    for ch_id in app.dbc_channels.keys() { loaded_channels.insert(*ch_id); }
-    for ch_id in app.ldf_channels.keys() { loaded_channels.insert(*ch_id); }
+/// Signal list item types for the sidebar
+#[derive(Clone)]
+enum SidebarItem {
+    ChannelHeader {
+        name: String,
+        ch_id: u16,
+        is_can: bool,
+        is_loaded: bool,
+        mapping: Option<crate::models::ChannelMapping>,
+    },
+    MessageHeader {
+        name: String,
+        id: u32,
+        is_can: bool,
+        is_expanded: bool,
+    },
+    SignalItem {
+        name: String,
+        id: String,
+        size: u32,
+        is_selected: bool,
+        is_can: bool,
+    },
+}
 
-    // 2. Identify channels from config that are NOT loaded
-    let mut configured_but_unloaded = Vec::new();
-    for mapping in &app.app_config.mappings {
-        if mapping.library_id.is_some() && mapping.version_name.is_some() {
-            if !loaded_channels.contains(&mapping.channel_id) {
-                configured_but_unloaded.push(mapping.clone());
+/// Render the signal selection sidebar
+fn render_signal_sidebar(window: &mut Window, app: &mut CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoElement {
+    // 1. Prepare the flattened and filtered list of items
+    let mut items = Vec::new();
+    let filter_text = app.signal_filter_text.to_lowercase();
+    let selected_signals = &app.selected_signals;
+
+    // A. Loaded Databases
+    let mut dbc_keys: Vec<_> = app.dbc_channels.keys().collect();
+    dbc_keys.sort();
+    for &ch_id in &dbc_keys {
+        if let Some(dbc) = app.dbc_channels.get(ch_id) {
+            let ch_name = format!("Channel {} (CAN)", ch_id);
+            
+            // Collect all matching messages and signals for this channel
+            let mut channel_has_matches = filter_text.is_empty();
+            let mut channel_items = Vec::new();
+
+            let mut messages: Vec<_> = dbc.messages.values().collect();
+            messages.sort_by_key(|m| m.id);
+
+            for msg in messages {
+                let matches_msg = msg.name.to_lowercase().contains(&filter_text)
+                    || format!("0x{:x}", msg.id).to_lowercase().contains(&filter_text);
+                
+                let matching_signals: Vec<_> = msg.signals.values()
+                    .filter(|s| s.name.to_lowercase().contains(&filter_text))
+                    .collect();
+
+                if matches_msg || !matching_signals.is_empty() {
+                    channel_has_matches = true;
+                    
+                    channel_items.push(SidebarItem::MessageHeader {
+                        name: msg.name.clone(),
+                        id: msg.id,
+                        is_can: true,
+                        is_expanded: true, // Always expanded for now, could add state later
+                    });
+
+                    let mut signals: Vec<_> = msg.signals.values().collect();
+                    signals.sort_by_key(|s| s.start_bit);
+                    
+                    for sig in signals {
+                        if filter_text.is_empty() || sig.name.to_lowercase().contains(&filter_text) || matches_msg {
+                            let signal_id = format!("CAN:{}:{}", ch_id, sig.name);
+                            channel_items.push(SidebarItem::SignalItem {
+                                name: sig.name.clone(),
+                                id: signal_id.clone(),
+                                size: sig.signal_size,
+                                is_selected: selected_signals.contains(&signal_id),
+                                is_can: true,
+                            });
+                        }
+                    }
+                }
+            }
+
+            if channel_has_matches {
+                items.push(SidebarItem::ChannelHeader {
+                    name: ch_name,
+                    ch_id: *ch_id,
+                    is_can: true,
+                    is_loaded: true,
+                    mapping: None,
+                });
+                items.extend(channel_items);
             }
         }
     }
 
+    let mut ldf_keys: Vec<_> = app.ldf_channels.keys().collect();
+    ldf_keys.sort();
+    for &ch_id in &ldf_keys {
+        if let Some(ldf) = app.ldf_channels.get(ch_id) {
+            let ch_name = format!("Channel {} (LIN)", ch_id);
+            let mut channel_has_matches = filter_text.is_empty();
+            let mut channel_items = Vec::new();
+
+            let mut frames: Vec<_> = ldf.frames.values().collect();
+            frames.sort_by_key(|f| f.id);
+
+            for frame in frames {
+                let matches_frame = frame.name.to_lowercase().contains(&filter_text)
+                    || format!("0x{:x}", frame.id).to_lowercase().contains(&filter_text);
+                
+                let matching_signals: Vec<_> = frame.signals.iter()
+                    .filter(|s| s.signal_name.to_lowercase().contains(&filter_text))
+                    .collect();
+
+                if matches_frame || !matching_signals.is_empty() {
+                    channel_has_matches = true;
+                    channel_items.push(SidebarItem::MessageHeader {
+                        name: frame.name.clone(),
+                        id: frame.id,
+                        is_can: false,
+                        is_expanded: true,
+                    });
+
+                    for mapping in &frame.signals {
+                        if filter_text.is_empty() || mapping.signal_name.to_lowercase().contains(&filter_text) || matches_frame {
+                            let signal_id = format!("LIN:{}:{}", ch_id, mapping.signal_name);
+                            let sig_size = ldf.signals.get(&mapping.signal_name).map(|s| s.size).unwrap_or(0);
+                            channel_items.push(SidebarItem::SignalItem {
+                                name: mapping.signal_name.clone(),
+                                id: signal_id.clone(),
+                                size: sig_size,
+                                is_selected: selected_signals.contains(&signal_id),
+                                is_can: false,
+                            });
+                        }
+                    }
+                }
+            }
+
+            if channel_has_matches {
+                items.push(SidebarItem::ChannelHeader {
+                    name: ch_name,
+                    ch_id: *ch_id,
+                    is_can: false,
+                    is_loaded: true,
+                    mapping: None,
+                });
+                items.extend(channel_items);
+            }
+        }
+    }
+
+    // B. Unloaded Configured Channels (Only if not already shown as loaded)
+    let loaded_channels: std::collections::HashSet<_> = items.iter().filter_map(|item| {
+        if let SidebarItem::ChannelHeader { ch_id, .. } = item { Some(*ch_id) } else { None }
+    }).collect();
+
+    for mapping in &app.app_config.mappings {
+        if mapping.library_id.is_some() && mapping.version_name.is_some() {
+            if !loaded_channels.contains(&mapping.channel_id) {
+                let ch_id = mapping.channel_id;
+                let ch_type_str = if mapping.channel_type.is_can() { "CAN" } else { "LIN" };
+                let ch_name = format!("Channel {} ({}) [Unloaded]", ch_id, ch_type_str);
+                
+                if filter_text.is_empty() || ch_name.to_lowercase().contains(&filter_text) {
+                    items.push(SidebarItem::ChannelHeader {
+                        name: ch_name,
+                        ch_id,
+                        is_can: mapping.channel_type.is_can(),
+                        is_loaded: false,
+                        mapping: Some(mapping.clone()),
+                    });
+                }
+            }
+        }
+    }
+
+    // 3. Render the sidebar
     div()
         .size_full()
         .flex()
         .flex_col()
-        .bg(rgb(0x0f0f10))
+        .bg(rgb(0x0a0a0b)) // Slightly darker for contrast
         .child(
+            // Sidebar Header
             div()
                 .px_4()
                 .py_2()
+                .bg(rgb(0x131314))
                 .border_b_1()
                 .border_color(rgb(0x27272a))
                 .flex()
@@ -232,166 +396,241 @@ fn render_signal_sidebar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl
                         .text_color(rgb(0xe4e4e7))
                         .child("信号选择 (Signals)")
                 )
+                .child(
+                    div()
+                        .text_xs()
+                        .text_color(rgb(0x71717a))
+                        .child(format!("{}", items.len()))
+                )
         )
         .child(
+                // Search Box Area
+                div()
+                    .w_full()
+                    .px_4()
+                    .py_2()
+                    .border_b_1()
+                    .border_color(rgb(0x27272a))
+                    .flex()
+                    .items_center() // 确保垂直居中
+                    .child(
+                        if let Some(input) = &app.signal_search_input {
+                            div()
+                                .flex_1()
+                                .h(px(32.0)) // 保持高度约束，防止过高或过矮
+                                .flex()
+                                .items_center() // 确保 Input 内部垂直居中
+                                .child(Input::new(input).appearance(true))
+                                .into_any_element()
+                        } else {
+                            div()
+                                .flex_1() 
+                                .h(px(32.0))
+                                .flex()
+                                .items_center()
+                                .px_2()
+                                .text_xs()
+                                .text_color(rgb(0x888888))
+                                .child("Search signals...")
+                                .into_any_element()
+                        }
+                    )
+        )
+        .child(
+            // Virtualized List
             div()
                 .flex_1()
-                .overflow_y_scrollbar()
-                .p_2()
-                .flex()
-                .flex_col()
-                .gap_4()
-                .children({
-                    let mut elements: Vec<AnyElement> = Vec::new();
-                    
-                    // Show Configured but Unloaded channels first
-                    for mapping in configured_but_unloaded {
-                        let lib_id = mapping.library_id.clone().unwrap_or_default();
-                        let ver_name = mapping.version_name.clone().unwrap_or_default();
-                        let ch_id = mapping.channel_id;
-                        let ch_type_str = if mapping.channel_type.is_can() { "CAN" } else { "LIN" };
-                        
-                        elements.push(
-                            div()
-                                .flex()
-                                .flex_col()
-                                .gap_2()
-                                .p_3()
-                                .bg(rgb(0x18181b))
-                                .border_1()
-                                .border_color(rgb(0x27272a))
-                                .rounded_lg()
-                                .child(
-                                    div()
-                                        .flex()
-                                        .items_center()
-                                        .justify_between()
-                                        .child(
-                                            div()
-                                                .text_xs()
-                                                .font_weight(FontWeight::BOLD)
-                                                .text_color(rgb(0x71717a))
-                                                .child(format!("Channel {} ({})", ch_id, ch_type_str))
-                                        )
-                                        .child(
-                                            div()
-                                                .px_2()
-                                                .py_1()
-                                                .bg(rgb(0x313244))
-                                                .rounded(px(4.0))
-                                                .cursor_pointer()
-                                                .hover(|s| s.bg(rgb(0x45475a)))
-                                                .on_mouse_down(gpui::MouseButton::Left, {
-                                                    let lib_id = lib_id.clone();
-                                                    let ver_name = ver_name.clone();
-                                                    cx.listener(move |this, _, _, cx| {
-                                                        this.load_library_version(&lib_id, &ver_name, cx);
-                                                    })
-                                                })
-                                                .child(
-                                                    div()
-                                                        .text_xs()
-                                                        .text_color(rgb(0xcdd6f4))
-                                                        .child("Load Database")
-                                                )
-                                        )
-                                )
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .text_color(rgb(0x52525b))
-                                        .child(format!("{}: {}", lib_id, ver_name))
-                                )
-                                .into_any_element()
-                        );
-                    }
-
-                    // Show Loaded databases
-                    let mut dbc_keys: Vec<_> = app.dbc_channels.keys().collect();
-                    dbc_keys.sort();
-                    for ch_id in dbc_keys {
-                        if let Some(dbc) = app.dbc_channels.get(ch_id) {
-                            let name = format!("Channel {} (CAN)", ch_id);
-                            let db = crate::library::Database::Dbc(dbc.clone());
-                            elements.push(render_database_entry(name, db, app, cx).into_any_element());
-                        }
-                    }
-
-                    let mut ldf_keys: Vec<_> = app.ldf_channels.keys().collect();
-                    ldf_keys.sort();
-                    for ch_id in ldf_keys {
-                        if let Some(ldf) = app.ldf_channels.get(ch_id) {
-                            let name = format!("Channel {} (LIN)", ch_id);
-                            let db = crate::library::Database::Ldf(ldf.clone());
-                            elements.push(render_database_entry(name, db, app, cx).into_any_element());
-                        }
-                    }
-                    
-                    elements
-                })
-                .when(app.dbc_channels.is_empty() && app.ldf_channels.is_empty() && app.app_config.mappings.is_empty(), |this| {
-                    this.child(
+                .child(
+                    if items.is_empty() {
                         div()
                             .p_4()
-                            .flex()
-                            .flex_col()
-                            .items_center()
-                            .justify_center()
-                            .gap_2()
+                            .text_xs()
+                            .text_color(rgb(0x52525b))
+                            .text_center()
+                            .child("No matches found")
+                            .into_any_element()
+                    } else {
+                        let _scroll_handle = app.signal_scroll_handle.clone();
+                        let item_count = items.len();
+                        let view_entity = cx.entity().clone();
+                        
+                        uniform_list(
+                            "signal-list",
+                            item_count,
+                            move |range, _window, _cx| {
+                                range.map(|i| {
+                                    render_sidebar_item(&items[i], view_entity.clone())
+                                }).collect::<Vec<_>>()
+                            }
+                        )
+                        .into_any_element()
+                    }
+                )
+        )
+        .child(
+            // Bottom Action Bar: Plot Selected
+            if !app.selected_signals.is_empty() {
+                div()
+                    .p_2()
+                    .bg(rgb(0x131314))
+                    .border_t_1()
+                    .border_color(rgb(0x27272a))
+                    .child(
+                        div()
+                            .px_3()
+                            .py_1p5()
+                            .bg(rgb(0x3b82f6))
+                            .rounded(px(4.0))
+                            .cursor_pointer()
+                            .hover(|s| s.bg(rgb(0x2563eb)))
+                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                this.plot_data = crate::ui::views::chart_view::extract_series_data(this);
+                                cx.notify();
+                            }))
                             .child(
                                 div()
-                                    .text_xs()
-                                    .text_color(rgb(0x71717a))
-                                    .child("未配置信号库")
-                            )
-                            .child(
-                                div()
-                                    .px_3()
-                                    .py_1()
-                                    .bg(rgb(0x313244))
-                                    .rounded(px(4.0))
-                                    .cursor_pointer()
-                                    .hover(|s| s.bg(rgb(0x45475a)))
-                                    .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                        this.current_view = crate::app::AppView::LibraryView;
-                                        cx.notify();
-                                    }))
-                                    .child(
-                                        div()
-                                            .text_xs()
-                                            .text_color(rgb(0xcdd6f4))
-                                            .child("前往 Library 加载")
-                                    )
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .gap_2()
+                                    .child(div().text_xs().font_weight(FontWeight::BOLD).text_color(rgb(0xffffff)).child(format!("绘制 {} 个信号 (Plot)", app.selected_signals.len())))
                             )
                     )
-                })
+            } else {
+                div()
+            }
         )
 }
 
-/// Helper to render a single database entry in the sidebar
-fn render_database_entry(name: String, db: crate::library::Database, app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoElement {
-    div()
-        .flex()
-        .flex_col()
-        .gap_1()
-        .child(
+/// Helper to render a single item in the sidebar list
+fn render_sidebar_item(item: &SidebarItem, view: Entity<CanViewApp>) -> AnyElement {
+    match item {
+        SidebarItem::ChannelHeader { name, ch_id: _, is_can, is_loaded, mapping } => {
+            let lib_id = mapping.as_ref().and_then(|m| m.library_id.clone()).unwrap_or_default();
+            let ver_name = mapping.as_ref().and_then(|m| m.version_name.clone()).unwrap_or_default();
+            
             div()
-                .px_1()
-                .text_xs()
-                .font_weight(FontWeight::BOLD)
-                .text_color(rgb(0x3b82f6))
-                .child(name.clone())
-        )
-        .child(
-            crate::ui::views::database_preview::render_database_preview(
-                &db,
-                &app.signal_filter_text,
-                None,
-                Some(&if name.contains("CAN") { format!("CAN:{}", name.split_whitespace().nth(1).unwrap_or("0")) } else { format!("LIN:{}", name.split_whitespace().nth(1).unwrap_or("0")) }),
-                &app.selected_signals,
-                cx
-            )
-        )
+                .px_2()
+                .py_1()
+                .bg(rgb(0x18181b))
+                .border_b_1()
+                .border_color(rgb(0x27272a))
+                .flex()
+                .items_center()
+                .justify_between()
+                .child(
+                    div()
+                        .text_xs()
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(if *is_can { rgb(0x3b82f6) } else { rgb(0xeab308) })
+                        .child(name.clone())
+                )
+                .when(!*is_loaded, |this| {
+                    let lib_id = lib_id.clone();
+                    let ver_name = ver_name.clone();
+                    let view = view.clone();
+                    this.child(
+                        div()
+                            .px_1p5()
+                            .py(px(1.0))
+                            .bg(rgb(0x313244))
+                            .rounded(px(3.0))
+                            .cursor_pointer()
+                            .hover(|s| s.bg(rgb(0x45475a)))
+                            .on_mouse_down(gpui::MouseButton::Left, move |_, _, cx| {
+                                view.update(cx, |this, cx| {
+                                    this.load_library_version(&lib_id, &ver_name, cx);
+                                });
+                            })
+                            .child(div().text_color(rgb(0xcdd6f4)).text_xs().child("Load"))
+                    )
+                })
+                .into_any_element()
+        }
+        SidebarItem::MessageHeader { name, id, is_can, .. } => {
+            div()
+                .px_3()
+                .py_0p5()
+                .bg(rgb(0x111112))
+                .flex()
+                .items_center()
+                .gap_2()
+                .child(
+                    div()
+                        .w(px(60.0))
+                        .text_xs()
+                        .text_color(if *is_can { rgb(0x89b4fa) } else { rgb(0xf9e2af) })
+                        .child(format!("0x{:X}", id))
+                )
+                .child(
+                    div()
+                        .flex_1()
+                        .text_xs()
+                        .font_weight(FontWeight::MEDIUM)
+                        .text_color(rgb(0xd4d4d8))
+                        .child(name.clone())
+                )
+                .into_any_element()
+        }
+        SidebarItem::SignalItem { name, id, size, is_selected, is_can } => {
+            let sig_id = id.clone();
+            let is_selected = *is_selected;
+            
+            div()
+                .px_4()
+                .py_1()
+                .flex()
+                .items_center()
+                .gap_2()
+                .hover(|s| s.bg(rgb(0x1a1a1b)))
+                .child(
+                    // Checkbox
+                    div()
+                        .w(px(12.0))
+                        .h(px(12.0))
+                        .rounded(px(2.0))
+                        .border_1()
+                        .border_color(if is_selected { 
+                            if *is_can { rgb(0x3b82f6) } else { rgb(0xeab308) }
+                        } else { 
+                            rgb(0x3f3f46)
+                        })
+                        .bg(if is_selected { 
+                            if *is_can { rgb(0x3b82f6) } else { rgb(0xeab308) }
+                        } else { 
+                            rgba(0x00000000)
+                        })
+                        .cursor_pointer()
+                        .on_mouse_down(MouseButton::Left, {
+                            let view = view.clone();
+                            move |_, _, cx| {
+                                view.update(cx, |this, cx| {
+                                    if let Some(pos) = this.selected_signals.iter().position(|s| s == &sig_id) {
+                                        this.selected_signals.remove(pos);
+                                    } else {
+                                        this.selected_signals.push(sig_id.clone());
+                                    }
+                                    cx.notify();
+                                });
+                            }
+                        })
+                )
+                .child(
+                    div()
+                        .flex_1()
+                        .text_xs()
+                        .text_color(if is_selected { rgb(0xffffff) } else { rgb(0xa1a1aa) })
+                        .child(name.clone())
+                )
+                .child(
+                    div()
+                        .text_color(rgb(0x52525b))
+                        .text_xs()
+                        .child(format!("{}b", size))
+                )
+                .into_any_element()
+        }
+    }
 }
 
 /// Render empty state when no data is available
@@ -672,7 +911,7 @@ fn render_hover_tooltip(
     let tooltip_width_estimate = px(220.0); // Rough estimate
     let space_right = chart_width - local_x;
     
-    let (tooltip_left, align_right) = if space_right < tooltip_width_estimate {
+    let (tooltip_left, _align_right) = if space_right < tooltip_width_estimate {
         // Not enough space, place to left of cursor
         (local_x - tooltip_width_estimate - px(10.0), true)
     } else {

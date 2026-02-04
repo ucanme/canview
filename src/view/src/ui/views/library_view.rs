@@ -1,8 +1,7 @@
 //! Library management UI components
 
 use crate::CanViewApp;
-use crate::library::LibraryManager;
-use crate::models::{ChannelType, DatabaseType, LibraryVersion, SignalLibrary};
+use crate::models::SignalLibrary;
 use gpui::prelude::*;
 use gpui::*;
 use gpui_component::input::Input;
@@ -445,7 +444,7 @@ pub enum LibraryDialogType {
 }
 
 /// Create library form
-fn render_create_library_form(cx: &mut Context<CanViewApp>) -> impl IntoElement {
+fn render_create_library_form(_cx: &mut Context<CanViewApp>) -> impl IntoElement {
     div()
         .flex()
         .flex_col()
@@ -530,7 +529,7 @@ fn render_create_library_form(cx: &mut Context<CanViewApp>) -> impl IntoElement 
 }
 
 /// Add version form
-fn render_add_version_form(cx: &mut Context<CanViewApp>) -> impl IntoElement {
+fn render_add_version_form(_cx: &mut Context<CanViewApp>) -> impl IntoElement {
     div()
         .flex()
         .flex_col()

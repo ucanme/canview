@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 // Import AppConfig and ChannelMapping from crate root (defined in main.rs)
-use crate::{AppConfig, ChannelMapping, ChannelType};
+use crate::{AppConfig, ChannelType};
 
 // Import the real LibraryManager from the library module
 pub use crate::library::LibraryManager;
@@ -95,6 +95,8 @@ pub struct CanViewApp {
 
     // Signal filter
     pub signal_filter_text: gpui::SharedString,
+    pub signal_search_input: Option<Entity<InputState>>,
+    pub signal_scroll_handle: UniformListScrollHandle,
 
     // Status message
     pub status_msg: gpui::SharedString,
@@ -229,6 +231,8 @@ impl CanViewApp {
             library_dialog_type: LibraryDialogType::Create,
             library_search_query: String::new(),
             library_filter_type: None,
+            signal_search_input: None,
+            signal_scroll_handle: UniformListScrollHandle::new(),
             // gpui-component input support
             library_name_input: None, // Will be initialized when cx is available
             version_name_input: None, // Will be initialized when cx is available

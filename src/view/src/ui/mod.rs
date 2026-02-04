@@ -3,7 +3,6 @@
 pub mod components;
 pub mod views;
 
-use crate::app::AppView;
 use gpui::*;
 
 /// Main UI renderer

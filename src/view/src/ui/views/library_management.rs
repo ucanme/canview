@@ -109,8 +109,8 @@ fn render_left_column(
     mappings: &[ChannelMapping],
     show_new_library_input: bool,
     new_library_name: &str,
-    focused_input: &Option<String>,
-    cursor_pos: usize,
+    _focused_input: &Option<String>,
+    _cursor_pos: usize,
     library_name_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
@@ -404,8 +404,8 @@ fn render_middle_column(
     _mappings: &[ChannelMapping],
     show_add_version_input: bool,
     new_version_name: &str,
-    focused_input: &Option<String>,
-    cursor_pos: usize,
+    _focused_input: &Option<String>,
+    _cursor_pos: usize,
     version_name_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
@@ -1268,7 +1268,7 @@ fn render_add_channel_input_row_with_path(
                                         .await
                                     {
                                         let path_str = file.path().to_string_lossy().to_string();
-                                        this.update(cx, |view, cx| {
+                                        this.update(cx, |view, _cx| {
                                             // 保存文件路径
                                             view.new_channel_db_path = path_str.clone();
                                             eprintln!("📁 File selected: {}", path_str);

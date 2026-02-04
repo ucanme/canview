@@ -11,7 +11,6 @@ use crate::models::{
 };
 use parser::dbc::{DbcDatabase, DbcParser};
 use parser::ldf::{LdfDatabase, LdfParser};
-use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;

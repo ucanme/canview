@@ -4,7 +4,7 @@
 //! CAN/LIN message data.
 
 use blf::LogObject;
-use gpui::{Pixels, px};
+use gpui::px;
 use parser::dbc::DbcDatabase;
 use parser::ldf::LdfDatabase;
 

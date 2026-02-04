@@ -2,7 +2,6 @@ use crate::app::CanViewApp;
 use crate::library::Database;
 use gpui::prelude::*;
 use gpui::*;
-use gpui_component::scroll::ScrollableElement;
 use gpui_component::input::Input;
 use gpui_component::input::InputState;
 use parser::{dbc::DbcDatabase, ldf::LdfDatabase};

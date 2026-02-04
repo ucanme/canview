@@ -259,7 +259,7 @@ impl TextInputBuilder {
 
                     match keystroke.as_str() {
                         "backspace" => {
-                            view.update(cx, |this, cx| {
+                            view.update(cx, |_this, cx| {
                                 if !text.is_empty() {
                                     let mut chars: Vec<char> = text.chars().collect();
                                     chars.pop();
@@ -269,12 +269,12 @@ impl TextInputBuilder {
                             });
                         }
                         "enter" => {
-                            view.update(cx, |this, cx| {
+                            view.update(cx, |_this, cx| {
                                 on_submit(&text, cx);
                             });
                         }
                         "escape" => {
-                            view.update(cx, |this, cx| {
+                            view.update(cx, |_this, cx| {
                                 on_cancel(cx);
                             });
                         }
@@ -318,7 +318,7 @@ impl TextInputBuilder {
                                         keystroke, new_text
                                     );
 
-                                    view.update(cx, |this, cx| {
+                                    view.update(cx, |_this, cx| {
                                         on_change(&new_text, cx);
                                     });
                                 } else {

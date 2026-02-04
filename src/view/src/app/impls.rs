@@ -13,7 +13,6 @@ use parser::dbc::DbcDatabase;
 use parser::ldf::LdfDatabase;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use gpui_component::scroll::ScrollableElement;
 
 impl CanViewApp {
     pub fn new() -> Self {
@@ -65,6 +64,8 @@ impl CanViewApp {
             channel_filter_scroll_offset: px(0.0),
             channel_filter_scroll_handle: gpui::UniformListScrollHandle::new(),
             signal_filter_text: "".into(),
+            signal_search_input: None,
+            signal_scroll_handle: UniformListScrollHandle::new(),
             // Library management
             library_manager: LibraryManager::new(),
             selected_library_id: None,
@@ -664,6 +665,8 @@ impl CanViewApp {
             channel_filter_scroll_offset: px(0.0),
             channel_filter_scroll_handle: gpui::UniformListScrollHandle::new(),
             signal_filter_text: "".into(),
+            signal_search_input: None,
+            signal_scroll_handle: gpui::UniformListScrollHandle::new(),
             // Library management
             library_manager: LibraryManager::new(),
             selected_library_id: None,
@@ -1689,9 +1692,9 @@ impl CanViewApp {
                                                     .hover(|style| style.bg(rgb(0x374151)))
                                                     .cursor_pointer()
                                                     // Block all mouse events from propagating to the main list
-                                                    .on_mouse_move(move |_event, _window, cx| {
+                                                    .on_mouse_move(move |_event, _window, _cx| {
                                                     })
-                                                    .on_mouse_up(gpui::MouseButton::Left, move |_event, _window, cx| {
+                                                    .on_mouse_up(gpui::MouseButton::Left, move |_event, _window, _cx| {
                                                     })
                                                     .on_mouse_down(gpui::MouseButton::Left, {
                                                         let view = view_clone1.clone();
@@ -1847,9 +1850,9 @@ impl CanViewApp {
                                                     .hover(|style| style.bg(rgb(0x374151)))
                                                     .cursor_pointer()
                                                     // Block all mouse events from propagating to the main list
-                                                    .on_mouse_move(move |_event, _window, cx| {
+                                                    .on_mouse_move(move |_event, _window, _cx| {
                                                     })
-                                                    .on_mouse_up(gpui::MouseButton::Left, move |_event, _window, cx| {
+                                                    .on_mouse_up(gpui::MouseButton::Left, move |_event, _window, _cx| {
                                                     })
                                                     .on_mouse_down(gpui::MouseButton::Left, {
                                                         let view = view_clone2.clone();
@@ -2018,11 +2021,11 @@ impl CanViewApp {
                                             .hover(|style| style.bg(rgb(0x374151)))
                                             .cursor_pointer()
                                             // Block all mouse events from propagating to the main list
-                                            .on_mouse_move(move |_event, _window, cx| {
+                                            .on_mouse_move(move |_event, _window, _cx| {
                                             })
                                             .on_mouse_up(
                                                 gpui::MouseButton::Left,
-                                                move |_event, _window, cx| {
+                                                move |_event, _window, _cx| {
                                                 },
                                             )
                                             .on_mouse_down(gpui::MouseButton::Left, {
@@ -2954,8 +2957,28 @@ impl Render for CanViewApp {
             }
         }
 
+        // Initialize signal search input if needed
+        if self.signal_search_input.is_none() {
+            let input = cx.new(|cx| {
+                InputState::new(window, cx)
+                    .placeholder("查询信号/消息/ID (Search...)")
+            });
+            
+            // 使用 observe 来监听输入状态的任何变化，而不仅仅是 Change 事件
+            cx.observe(&input, |this, entity, cx| {
+                let val = entity.read(cx).value().to_string();
+                // 只有当值真的改变时才更新和通知，避免无限循环
+                if this.signal_filter_text != val {
+                    this.signal_filter_text = val.into();
+                    cx.notify();
+                }
+            }).detach();
+            
+            self.signal_search_input = Some(input);
+        }
+
         // Check for file dialog result (non-blocking poll)
-        if let Some(mut receiver) = self.pending_file_path.take() {
+        if let Some(receiver) = self.pending_file_path.take() {
             match receiver.try_recv() {
                 Ok(Some(path_str)) => {
                     // File selected successfully
@@ -3383,7 +3406,7 @@ impl Render for CanViewApp {
                         AppView::ConfigView => self.render_config_view(cx).into_any_element(),
                         AppView::LibraryView => self.render_library_view(cx).into_any_element(),
                         AppView::PlotView => {
-                            crate::ui::views::chart_view::render_plot_view(self, cx).into_any_element()
+                            crate::ui::views::chart_view::render_plot_view(window, self, cx).into_any_element()
                         }
                     }),
             )

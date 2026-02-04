@@ -3,12 +3,10 @@
 pub mod library;
 pub mod chart;
 
-use gpui::Pixels;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 // Re-export library types
-pub use library::{ChannelDatabase, DatabaseType, LibraryVersion, SignalLibrary, VersionStats};
+pub use library::{ChannelDatabase, DatabaseType, LibraryVersion, SignalLibrary};
 
 // Re-export chart types
 pub use chart::{DataPoint, Series};

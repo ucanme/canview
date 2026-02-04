@@ -233,7 +233,7 @@ impl ZedStyleTextInputBuilder {
 
                     match keystroke.as_str() {
                         "backspace" => {
-                            view.update(cx, |this, cx| {
+                            view.update(cx, |_this, cx| {
                                 if !text.is_empty() {
                                     let mut chars: Vec<char> = text.chars().collect();
                                     chars.pop();
@@ -243,12 +243,12 @@ impl ZedStyleTextInputBuilder {
                             });
                         }
                         "enter" => {
-                            view.update(cx, |this, cx| {
+                            view.update(cx, |_this, cx| {
                                 on_submit(&text, cx);
                             });
                         }
                         "escape" => {
-                            view.update(cx, |this, cx| {
+                            view.update(cx, |_this, cx| {
                                 on_cancel(cx);
                             });
                         }
@@ -285,7 +285,7 @@ impl ZedStyleTextInputBuilder {
                                     let mut new_text = text.clone();
                                     new_text.push_str(&keystroke);
 
-                                    view.update(cx, |this, cx| {
+                                    view.update(cx, |_this, cx| {
                                         on_change(&new_text, cx);
                                     });
                                 }

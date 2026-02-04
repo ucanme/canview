@@ -31,7 +31,6 @@
 use gpui::prelude::FluentBuilder;
 use gpui::*;
 use std::ops::Range;
-use std::time::Duration;
 
 /// Character validation mode for text input
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -313,9 +312,9 @@ impl EnhancedTextInputBuilder {
     pub fn build<App>(
         self,
         id: impl Into<String>,
-        view: Entity<App>,
-        on_change: impl Fn(&str, &mut gpui::Context<App>) + 'static,
-        on_submit: impl Fn(&str, &mut gpui::Context<App>) + 'static,
+        _view: Entity<App>,
+        _on_change: impl Fn(&str, &mut gpui::Context<App>) + 'static,
+        _on_submit: impl Fn(&str, &mut gpui::Context<App>) + 'static,
     ) -> impl IntoElement
     where
         App: 'static,
@@ -323,7 +322,7 @@ impl EnhancedTextInputBuilder {
         let text = self.text.clone();
         let placeholder = self.placeholder.clone();
         let input_id = id.into();
-        let validation = self.validation;
+        let _validation = self.validation;
         let max_width = self.max_width.unwrap_or(px(200.));
         let min_width = self.min_width.unwrap_or(px(100.));
 

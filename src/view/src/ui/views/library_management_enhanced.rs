@@ -6,7 +6,7 @@
 //! - 右栏：通道配置
 
 use crate::app::LibraryDialogType;
-use crate::models::{ChannelMapping, LibraryVersion, SignalLibrary};
+use crate::models::{ChannelMapping, SignalLibrary};
 use crate::ui::components::EnhancedTextInputBuilder;
 use crate::ui::components::enhanced_text_input::TextInputValidation;
 use gpui::prelude::*;
