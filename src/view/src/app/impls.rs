@@ -112,6 +112,8 @@ impl CanViewApp {
             plot_hover_time: None,
             plot_hover_x: None,
             plot_width_px: px(0.0),
+            // File menu dropdown state
+            show_file_menu: false,
         };
 
         // 🔧 启动时加载配置
@@ -184,10 +186,19 @@ impl CanViewApp {
 
                             // 🔄 自动加载每个通道激活的版本
                             for mapping in &config.mappings {
-                                if let (Some(lib_id), Some(ver_name)) = (&mapping.library_id, &mapping.version_name) {
-                                    eprintln!("  🔄 自动加载通道 {} 的库 {} 版本 {}", mapping.channel_id, lib_id, ver_name);
+                                if let (Some(lib_id), Some(ver_name)) =
+                                    (&mapping.library_id, &mapping.version_name)
+                                {
+                                    eprintln!(
+                                        "  🔄 自动加载通道 {} 的库 {} 版本 {}",
+                                        mapping.channel_id, lib_id, ver_name
+                                    );
                                     // Actually, we can just load it directly since we don't need UI context for the core load
-                                    self.internal_load_library_version(mapping.channel_id, lib_id, ver_name);
+                                    self.internal_load_library_version(
+                                        mapping.channel_id,
+                                        lib_id,
+                                        ver_name,
+                                    );
                                 }
                             }
                         } else {
@@ -255,7 +266,7 @@ impl CanViewApp {
                 let st = result.file_stats.measurement_start_time.clone();
                 println!("\n起始时间解析:");
                 println!("  原始 SystemTime: {:?}", st);
-                
+
                 let date_opt =
                     chrono::NaiveDate::from_ymd_opt(st.year as i32, st.month as u32, st.day as u32);
                 let time_opt = chrono::NaiveTime::from_hms_nano_opt(
@@ -713,6 +724,8 @@ impl CanViewApp {
             plot_hover_time: None,
             plot_hover_x: None,
             plot_width_px: px(0.0),
+            // File menu dropdown state
+            show_file_menu: false,
         };
 
         // Load startup config (this will reset some state, so do it carefully)
@@ -2085,7 +2098,7 @@ impl CanViewApp {
                 let timestamp = can_msg.header.object_time_stamp;
                 let flags = can_msg.header.object_flags;
                 let seconds = Self::convert_timestamp_to_seconds(timestamp, flags);
-                
+
                 let time_str = if let Some(start) = start_time {
                     let nanos = (seconds * 1_000_000_000.0) as i64;
                     let msg_time = start + chrono::Duration::nanoseconds(nanos);
@@ -2116,7 +2129,7 @@ impl CanViewApp {
                 let timestamp = can_msg.header.object_time_stamp;
                 let flags = can_msg.header.object_flags;
                 let seconds = Self::convert_timestamp_to_seconds(timestamp, flags);
-                
+
                 let time_str = if let Some(start) = start_time {
                     let nanos = (seconds * 1_000_000_000.0) as i64;
                     let msg_time = start + chrono::Duration::nanoseconds(nanos);
@@ -2147,7 +2160,7 @@ impl CanViewApp {
                 let timestamp = err.header.object_time_stamp;
                 let flags = err.header.object_flags;
                 let seconds = Self::convert_timestamp_to_seconds(timestamp, flags);
-                
+
                 let time_str = if let Some(start) = start_time {
                     let nanos = (seconds * 1_000_000_000.0) as i64;
                     let msg_time = start + chrono::Duration::nanoseconds(nanos);
@@ -2169,7 +2182,7 @@ impl CanViewApp {
                 let timestamp = fd_msg.header.object_time_stamp;
                 let flags = fd_msg.header.object_flags;
                 let seconds = Self::convert_timestamp_to_seconds(timestamp, flags);
-                
+
                 let time_str = if let Some(start) = start_time {
                     let nanos = (seconds * 1_000_000_000.0) as i64;
                     let msg_time = start + chrono::Duration::nanoseconds(nanos);
@@ -2200,7 +2213,7 @@ impl CanViewApp {
                 let timestamp = fd_msg.header.object_time_stamp;
                 let flags = fd_msg.header.object_flags;
                 let seconds = Self::convert_timestamp_to_seconds(timestamp, flags);
-                
+
                 let time_str = if let Some(start) = start_time {
                     let nanos = (seconds * 1_000_000_000.0) as i64;
                     let msg_time = start + chrono::Duration::nanoseconds(nanos);
@@ -2231,7 +2244,7 @@ impl CanViewApp {
                 let timestamp = ov.header.object_time_stamp;
                 let flags = ov.header.object_flags;
                 let seconds = Self::convert_timestamp_to_seconds(timestamp, flags);
-                
+
                 let time_str = if let Some(start) = start_time {
                     let nanos = (seconds * 1_000_000_000.0) as i64;
                     let msg_time = start + chrono::Duration::nanoseconds(nanos);
@@ -2253,7 +2266,7 @@ impl CanViewApp {
                 let timestamp = lin_msg.header.object_time_stamp;
                 let flags = lin_msg.header.object_flags;
                 let seconds = Self::convert_timestamp_to_seconds(timestamp, flags);
-                
+
                 let time_str = if let Some(start) = start_time {
                     let nanos = (seconds * 1_000_000_000.0) as i64;
                     let msg_time = start + chrono::Duration::nanoseconds(nanos);
@@ -2284,7 +2297,7 @@ impl CanViewApp {
                 let timestamp = lin_msg.header.object_time_stamp;
                 let flags = lin_msg.header.object_flags;
                 let seconds = Self::convert_timestamp_to_seconds(timestamp, flags);
-                
+
                 let time_str = if let Some(start) = start_time {
                     let nanos = (seconds * 1_000_000_000.0) as i64;
                     let msg_time = start + chrono::Duration::nanoseconds(nanos);
@@ -2749,7 +2762,6 @@ impl CanViewApp {
             .into_any_element()
     }
 
-
     fn render_config_view(&self, cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .size_full()
@@ -2926,10 +2938,7 @@ impl Render for CanViewApp {
         if self.show_add_channel_input {
             if self.channel_id_input.is_none() {
                 eprintln!("📝 Creating channel_id_input in render...");
-                let input = cx.new(|cx| {
-                    InputState::new(window, cx)
-                        .placeholder("Channel ID")
-                });
+                let input = cx.new(|cx| InputState::new(window, cx).placeholder("Channel ID"));
                 cx.subscribe(&input, |this, input, event, cx| {
                     if let InputEvent::Change = event {
                         this.new_channel_id = input.read(cx).text().to_string();
@@ -2943,9 +2952,7 @@ impl Render for CanViewApp {
 
             if self.channel_name_input.is_none() {
                 eprintln!("📝 Creating channel_name_input in render...");
-                let input = cx.new(|cx| {
-                    InputState::new(window, cx).placeholder("Channel name")
-                });
+                let input = cx.new(|cx| InputState::new(window, cx).placeholder("Channel name"));
                 cx.subscribe(&input, |this, input, event, cx| {
                     if let InputEvent::Change = event {
                         this.new_channel_name = input.read(cx).text().to_string();
@@ -2959,11 +2966,9 @@ impl Render for CanViewApp {
 
         // Initialize signal search input if needed
         if self.signal_search_input.is_none() {
-            let input = cx.new(|cx| {
-                InputState::new(window, cx)
-                    .placeholder("查询信号/消息/ID (Search...)")
-            });
-            
+            let input = cx
+                .new(|cx| InputState::new(window, cx).placeholder("查询信号/消息/ID (Search...)"));
+
             // 使用 observe 来监听输入状态的任何变化，而不仅仅是 Change 事件
             cx.observe(&input, |this, entity, cx| {
                 let val = entity.read(cx).value().to_string();
@@ -2972,8 +2977,9 @@ impl Render for CanViewApp {
                     this.signal_filter_text = val.into();
                     cx.notify();
                 }
-            }).detach();
-            
+            })
+            .detach();
+
             self.signal_search_input = Some(input);
         }
 
@@ -3184,6 +3190,22 @@ impl Render for CanViewApp {
                         .items_center()
                         .gap_2()
                         .child(
+                            // File menu button
+                            btn_style(self.show_file_menu)
+                                .id("file_menu_btn")
+                                .on_mouse_down(gpui::MouseButton::Left, {
+                                    let view = view.clone();
+                                    move |_event, _, cx| {
+                                        cx.stop_propagation();
+                                        view.update(cx, |this, cx| {
+                                            this.show_file_menu = !this.show_file_menu;
+                                            cx.notify();
+                                        });
+                                    }
+                                })
+                                .child("File"),
+                        )
+                        .child(
                             btn_style(self.current_view == AppView::LogView)
                                 .id("logs_tab")
                                 .on_mouse_down(gpui::MouseButton::Left, {
@@ -3192,6 +3214,7 @@ impl Render for CanViewApp {
                                         cx.stop_propagation();
                                         view.update(cx, |this, cx| {
                                             this.current_view = AppView::LogView;
+                                            this.show_file_menu = false;
                                             cx.notify();
                                         });
                                     }
@@ -3225,7 +3248,10 @@ impl Render for CanViewApp {
                                             eprintln!("DEBUG: Switching to PlotView");
                                             this.current_view = AppView::PlotView;
                                             eprintln!("DEBUG: Extracting data...");
-                                            this.plot_data = crate::ui::views::chart_view::extract_series_data(this);
+                                            this.plot_data =
+                                                crate::ui::views::chart_view::extract_series_data(
+                                                    this,
+                                                );
                                             eprintln!("DEBUG: Data extracted, notifying");
                                             cx.notify();
                                             eprintln!("DEBUG: Notify complete");
@@ -3294,25 +3320,16 @@ impl Render for CanViewApp {
                                 .flex()
                                 .w_full()
                                 .items_center()
-                                .child(
-                                    div()
-                                        .w(px(80.))
-                                )
+                                .child(div().w(px(80.)))
                                 .child(app_buttons)
-                                .child(
-                                    div()
-                                        .flex_1()
-                                )
+                                .child(div().flex_1())
                         } else {
                             div()
                                 .flex()
                                 .w_full()
                                 .items_center()
                                 .child(app_buttons)
-                                .child(
-                                    div()
-                                        .flex_1()
-                                )
+                                .child(div().flex_1())
                                 .child(
                                     div()
                                         .flex()
@@ -3327,18 +3344,17 @@ impl Render for CanViewApp {
                                                 .justify_center()
                                                 .cursor_pointer()
                                                 .hover(|style| style.bg(rgb(0x1f1f1f)))
-                                                .on_mouse_down(
-                                                    gpui::MouseButton::Left,
-                                                    {
-                                                        let view = view.clone();
-                                                        move |_event, window, cx| {
-                                                            cx.stop_propagation();
-                                                            window.minimize_window();
-                                                            view.update(cx, |_, cx| cx.notify());
-                                                        }
-                                                    },
-                                                )
-                                                .child(div().w(px(10.)).h(px(1.)).bg(rgb(0x9ca3af))),
+                                                .on_mouse_down(gpui::MouseButton::Left, {
+                                                    let view = view.clone();
+                                                    move |_event, window, cx| {
+                                                        cx.stop_propagation();
+                                                        window.minimize_window();
+                                                        view.update(cx, |_, cx| cx.notify());
+                                                    }
+                                                })
+                                                .child(
+                                                    div().w(px(10.)).h(px(1.)).bg(rgb(0x9ca3af)),
+                                                ),
                                         )
                                         .child(
                                             div()
@@ -3349,19 +3365,16 @@ impl Render for CanViewApp {
                                                 .justify_center()
                                                 .cursor_pointer()
                                                 .hover(|style| style.bg(rgb(0x1f1f1f)))
-                                                .on_mouse_down(
-                                                    gpui::MouseButton::Left,
-                                                    {
-                                                        let view = view.clone();
-                                                        move |_event, window, cx| {
-                                                            cx.stop_propagation();
-                                                            view.update(cx, |this, cx| {
-                                                                this.toggle_maximize(window, cx);
-                                                                cx.notify();
-                                                            });
-                                                        }
-                                                    },
-                                                )
+                                                .on_mouse_down(gpui::MouseButton::Left, {
+                                                    let view = view.clone();
+                                                    move |_event, window, cx| {
+                                                        cx.stop_propagation();
+                                                        view.update(cx, |this, cx| {
+                                                            this.toggle_maximize(window, cx);
+                                                            cx.notify();
+                                                        });
+                                                    }
+                                                })
                                                 .child(
                                                     div()
                                                         .w(px(10.))
@@ -3387,12 +3400,16 @@ impl Render for CanViewApp {
                                                     },
                                                 )
                                                 .child(
-                                                    div().text_sm().text_color(rgb(0x9ca3af)).child("✕"),
+                                                    div()
+                                                        .text_sm()
+                                                        .text_color(rgb(0x9ca3af))
+                                                        .child("✕"),
                                                 ),
                                         ),
                                 )
                         })
-                })
+                },
+            )
             .child(
                 // Content area - Zed style
                 div()
@@ -3406,7 +3423,8 @@ impl Render for CanViewApp {
                         AppView::ConfigView => self.render_config_view(cx).into_any_element(),
                         AppView::LibraryView => self.render_library_view(cx).into_any_element(),
                         AppView::PlotView => {
-                            crate::ui::views::chart_view::render_plot_view(window, self, cx).into_any_element()
+                            crate::ui::views::chart_view::render_plot_view(window, self, cx)
+                                .into_any_element()
                         }
                     }),
             )
@@ -3469,6 +3487,107 @@ impl Render for CanViewApp {
                             ),
                     ),
             )
+            .child({
+                // Full-screen overlay to catch clicks outside file dropdown
+                if self.show_file_menu {
+                    let view_for_overlay = view.clone();
+                    div()
+                        .absolute()
+                        .top_0()
+                        .left_0()
+                        .w_full()
+                        .h_full()
+                        .bg(rgba(0x00000033))
+                        .on_mouse_down(gpui::MouseButton::Left, move |_event, _window, cx| {
+                            view_for_overlay.update(cx, |app, cx| {
+                                app.show_file_menu = false;
+                                cx.notify();
+                            });
+                        })
+                } else {
+                    div().hidden()
+                }
+            })
+            .child({
+                // File dropdown menu
+                if self.show_file_menu {
+                    div()
+                        .absolute()
+                        .top(px(36.))
+                        .left(px(16.))
+                        .w(px(160.))
+                        .bg(rgb(0x252525))
+                        .border_1()
+                        .border_color(rgb(0x353535))
+                        .rounded(px(6.))
+                        .shadow_lg()
+                        .flex()
+                        .flex_col()
+                        .py_1()
+                        .on_mouse_down(gpui::MouseButton::Left, |_event, _window, cx| {
+                            cx.stop_propagation();
+                        })
+                        .child(
+                            div()
+                                .px_3()
+                                .py_1p5()
+                                .text_sm()
+                                .text_color(rgb(0xd4d4d4))
+                                .hover(|style| style.bg(rgb(0x353535)))
+                                .cursor_pointer()
+                                .on_mouse_down(gpui::MouseButton::Left, {
+                                    let view = view.clone();
+                                    move |_event, _window, cx| {
+                                        cx.stop_propagation();
+                                        view.update(cx, |this, cx| {
+                                            this.show_file_menu = false;
+                                            eprintln!("✅ Menu closed, opening file dialog");
+                                            cx.notify();
+                                        });
+                                        // Open BLF file dialog
+                                        let view = view.clone();
+                                        cx.spawn(async move |cx| {
+                                            if let Some(file) = rfd::AsyncFileDialog::new()
+                                                .add_filter("BLF Files", &["blf", "bin"])
+                                                .pick_file()
+                                                .await
+                                            {
+                                                let path = file.path().to_owned();
+
+                                                let _ = cx.update(|cx| {
+                                                    view.update(cx, |view, _| {
+                                                        view.status_msg = "Loading BLF...".into();
+                                                    });
+                                                });
+
+                                                let result = cx
+                                                    .background_executor()
+                                                    .spawn(async move {
+                                                        read_blf_from_file(&path).map_err(|e| {
+                                                            anyhow::Error::msg(format!("{:?}", e))
+                                                        })
+                                                    })
+                                                    .await;
+
+                                                let _ = cx.update(|cx| {
+                                                    view.update(cx, |view, cx| {
+                                                        view.apply_blf_result(result);
+                                                        cx.notify();
+                                                    });
+                                                });
+                                            }
+                                            Ok::<(), anyhow::Error>(())
+                                        })
+                                        .detach();
+                                    }
+                                })
+                                .child("Open BLF..."),
+                        )
+                } else {
+                    eprintln!("⏭️ DEBUG: Skipping dropdown");
+                    div().size_full().hidden()
+                }
+            })
     }
 }
 
@@ -3631,16 +3750,24 @@ impl CanViewApp {
     ) {
         // Reset add channel input state when loading a new version
         self.hide_add_channel_input(cx);
-        
+
         self.internal_load_library_version(1, library_id, version_name);
-        
+
         cx.notify();
     }
 
     /// Apply a version to mappings and load it
-    pub fn apply_version_to_mappings(&mut self, library_id: &str, version_name: &str, cx: &mut Context<Self>) {
-        eprintln!("🖱️ Applying version {} of {} to mappings", version_name, library_id);
-        
+    pub fn apply_version_to_mappings(
+        &mut self,
+        library_id: &str,
+        version_name: &str,
+        cx: &mut Context<Self>,
+    ) {
+        eprintln!(
+            "🖱️ Applying version {} of {} to mappings",
+            version_name, library_id
+        );
+
         let library = match self.library_manager.find_library(library_id) {
             Some(lib) => lib,
             None => {
@@ -3649,7 +3776,7 @@ impl CanViewApp {
                 return;
             }
         };
-        
+
         let version = match library.get_version(version_name) {
             Some(ver) => ver,
             None => {
@@ -3661,36 +3788,52 @@ impl CanViewApp {
 
         // Update mappings
         for channel_db in &version.channel_databases {
-            if let Some(mapping) = self.app_config.mappings.iter_mut().find(|m| m.channel_id == channel_db.channel_id) {
+            if let Some(mapping) = self
+                .app_config
+                .mappings
+                .iter_mut()
+                .find(|m| m.channel_id == channel_db.channel_id)
+            {
                 mapping.library_id = Some(library_id.to_string());
                 mapping.version_name = Some(version_name.to_string());
                 mapping.channel_type = library.channel_type;
             } else {
-                self.app_config.mappings.push(crate::models::ChannelMapping {
-                    channel_id: channel_db.channel_id,
-                    channel_type: library.channel_type,
-                    library_id: Some(library_id.to_string()),
-                    version_name: Some(version_name.to_string()),
-                    path: String::new(),
-                    description: String::new(),
-                });
+                self.app_config
+                    .mappings
+                    .push(crate::models::ChannelMapping {
+                        channel_id: channel_db.channel_id,
+                        channel_type: library.channel_type,
+                        library_id: Some(library_id.to_string()),
+                        version_name: Some(version_name.to_string()),
+                        path: String::new(),
+                        description: String::new(),
+                    });
             }
         }
 
         // Load into memory
         self.internal_load_library_version(1, library_id, version_name);
-        
+
         // Save config
         self.save_config(cx);
-        
-        self.status_msg = format!("✅ Applied version {} to all plot channels", version_name).into();
+
+        self.status_msg =
+            format!("✅ Applied version {} to all plot channels", version_name).into();
         cx.notify();
     }
 
     /// Internal method to load a library version without GPUI context
-    fn internal_load_library_version(&mut self, default_channel_id: u16, library_id: &str, version_name: &str) {
-        eprintln!("DEBUG: Internal load library version: lib={}, ver={}, ch={}", library_id, version_name, default_channel_id);
-        
+    fn internal_load_library_version(
+        &mut self,
+        default_channel_id: u16,
+        library_id: &str,
+        version_name: &str,
+    ) {
+        eprintln!(
+            "DEBUG: Internal load library version: lib={}, ver={}, ch={}",
+            library_id, version_name, default_channel_id
+        );
+
         let library = match self.library_manager.find_library(library_id) {
             Some(lib) => lib,
             None => {
@@ -3713,7 +3856,7 @@ impl CanViewApp {
         if channel_dbs.is_empty() {
             // Use the default path (backward compatibility)
             let path = &version.path;
-            
+
             // Check if path is empty
             if path.trim().is_empty() {
                 self.status_msg = format!(
@@ -3723,17 +3866,18 @@ impl CanViewApp {
                 eprintln!("ERROR: Empty database path for version '{}'", version_name);
                 return;
             }
-            
+
             // Check if file exists
             if !std::path::Path::new(path).exists() {
                 self.status_msg = format!(
                     "❌ Database file not found: {}. Please check the file path in Library view.",
                     path
-                ).into();
+                )
+                .into();
                 eprintln!("ERROR: Database file not found: {}", path);
                 return;
             }
-            
+
             match self
                 .library_manager
                 .load_database(path, library.channel_type)
@@ -3766,32 +3910,44 @@ impl CanViewApp {
                         "❌ Database path is empty for channel {}. Please add a database file in the Library view.",
                         channel_db.channel_id
                     ).into();
-                    eprintln!("ERROR: Empty database path for channel {}", channel_db.channel_id);
+                    eprintln!(
+                        "ERROR: Empty database path for channel {}",
+                        channel_db.channel_id
+                    );
                     continue;
                 }
-                
+
                 // Check if file exists
                 if !std::path::Path::new(&channel_db.database_path).exists() {
                     self.status_msg = format!(
                         "❌ Database file not found for channel {}: {}",
                         channel_db.channel_id, channel_db.database_path
-                    ).into();
-                    eprintln!("ERROR: Database file not found for channel {}: {}", 
-                        channel_db.channel_id, channel_db.database_path);
+                    )
+                    .into();
+                    eprintln!(
+                        "ERROR: Database file not found for channel {}: {}",
+                        channel_db.channel_id, channel_db.database_path
+                    );
                     continue;
                 }
-                
+
                 match self
                     .library_manager
                     .load_database(&channel_db.database_path, library.channel_type)
                 {
                     Ok(database) => match database {
                         crate::library::Database::Dbc(dbc) => {
-                            eprintln!("DEBUG: Inserting DBC into channel {}", channel_db.channel_id);
+                            eprintln!(
+                                "DEBUG: Inserting DBC into channel {}",
+                                channel_db.channel_id
+                            );
                             self.dbc_channels.insert(channel_db.channel_id, dbc);
                         }
                         crate::library::Database::Ldf(ldf) => {
-                            eprintln!("DEBUG: Inserting LDF into channel {}", channel_db.channel_id);
+                            eprintln!(
+                                "DEBUG: Inserting LDF into channel {}",
+                                channel_db.channel_id
+                            );
                             self.ldf_channels.insert(channel_db.channel_id, ldf);
                         }
                     },
@@ -3799,8 +3955,10 @@ impl CanViewApp {
                         self.status_msg =
                             format!("❌ Error loading channel {}: {}", channel_db.channel_id, e)
                                 .into();
-                        eprintln!("ERROR: Failed to load database for channel {} from '{}': {}", 
-                            channel_db.channel_id, channel_db.database_path, e);
+                        eprintln!(
+                            "ERROR: Failed to load database for channel {} from '{}': {}",
+                            channel_db.channel_id, channel_db.database_path, e
+                        );
                     }
                 }
             }
@@ -3812,9 +3970,15 @@ impl CanViewApp {
             )
             .into();
         }
-        
-        eprintln!("DEBUG: Current DBC channels: {:?}", self.dbc_channels.keys());
-        eprintln!("DEBUG: Current LDF channels: {:?}", self.ldf_channels.keys());
+
+        eprintln!(
+            "DEBUG: Current DBC channels: {:?}",
+            self.dbc_channels.keys()
+        );
+        eprintln!(
+            "DEBUG: Current LDF channels: {:?}",
+            self.ldf_channels.keys()
+        );
     }
 
     // ========== Channel Configuration Methods ==========
@@ -3856,17 +4020,20 @@ impl CanViewApp {
         // Note: Validation on input creation is currently removed to avoid issues.
         if let Some(id_input) = &self.channel_id_input {
             let id_text = id_input.read(cx).text().to_string();
-            eprintln!("DEBUG: Manual Read ID: '{}', Listener ID: '{}'", id_text, self.new_channel_id);
+            eprintln!(
+                "DEBUG: Manual Read ID: '{}', Listener ID: '{}'",
+                id_text, self.new_channel_id
+            );
             // If listener failed, fallback to manual read
             if self.new_channel_id.is_empty() && !id_text.is_empty() {
-                 self.new_channel_id = id_text;
+                self.new_channel_id = id_text;
             } else if !id_text.is_empty() {
-                 self.new_channel_id = id_text;
+                self.new_channel_id = id_text;
             }
         } else {
-             self.status_msg = "Error: Input lost. Try reopening.".into();
-             cx.notify();
-             return;
+            self.status_msg = "Error: Input lost. Try reopening.".into();
+            cx.notify();
+            return;
         }
 
         if let Some(name_input) = &self.channel_name_input {
@@ -3881,15 +4048,15 @@ impl CanViewApp {
         }
 
         if self.new_channel_name.is_empty() {
-             self.status_msg = "Please enter channel name".into();
-             cx.notify();
-             return;
+            self.status_msg = "Please enter channel name".into();
+            cx.notify();
+            return;
         }
 
         if self.new_channel_db_path.is_empty() {
-             self.status_msg = "Please select a database file".into();
-             cx.notify();
-             return;
+            self.status_msg = "Please select a database file".into();
+            cx.notify();
+            return;
         }
 
         // Path is set automatically when file is selected via "Select File..." button
@@ -4068,14 +4235,14 @@ impl CanViewApp {
             version
                 .channel_databases
                 .retain(|db| db.channel_id != channel_id);
-            
+
             // Remove from runtime cache
             self.dbc_channels.remove(&channel_id);
             self.ldf_channels.remove(&channel_id);
 
             // Sync to app config
             self.app_config.libraries = self.library_manager.libraries().to_vec();
-            
+
             // Save to disk
             self.save_config(cx);
 

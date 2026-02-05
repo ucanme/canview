@@ -12,6 +12,8 @@ pub struct BlfResult {
     pub file_stats: FileStatistics,
     /// A vector of all parsed log objects.
     pub objects: Vec<LogObject>,
+    /// A vector of any errors encountered during parsing.
+    pub errors: Vec<BlfParseError>,
 }
 
 impl BlfResult {
@@ -72,11 +74,12 @@ pub fn read_blf_from_file<P: AsRef<Path>>(path: P) -> BlfParseResult<BlfResult> 
     // 2. Parse the log objects from the rest of the data slice.
     let parser = BlfParser::new();
     let remaining_data = &data[cursor.position() as usize..];
-    let objects = parser.parse(remaining_data)?;
+    let (objects, errors) = parser.parse(remaining_data)?;
 
     Ok(BlfResult {
         file_stats,
         objects,
+        errors,
     })
 }
 
@@ -142,7 +145,7 @@ impl StreamingBlfReader {
             .map_err(BlfParseError::IoError)?;
 
         // Parse the buffer
-        let objects = self.parser.parse(&self.buffer)?;
+        let (objects, _errors) = self.parser.parse(&self.buffer)?;
         self.current_position += read_size as u64;
 
         // Return only the requested batch size

@@ -16,7 +16,8 @@ use app::CanViewApp;
 pub use models::{AppConfig, ChannelMapping, ChannelType};
 
 fn main() {
-    env_logger::init();
+    // Initialize logger with debug level enabled
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).init();
 
     let app = Application::new();
     app.run(move |cx| {

@@ -151,10 +151,11 @@ impl BlfParser {
         Self { debug: true }
     }
 
-    /// Parses the data slice and returns a vector of log objects.
-    pub fn parse(&self, data: &[u8]) -> BlfParseResult<Vec<LogObject>> {
+    /// Parses the data slice and returns a vector of log objects and a vector of errors.
+    pub fn parse(&self, data: &[u8]) -> BlfParseResult<(Vec<LogObject>, Vec<BlfParseError>)> {
         let mut cursor = Cursor::new(data);
         let mut all_objects = Vec::new();
+        let mut all_errors = Vec::new();
         let data_len = cursor.get_ref().len();
 
         if self.debug {
@@ -187,6 +188,7 @@ impl BlfParser {
                             start_pos, e
                         );
                     }
+                    all_errors.push(e);
                     // Try to skip some bytes and continue
                     cursor.set_position(start_pos + 4);
                     continue;
@@ -208,6 +210,9 @@ impl BlfParser {
                         header.object_size, header.header_size
                     );
                 }
+                // We don't have a specific error for this, maybe just log debug or add a custom error if strict?
+                // For now, let's treat it as a skip, but maybe we should report?
+                // all_errors.push(BlfParseError::InvalidObjectSize); // Logic for error handling
                 self.advance_cursor_to_next_object(&mut cursor, start_pos, 32);
                 continue;
             }
@@ -238,6 +243,7 @@ impl BlfParser {
                                 if self.debug {
                                     println!("Error parsing inner objects: {:?}", e);
                                 }
+                                all_errors.push(e);
                                 // Continue with next container instead of failing completely
                             }
                         }
@@ -246,6 +252,7 @@ impl BlfParser {
                         if self.debug {
                             println!("Error reading LogContainer: {:?}", e);
                         }
+                        all_errors.push(e);
                         // Continue with next object
                     }
                 }
@@ -255,12 +262,13 @@ impl BlfParser {
 
         if self.debug {
             println!(
-                "Parsing complete, found {} objects total",
-                all_objects.len()
+                "Parsing complete, found {} objects total, {} errors",
+                all_objects.len(),
+                all_errors.len()
             );
         }
 
-        Ok(all_objects)
+        Ok((all_objects, all_errors))
     }
 
     fn parse_can_object(

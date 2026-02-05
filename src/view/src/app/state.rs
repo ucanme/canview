@@ -151,7 +151,7 @@ pub struct CanViewApp {
     pub is_dragging_zoom: bool,
     pub zoom_drag_start_x: Option<Pixels>,
     pub zoom_drag_current_x: Option<Pixels>,
-    
+
     // Plot display settings
     pub show_plot_points: bool,
 
@@ -160,6 +160,9 @@ pub struct CanViewApp {
     pub plot_hover_time: Option<f64>,
     pub plot_hover_x: Option<Pixels>,
     pub plot_width_px: Pixels,
+
+    // File menu dropdown state
+    pub show_file_menu: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -267,6 +270,8 @@ impl CanViewApp {
             plot_hover_time: None,
             plot_hover_x: None,
             plot_width_px: gpui::px(0.0),
+            // File menu dropdown state
+            show_file_menu: false,
         }
     }
 }
