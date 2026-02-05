@@ -221,16 +221,16 @@ impl CanViewApp {
     }
 
     fn apply_blf_result(&mut self, result: anyhow::Result<BlfResult>) {
-        // 清空之前的数据
-        self.messages.clear();
-        self.plot_data = std::sync::Arc::from([]);
-        self.selected_signals.clear();
-
-        // 自动切换到数据列表视图
-        self.current_view = AppView::LogView;
-
         match result {
             Ok(result) => {
+                // 只有在成功加载后才清空之前的数据
+                self.messages.clear();
+                self.plot_data = std::sync::Arc::from([]);
+                self.selected_signals.clear();
+
+                // 自动切换到数据列表视图
+                self.current_view = AppView::LogView;
+
                 self.status_msg = format!("✅ Loaded {} messages", result.objects.len()).into();
 
                 // === 调试输出：检查时间戳 ===
@@ -294,9 +294,12 @@ impl CanViewApp {
                 self.messages = result.objects;
             }
             Err(e) => {
-                // 在状态栏显示详细的错误信息
+                // 在状态栏显示详细的错误信息（不清空之前的数据）
                 let error_display = format!("❌ File Error: {}", e);
                 self.status_msg = error_display.into();
+
+                // 保持当前视图不变，不切换到 LogView
+                // 这样用户可以看到之前成功加载的数据
 
                 // 打印详细错误信息到控制台
                 eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
