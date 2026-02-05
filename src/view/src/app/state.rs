@@ -2,6 +2,13 @@
 //!
 //! This module contains the core application state structures.
 
+/// Simple deprecated input state for backward compatibility
+#[derive(Clone, Debug, Default)]
+pub struct SimpleDeprecatedInputState {
+    pub text: String,
+    pub cursor_position: usize,
+}
+
 use blf::LogObject;
 use gpui::{Bounds, Entity, Pixels, UniformListScrollHandle};
 use parser::dbc::DbcDatabase;
@@ -139,12 +146,11 @@ pub struct CanViewApp {
     #[deprecated(note = "Use library_name_input instead")]
     pub is_editing_library_name: bool,
     #[deprecated(note = "Use library_name_input instead")]
-    pub library_input_state: crate::ui::components::ime_text_input::ImeTextInputState,
+    pub library_input_state: SimpleDeprecatedInputState,
     #[deprecated(note = "Not needed with gpui-component Input")]
     pub library_focus_handle: Option<gpui::FocusHandle>,
     #[deprecated(note = "Not needed with gpui-component Input")]
     pub ime_handler_registered: bool,
-
     // Plot zoom state
     pub plot_zoom_start: Option<f64>,
     pub plot_zoom_end: Option<f64>,
@@ -254,8 +260,7 @@ impl CanViewApp {
             // Deprecated fields for backward compatibility
             focused_library_input: None,
             is_editing_library_name: false,
-            library_input_state: crate::ui::components::ime_text_input::ImeTextInputState::default(
-            ),
+            library_input_state: SimpleDeprecatedInputState::default(),
             library_focus_handle: None,
             ime_handler_registered: false,
             // Plot zoom state

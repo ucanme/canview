@@ -7,8 +7,6 @@
 
 use crate::app::LibraryDialogType;
 use crate::models::{ChannelMapping, SignalLibrary};
-use crate::ui::components::EnhancedTextInputBuilder;
-use crate::ui::components::enhanced_text_input::TextInputValidation;
 use gpui::prelude::*;
 use gpui::*;
 
@@ -82,7 +80,7 @@ fn render_left_column_enhanced(
                 .text_base()
                 .font_weight(FontWeight::BOLD)
                 .text_color(rgb(0xffffff))
-                .child("Libraries")
+                .child("Libraries"),
         )
         .child(
             // 过滤按钮
@@ -91,7 +89,7 @@ fn render_left_column_enhanced(
                 .gap_1()
                 .child(render_filter_button("All", true))
                 .child(render_filter_button("CAN", true))
-                .child(render_filter_button("LIN", false))
+                .child(render_filter_button("LIN", false)),
         )
         .when(show_new_library_input, |this| {
             this.child(
@@ -99,47 +97,17 @@ fn render_left_column_enhanced(
                     .flex()
                     .gap_2()
                     .child(
-                        // 使用 EnhancedTextInput - 大幅简化代码！
-                        EnhancedTextInputBuilder::new()
-                            .text(new_library_name.to_string())
-                            .placeholder("Library name...")
-                            .focused(is_focused)
-                            .validation(TextInputValidation::LibraryName)
-                            .max_width(px(220.))
-                            .min_width(px(150.))
-                            .build(
-                                "new_library_input_enhanced",
-                                view.clone(),
-                                {
-                                    let view = view.clone();
-                                    move |new_text, cx| {
-                                        view.update(cx, |this, cx| {
-                                            this.new_library_name = new_text.to_string();
-                                            this.library_input_state.text = new_text.to_string();
-                                            // 同步光标位置到末尾
-                                            this.library_cursor_position = new_text.chars().count();
-                                            this.library_input_state.cursor_position = this.library_cursor_position;
-                                            eprintln!("✅ EnhancedTextInput library name changed: '{}', cursor={}",
-                                                new_text, this.library_cursor_position);
-                                            cx.notify();
-                                        });
-                                    }
-                                },
-                                {
-                                    let view = view.clone();
-                                    move |text, cx| {
-                                        // Enter 键提交
-                                        view.update(cx, |this, cx| {
-                                            if !text.is_empty() {
-                                                this.create_library(cx);
-                                                this.is_editing_library_name = false;
-                                                this.focused_library_input = None;
-                                                eprintln!("✅ EnhancedTextInput library created: '{}'", text);
-                                            }
-                                        });
-                                    }
-                                },
-                            )
+                        div()
+                            .flex_1()
+                            .px_3()
+                            .py_1()
+                            .bg(rgb(0x1f2937))
+                            .border_1()
+                            .border_color(rgb(0x374151))
+                            .rounded(px(4.0))
+                            .text_color(rgb(0xffffff))
+                            .text_sm()
+                            .child(new_library_name),
                     )
                     .child(
                         div()
@@ -152,12 +120,15 @@ fn render_left_column_enhanced(
                             .text_color(rgb(0xffffff))
                             .text_sm()
                             .child("Create")
-                            .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _event, _window, cx| {
-                                this.create_library(cx);
-                                this.is_editing_library_name = false;
-                                this.focused_library_input = None;
-                                eprintln!("✅ Create button clicked");
-                            }))
+                            .on_mouse_down(
+                                gpui::MouseButton::Left,
+                                cx.listener(|this, _event, _window, cx| {
+                                    this.create_library(cx);
+                                    this.is_editing_library_name = false;
+                                    this.focused_library_input = None;
+                                    eprintln!("✅ Create button clicked");
+                                }),
+                            ),
                     )
                     .child(
                         div()
@@ -170,16 +141,19 @@ fn render_left_column_enhanced(
                             .text_color(rgb(0xffffff))
                             .text_sm()
                             .child("Cancel")
-                            .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _event, _window, cx| {
-                                this.show_library_dialog = false;
-                                this.new_library_name.clear();
-                                this.library_input_state.text.clear();
-                                this.is_editing_library_name = false;
-                                this.focused_library_input = None;
-                                cx.notify();
-                                eprintln!("❌ Cancel button clicked");
-                            }))
-                    )
+                            .on_mouse_down(
+                                gpui::MouseButton::Left,
+                                cx.listener(|this, _event, _window, cx| {
+                                    this.show_library_dialog = false;
+                                    this.new_library_name.clear();
+                                    this.library_input_state.text.clear();
+                                    this.is_editing_library_name = false;
+                                    this.focused_library_input = None;
+                                    cx.notify();
+                                    eprintln!("❌ Cancel button clicked");
+                                }),
+                            ),
+                    ),
             )
         })
         .child(
@@ -192,26 +166,23 @@ fn render_left_column_enhanced(
                 .rounded(px(8.0))
                 .when(libraries.is_empty(), |this| {
                     this.child(
-                        div()
-                            .p_4()
-                            .items_center()
-                            .justify_center()
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .text_color(rgb(0x6b7280))
-                                    .child("No libraries")
-                            )
+                        div().p_4().items_center().justify_center().child(
+                            div()
+                                .text_sm()
+                                .text_color(rgb(0x6b7280))
+                                .child("No libraries"),
+                        ),
                     )
                     .child(render_add_library_button(cx))
                 })
                 .when(!libraries.is_empty(), |this| {
                     let mut list = this;
                     for library in libraries {
-                        list = list.child(render_library_item(library, selected_library_id, mappings));
+                        list =
+                            list.child(render_library_item(library, selected_library_id, mappings));
                     }
                     list.child(render_add_library_button(cx))
-                })
+                }),
         )
 }
 
@@ -252,84 +223,56 @@ fn render_middle_column_enhanced(
                     .gap_2()
                     .when(show_add_version_input, |this| {
                         this.child(
-                            // 使用 EnhancedTextInput - 简化版本输入！
-                            EnhancedTextInputBuilder::new()
-                                .text(new_version_name.to_string())
-                                .placeholder("v1.0.0")
-                                .focused(is_focused)
-                                .validation(TextInputValidation::VersionName)
-                                .max_width(px(180.))
-                                .min_width(px(120.))
-                                .build(
-                                    "new_version_input_enhanced",
-                                    view.clone(),
-                                    {
-                                        let view = view.clone();
-                                        move |new_text, cx| {
-                                            view.update(cx, |this, cx| {
-                                                this.new_version_name = new_text.to_string();
-                                                // 同步光标位置
-                                                this.new_version_cursor_position = new_text.len();
-                                                eprintln!("✅ EnhancedTextInput version changed: '{}', cursor={}",
-                                                    new_text, this.new_version_cursor_position);
-                                                cx.notify();
-                                            });
-                                        }
-                                    },
-                                    {
-                                        let view = view.clone();
-                                        move |text, cx| {
-                                            // Enter 键提交
-                                            view.update(cx, |this, cx| {
-                                                if !text.is_empty() {
-                                                    this.add_library_version(cx);
-                                                    this.focused_library_input = None;
-                                                    eprintln!("✅ EnhancedTextInput version created: '{}'", text);
-                                                }
-                                            });
-                                        }
-                                    },
-                                )
-                        )
-                        .child(
                             div()
+                                .flex_1()
                                 .px_3()
                                 .py_1()
-                                .bg(rgb(0x10b981))
+                                .bg(rgb(0x1f2937))
+                                .border_1()
+                                .border_color(rgb(0x374151))
                                 .rounded(px(4.0))
-                                .cursor_pointer()
-                                .hover(|style| style.bg(rgb(0x059669)))
                                 .text_color(rgb(0xffffff))
                                 .text_sm()
-                                .child("Add")
-                                .on_mouse_down(gpui::MouseButton::Left, {
-                                    cx.listener(move |this, _event, _window, cx| {
-                                        this.add_library_version(cx);
-                                        this.focused_library_input = None;
-                                        eprintln!("✅ Add version button clicked");
-                                    })
-                                })
-                        )
-                        .child(
-                            div()
-                                .px_3()
-                                .py_1()
-                                .bg(rgb(0x6b7280))
-                                .rounded(px(4.0))
-                                .cursor_pointer()
-                                .hover(|style| style.bg(rgb(0x4b5563)))
-                                .text_color(rgb(0xffffff))
-                                .text_sm()
-                                .child("Cancel")
-                                .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _event, _window, cx| {
-                                    this.show_version_input = false;
-                                    this.new_version_name.clear();
-                                    this.focused_library_input = None;
-                                    cx.notify();
-                                    eprintln!("❌ Cancel version clicked");
-                                }))
+                                .child(new_version_name),
                         )
                     })
+                    .child(
+                        div()
+                            .px_3()
+                            .py_1()
+                            .bg(rgb(0x10b981))
+                            .rounded(px(4.0))
+                            .cursor_pointer()
+                            .hover(|style| style.bg(rgb(0x059669)))
+                            .text_color(rgb(0xffffff))
+                            .text_sm()
+                            .child("Add")
+                            .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _event, _window, cx| {
+                                this.add_library_version(cx);
+                                this.focused_library_input = None;
+                                eprintln!("✅ Add button clicked");
+                            }))
+                    )
+                    .child(
+                        div()
+                            .px_3()
+                            .py_1()
+                            .bg(rgb(0x6b7280))
+                            .rounded(px(4.0))
+                            .cursor_pointer()
+                            .hover(|style| style.bg(rgb(0x4b5563)))
+                            .text_color(rgb(0xffffff))
+                            .text_sm()
+                            .child("Cancel")
+                            .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _event, _window, cx| {
+                                this.show_version_input = false;
+                                this.new_version_name.clear();
+                                this.focused_library_input = None;
+                                cx.notify();
+                                eprintln!("❌ Cancel button clicked");
+                            }))
+                    )
+                })
                     .child(
                         // 版本列表
                         div()

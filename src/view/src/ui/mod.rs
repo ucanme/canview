@@ -3,6 +3,8 @@
 pub mod components;
 pub mod theme;
 pub mod views;
+// Temporarily disabled zed_style components due to compilation errors
+// pub mod zed_style;
 
 use gpui::*;
 

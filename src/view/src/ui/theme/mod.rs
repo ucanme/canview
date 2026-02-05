@@ -206,6 +206,13 @@ pub mod colors {
     pub const ERROR: Rgba = palette::RED;
     pub const INFO: Rgba = palette::BLUE;
 
+    // Additional surface colors for interactive states
+    pub const SURFACE0: Rgba = palette::SURFACE0;
+    pub const SURFACE1: Rgba = palette::SURFACE1;
+    pub const SURFACE2: Rgba = palette::SURFACE2;
+    pub const MAROON: Rgba = palette::MAROON;
+    pub const TEAL: Rgba = palette::TEAL;
+
     // Interactive states
     pub const INTERACTIVE: Rgba = palette::BLUE;
     pub const INTERACTIVE_HOVER: Rgba = palette::SAPPHIRE;

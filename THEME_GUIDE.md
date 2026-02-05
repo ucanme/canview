@@ -143,6 +143,59 @@ Card::new()
     .child(content);
 ```
 
+### Dropdown Menu
+
+The dropdown menu component provides a Zed-style selection interface:
+
+```rust
+use crate::ui::components::dropdown::{SimpleDropdown, render_dropdown_menu};
+
+// Create a dropdown trigger button
+SimpleDropdown::new("Select Channel")
+    .items(vec![
+        ("1".to_string(), "Channel 1".to_string()),
+        ("2".to_string(), "Channel 2".to_string()),
+        ("all".to_string(), "All Channels".to_string()),
+    ])
+    .selected("all")
+    .build_trigger(
+        cx.entity(),
+        |app, cx| {
+            // Toggle dropdown visibility
+            app.show_channel_dropdown = !app.show_channel_dropdown;
+            cx.notify();
+        },
+    )
+
+// Render the dropdown menu when visible
+.when(app.show_channel_dropdown, |parent| {
+    parent.child(render_dropdown_menu(
+        vec![
+            ("1".to_string(), "Channel 1".to_string()),
+            ("2".to_string(), "Channel 2".to_string()),
+            ("all".to_string(), "All Channels".to_string()),
+        ],
+        px(300.),  // max_height
+        px(180.),  // min_width
+        cx.entity(),
+        |app, channel_id, cx| {
+            // Handle selection
+            app.selected_channel = Some(channel_id.clone());
+            app.show_channel_dropdown = false;
+            cx.notify();
+        },
+    ))
+})
+```
+
+**Dropdown Features:**
+- Smooth hover effects with Zed-style colors
+- Keyboard accessible navigation
+- Customizable height and width
+- Separator support for grouping items
+- Disabled state for non-selectable items
+- Optional icons and keyboard shortcuts
+
 ## Best Practices
 
 1. **Use Semantic Colors**: Prefer `colors::*` constants over direct `palette::*` colors for better maintainability

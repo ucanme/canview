@@ -98,8 +98,7 @@ impl CanViewApp {
             // Deprecated fields for backward compatibility
             focused_library_input: None,
             is_editing_library_name: false,
-            library_input_state: crate::ui::components::ime_text_input::ImeTextInputState::default(
-            ),
+            library_input_state: crate::app::state::SimpleDeprecatedInputState::default(),
             library_focus_handle: None,
             ime_handler_registered: false,
             plot_zoom_start: None,
@@ -222,9 +221,14 @@ impl CanViewApp {
     }
 
     fn apply_blf_result(&mut self, result: anyhow::Result<BlfResult>) {
+        // 清空之前的数据
+        self.messages.clear();
+        self.plot_data = std::sync::Arc::from([]);
+        self.selected_signals.clear();
+
         match result {
             Ok(result) => {
-                self.status_msg = format!("Loaded BLF: {} objects", result.objects.len()).into();
+                self.status_msg = format!("✅ Loaded {} messages", result.objects.len()).into();
 
                 // === 调试输出：检查时间戳 ===
                 println!("\n=== BLF 时间戳诊断 ===");
@@ -287,7 +291,10 @@ impl CanViewApp {
                 self.messages = result.objects;
             }
             Err(e) => {
-                self.status_msg = format!("Error: {:?}", e).into();
+                // 在状态栏显示详细的错误信息
+                let error_msg = format!("❌ Failed to load BLF: {}", e);
+                self.status_msg = error_msg.clone().into();
+                eprintln!("📂 File loading error: {}", e);
             }
         }
     }
@@ -710,8 +717,7 @@ impl CanViewApp {
             // Deprecated fields for backward compatibility
             focused_library_input: None,
             is_editing_library_name: false,
-            library_input_state: crate::ui::components::ime_text_input::ImeTextInputState::default(
-            ),
+            library_input_state: crate::app::state::SimpleDeprecatedInputState::default(),
             library_focus_handle: None,
             ime_handler_registered: false,
             plot_zoom_start: None,
@@ -3150,7 +3156,7 @@ impl Render for CanViewApp {
             .child(
                 // Unified top bar - Redesigned
                 {
-                    // Define button styles helper
+                    // Define button styles helper - Zed/Catppuccin theme
                     let btn_style = |active: bool| {
                         let base = div()
                             .px_3()
@@ -3163,27 +3169,13 @@ impl Render for CanViewApp {
                             .cursor_pointer();
 
                         if active {
-                            base.bg(rgb(0x1e1e2e)).text_color(rgb(0xcdd6f4))
+                            base.bg(rgb(0x313244)).text_color(rgb(0xcdd6f4)) // BG_ELEVATED, TEXT_PRIMARY
                         } else {
                             base.bg(gpui::transparent_black())
-                                .text_color(rgb(0x646473))
-                                .hover(|s| s.bg(rgb(0x151515)).text_color(rgb(0x9399b2)))
+                                .text_color(rgb(0x6c7086)) // OVERLAY0
+                                .hover(|s| s.bg(rgb(0x313244)).text_color(rgb(0x9399b2))) // BG_ELEVATED, OVERLAY2
                         }
                     };
-
-                    // Action button style
-                    let action_btn_style = div()
-                        .px_3()
-                        .h(px(24.))
-                        .flex()
-                        .items_center()
-                        .rounded(px(4.))
-                        .text_xs()
-                        .font_weight(FontWeight::MEDIUM)
-                        .cursor_pointer()
-                        .bg(rgb(0x1a1f2e))
-                        .text_color(rgb(0xcdd6f4))
-                        .hover(|s| s.bg(rgb(0x252f3a)));
 
                     let app_buttons = div()
                         .flex()
@@ -3204,22 +3196,6 @@ impl Render for CanViewApp {
                                     }
                                 })
                                 .child("File"),
-                        )
-                        .child(
-                            btn_style(self.current_view == AppView::LogView)
-                                .id("logs_tab")
-                                .on_mouse_down(gpui::MouseButton::Left, {
-                                    let view = view.clone();
-                                    move |_event, _, cx| {
-                                        cx.stop_propagation();
-                                        view.update(cx, |this, cx| {
-                                            this.current_view = AppView::LogView;
-                                            this.show_file_menu = false;
-                                            cx.notify();
-                                        });
-                                    }
-                                })
-                                .child("Logs"),
                         )
                         .child(
                             btn_style(self.current_view == AppView::LibraryView)
@@ -3259,51 +3235,6 @@ impl Render for CanViewApp {
                                     }
                                 })
                                 .child("Plot"),
-                        )
-                        .child(
-                            action_btn_style
-                                .id("open_blf_btn")
-                                .on_mouse_down(gpui::MouseButton::Left, {
-                                    let view = view.clone();
-                                    move |_event, _, cx| {
-                                        cx.stop_propagation();
-                                        let view = view.clone();
-                                        cx.spawn(async move |cx| {
-                                            if let Some(file) = rfd::AsyncFileDialog::new()
-                                                .add_filter("BLF Files", &["blf", "bin"])
-                                                .pick_file()
-                                                .await
-                                            {
-                                                let path = file.path().to_owned();
-
-                                                let _ = cx.update(|cx| {
-                                                    view.update(cx, |view, _| {
-                                                        view.status_msg = "Loading BLF...".into();
-                                                    });
-                                                });
-
-                                                let result = cx
-                                                    .background_executor()
-                                                    .spawn(async move {
-                                                        read_blf_from_file(&path).map_err(|e| {
-                                                            anyhow::Error::msg(format!("{:?}", e))
-                                                        })
-                                                    })
-                                                    .await;
-
-                                                let _ = cx.update(|cx| {
-                                                    view.update(cx, |view, cx| {
-                                                        view.apply_blf_result(result);
-                                                        cx.notify();
-                                                    });
-                                                });
-                                            }
-                                            Ok::<(), anyhow::Error>(())
-                                        })
-                                        .detach();
-                                    }
-                                })
-                                .child("Open BLF"),
                         );
 
                     div()
@@ -3509,16 +3440,16 @@ impl Render for CanViewApp {
                 }
             })
             .child({
-                // File dropdown menu
+                // File dropdown menu - Zed style (simplified)
                 if self.show_file_menu {
                     div()
                         .absolute()
                         .top(px(36.))
                         .left(px(16.))
                         .w(px(160.))
-                        .bg(rgb(0x252525))
+                        .bg(rgb(0x313244)) // BG_ELEVATED from Catppuccin
                         .border_1()
-                        .border_color(rgb(0x353535))
+                        .border_color(rgb(0x45475a)) // BORDER_DEFAULT
                         .rounded(px(6.))
                         .shadow_lg()
                         .flex()
@@ -3527,13 +3458,14 @@ impl Render for CanViewApp {
                         .on_mouse_down(gpui::MouseButton::Left, |_event, _window, cx| {
                             cx.stop_propagation();
                         })
+                        // Open BLF
                         .child(
                             div()
                                 .px_3()
-                                .py_1p5()
-                                .text_sm()
-                                .text_color(rgb(0xd4d4d4))
-                                .hover(|style| style.bg(rgb(0x353535)))
+                                .py_1()
+                                .text_xs()
+                                .text_color(rgb(0xcdd6f4)) // TEXT_PRIMARY
+                                .hover(|style| style.bg(rgb(0x45475a))) // BG_ACTIVE
                                 .cursor_pointer()
                                 .on_mouse_down(gpui::MouseButton::Left, {
                                     let view = view.clone();
@@ -3541,10 +3473,8 @@ impl Render for CanViewApp {
                                         cx.stop_propagation();
                                         view.update(cx, |this, cx| {
                                             this.show_file_menu = false;
-                                            eprintln!("✅ Menu closed, opening file dialog");
                                             cx.notify();
                                         });
-                                        // Open BLF file dialog
                                         let view = view.clone();
                                         cx.spawn(async move |cx| {
                                             if let Some(file) = rfd::AsyncFileDialog::new()
@@ -3553,13 +3483,11 @@ impl Render for CanViewApp {
                                                 .await
                                             {
                                                 let path = file.path().to_owned();
-
                                                 let _ = cx.update(|cx| {
                                                     view.update(cx, |view, _| {
                                                         view.status_msg = "Loading BLF...".into();
                                                     });
                                                 });
-
                                                 let result = cx
                                                     .background_executor()
                                                     .spawn(async move {
@@ -3568,7 +3496,6 @@ impl Render for CanViewApp {
                                                         })
                                                     })
                                                     .await;
-
                                                 let _ = cx.update(|cx| {
                                                     view.update(cx, |view, cx| {
                                                         view.apply_blf_result(result);
@@ -3584,8 +3511,7 @@ impl Render for CanViewApp {
                                 .child("Open BLF..."),
                         )
                 } else {
-                    eprintln!("⏭️ DEBUG: Skipping dropdown");
-                    div().size_full().hidden()
+                    div().hidden()
                 }
             })
     }

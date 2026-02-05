@@ -2,25 +2,24 @@
 //!
 //! Reusable UI components for the application.
 
-// Temporarily disabled - these components have compilation errors and are not used
-// pub mod button;
-// pub mod card;
+// Core working components
 pub mod divider;
-// pub mod label;
-// pub mod panel;
-pub mod enhanced_text_input;
-pub mod ime_text_input;
-pub mod simple_text_input; // New simplified version
+pub mod simple_text_input;
 pub mod text_input;
 pub mod zed_style_text_input;
 
-// Re-export for convenience
-// pub use button::{Button, ButtonColor};
-// pub use card::{Card, CardStyle};
-// pub use label::{Label, LabelColor, LabelSize};
-// pub use panel::{Panel, PanelStyle};
-pub use enhanced_text_input::EnhancedTextInputBuilder;
- // Simple version, no internal event handling
+// New Zed-style components (being developed)
+// Temporarily disabled due to compilation issues
+// pub mod button;
+// pub mod card;
+// pub mod dropdown;
+// pub mod enhanced_text_input;
+// pub mod ime_text_input;
+
+// Re-exports for working components
+pub use simple_text_input::SimpleTextInputBuilder;
+pub use text_input::{TextInputBuilder, TextInputValidation};
+pub use zed_style_text_input::{ZedStyleTextInputBuilder, ZedStyleTextInputState};
 
 use crate::CanViewApp;
 use crate::app::AppView;
@@ -28,6 +27,9 @@ use gpui::prelude::*;
 use gpui::*;
 
 /// View button component for navigation
+///
+/// This is a simple navigation button that switches between different views
+/// (LogView, ConfigView, LibraryView, PlotView)
 pub fn render_view_button(
     label: &str,
     view: AppView,
@@ -43,13 +45,18 @@ pub fn render_view_button(
         .py_2()
         .rounded(px(4.))
         .cursor_pointer()
-        .when(is_active, |el| el.bg(rgb(0x3b82f6)))
-        .when(!is_active, |el| el.hover(|style| style.bg(rgb(0x374151))))
+        .when(is_active, |el| {
+            el.bg(rgb(0x89b4fa)) // Zed blue for active state
+        })
+        .when(!is_active, |el| {
+            el.hover(|style| style.bg(rgb(0x313244))) // Catppuccin surface0 for hover
+        })
         .child(
             div()
                 .text_sm()
                 .font_weight(FontWeight::MEDIUM)
-                .text_color(rgb(0xffffff))
+                .when(is_active, |el| el.text_color(rgb(0x1e1e2e))) // Dark text on active
+                .when(!is_active, |el| el.text_color(rgb(0xcdd6f4))) // Light text on inactive
                 .child(label),
         )
         .on_mouse_down(gpui::MouseButton::Left, {
