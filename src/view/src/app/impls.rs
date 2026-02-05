@@ -226,6 +226,9 @@ impl CanViewApp {
         self.plot_data = std::sync::Arc::from([]);
         self.selected_signals.clear();
 
+        // 自动切换到数据列表视图
+        self.current_view = AppView::LogView;
+
         match result {
             Ok(result) => {
                 self.status_msg = format!("✅ Loaded {} messages", result.objects.len()).into();
