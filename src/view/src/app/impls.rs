@@ -295,9 +295,14 @@ impl CanViewApp {
             }
             Err(e) => {
                 // 在状态栏显示详细的错误信息
-                let error_msg = format!("❌ Failed to load BLF: {}", e);
-                self.status_msg = error_msg.clone().into();
-                eprintln!("📂 File loading error: {}", e);
+                let error_display = format!("❌ File Error: {}", e);
+                self.status_msg = error_display.into();
+
+                // 打印详细错误信息到控制台
+                eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                eprintln!("📂 BLF File Loading Failed");
+                eprintln!("Error: {:?}", e);
+                eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             }
         }
     }
