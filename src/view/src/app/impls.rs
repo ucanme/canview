@@ -223,6 +223,20 @@ impl CanViewApp {
     fn apply_blf_result(&mut self, result: anyhow::Result<BlfResult>) {
         match result {
             Ok(result) => {
+                let error_count = result.errors.len();
+
+                // 如果有解析错误，先打印到控制台
+                if error_count > 0 {
+                    eprintln!("\n⚠️  BLF 解析过程中发现 {} 个错误:", error_count);
+                    for (i, error) in result.errors.iter().enumerate() {
+                        eprintln!("  错误 {}: {}", i + 1, error);
+                    }
+                    eprintln!(
+                        "  ✅ 但仍成功解析了 {} 个对象，这些对象将正常显示\n",
+                        result.objects.len()
+                    );
+                }
+
                 // 只有在成功加载后才清空之前的数据
                 self.messages.clear();
                 self.plot_data = std::sync::Arc::from([]);
@@ -231,7 +245,19 @@ impl CanViewApp {
                 // 自动切换到数据列表视图
                 self.current_view = AppView::LogView;
 
-                self.status_msg = format!("✅ Loaded {} messages", result.objects.len()).into();
+                // 根据是否有错误设置不同的状态栏消息
+                if error_count > 0 {
+                    let first_error = &result.errors[0];
+                    self.status_msg = format!(
+                        "⚠️ Loaded {} messages | {} errors (first: {})",
+                        result.objects.len(),
+                        error_count,
+                        first_error
+                    )
+                    .into();
+                } else {
+                    self.status_msg = format!("✅ Loaded {} messages", result.objects.len()).into();
+                }
 
                 // === 调试输出：检查时间戳 ===
                 println!("\n=== BLF 时间戳诊断 ===");
