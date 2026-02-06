@@ -41,23 +41,6 @@ impl LogContainer {
                 let mut uncompressed = Vec::with_capacity(uncompressed_size);
                 decoder.read_to_end(&mut uncompressed)?;
 
-                // Debug: Print first 128 bytes of uncompressed data
-                if !uncompressed.is_empty() {
-                    println!(
-                        "=== LogContainer uncompressed data (first 128 bytes) ===sumlen:{}",
-                        uncompressed.len()
-                    );
-                    let dump_len = uncompressed.len().min(128);
-                    for i in (0..dump_len).step_by(16) {
-                        print!("{:04x}: ", i);
-                        for byte in uncompressed.iter().take(i + 16).skip(i) {
-                            print!("{:02x} ", byte);
-                        }
-                        println!();
-                    }
-                    println!("=== End hex dump ===\n");
-                }
-
                 uncompressed
             }
             _ => return Err(BlfParseError::UnsupportedCompression(compression_method)),

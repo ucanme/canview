@@ -60,7 +60,6 @@ impl CanFdMessage {
     /// Reads a `CanFdMessage` from a byte cursor.
     pub fn read(cursor: &mut Cursor<&[u8]>, header: &ObjectHeader) -> BlfParseResult<Self> {
         let channel = cursor.read_u16::<LittleEndian>()?;
-        println!("-=--channel---{}", channel);
         let flags = cursor.read_u8()?;
         let dlc = cursor.read_u8()?;
         let id = cursor.read_u32::<LittleEndian>()?;

@@ -472,6 +472,7 @@ impl BlfParser {
     /// Parses the actual log objects contained within a (decompressed) LogContainer.
     fn parse_inner_objects(&self, cursor: &mut Cursor<&[u8]>) -> BlfParseResult<Vec<LogObject>> {
         let mut all_objects = Vec::new();
+        let mut all_errors = Vec::new();
         let data_len = cursor.get_ref().len();
 
         while (cursor.position() as usize) < data_len {
@@ -490,19 +491,48 @@ impl BlfParser {
                     cursor.set_position(start_pos + 1);
                     continue;
                 }
-                Err(e) => return Err(e),
+                Err(BlfParseError::UnexpectedEof) => {
+                    // End of file reached, return what we have
+                    break;
+                }
+                Err(e) => {
+                    all_errors.push(e);
+                    // Try to skip some bytes and continue
+                    cursor.set_position(start_pos + 4);
+                    continue;
+                }
             };
 
             // LogContainers should not be nested. If they are, we skip them to avoid infinite recursion.
             if header.object_type != ObjectType::LogContainer {
                 let object_body_size = (header.object_size as usize)
                     .saturating_sub(header.calculate_header_size() as usize);
-                if let Some(object) = self.parse_can_object(cursor, &header, object_body_size)? {
-                    all_objects.push(object);
+
+                match self.parse_can_object(cursor, &header, object_body_size) {
+                    Ok(Some(object)) => {
+                        all_objects.push(object);
+                    }
+                    Ok(None) => {
+                        // Object type not handled, skip
+                    }
+                    Err(BlfParseError::UnexpectedEof) => {
+                        // End of file reached while parsing object body
+                        all_errors.push(BlfParseError::UnexpectedEof);
+                        break;
+                    }
+                    Err(e) => {
+                        all_errors.push(e);
+                        // Try to advance and continue
+                        let next_pos = start_pos + header.object_size as u64;
+                        cursor.set_position(next_pos.min(data_len as u64));
+                        continue;
+                    }
                 }
             } else {
                 // For LogContainer objects, we skip them but still need to advance the cursor
-                println!("Skipping LogContainer object");
+                if self.debug {
+                    println!("Skipping LogContainer object");
+                }
             }
 
             // 在LogContainer内部，对象已经通过add_padding进行了4字节对齐
@@ -526,8 +556,16 @@ impl BlfParser {
             let aligned_pos = (current_pos + 3) & !3; // Round up to next multiple of 4
             cursor.set_position(aligned_pos.min(data_len as u64));
         }
-        println!("Finished parsing, found {} objects", all_objects.len());
-        Ok(all_objects)
+
+        // If we have errors but also successfully parsed objects, return the objects
+        // Otherwise, if we have no objects but have errors, return the first error
+        if !all_objects.is_empty() {
+            Ok(all_objects)
+        } else if !all_errors.is_empty() {
+            Err(all_errors.into_iter().next().unwrap())
+        } else {
+            Ok(all_objects)
+        }
     }
 
     /// Advances the cursor to the start of the next object, including padding.
