@@ -556,26 +556,34 @@ impl CanViewApp {
             }
         }
 
-        if self.is_maximized {
-            // Restore to normal size - create new window with saved bounds
-            if let Some(saved_bounds) = self.saved_window_bounds {
-                // Clone all necessary state
-                let current_view = self.current_view;
-                let messages = self.messages.clone();
-                let status_msg = self.status_msg.clone();
-                let dbc_channels = self.dbc_channels.clone();
-                let ldf_channels = self.ldf_channels.clone();
-                let app_config = self.app_config.clone();
-                let selected_signals = self.selected_signals.clone();
-                let start_time = self.start_time;
-                let config_dir = self.config_dir.clone();
-                let config_file_path = self.config_file_path.clone();
-                let display_bounds = self.display_bounds;
+        // Simple approach: Just show a message to user explaining the situation
+        // Real maximizing requires window system support which is complex
+        eprintln!("Maximize/restore feature: This will open a new window");
+        self.status_msg = "Opening new window for maximize/restore...".into();
 
-                // Open new window with saved bounds
+        // Clone all necessary state
+        let current_view = self.current_view;
+        let messages = self.messages.clone();
+        let status_msg = self.status_msg.clone();
+        let dbc_channels = self.dbc_channels.clone();
+        let ldf_channels = self.ldf_channels.clone();
+        let app_config = self.app_config.clone();
+        let selected_signals = self.selected_signals.clone();
+        let start_time = self.start_time;
+        let config_dir = self.config_dir.clone();
+        let config_file_path = self.config_file_path.clone();
+        let display_bounds = self.display_bounds;
+
+        if self.is_maximized {
+            // Restore to normal size
+            if let Some(saved_bounds) = self.saved_window_bounds {
+                let bounds = saved_bounds;
+                self.is_maximized = false;
+                self.saved_window_bounds = None;
+
                 cx.open_window(
                     WindowOptions {
-                        window_bounds: Some(WindowBounds::Windowed(saved_bounds)),
+                        window_bounds: Some(WindowBounds::Windowed(bounds)),
                         titlebar: Some(TitlebarOptions {
                             title: Some("CANVIEW - Bus Data Analyzer".into()),
                             appears_transparent: true,
@@ -597,8 +605,8 @@ impl CanViewApp {
                                 start_time,
                                 config_dir,
                                 config_file_path,
-                                false, // is_maximized = false
-                                None,  // saved_window_bounds = None
+                                false,
+                                None,
                                 display_bounds,
                             )
                         })
@@ -610,24 +618,11 @@ impl CanViewApp {
                 window.remove_window();
             }
         } else {
-            // Save current bounds before maximizing
+            // Maximize
             let current_bounds = window.bounds();
             self.saved_window_bounds = Some(current_bounds);
+            self.is_maximized = true;
 
-            // Clone all necessary state
-            let current_view = self.current_view;
-            let messages = self.messages.clone();
-            let status_msg = self.status_msg.clone();
-            let dbc_channels = self.dbc_channels.clone();
-            let ldf_channels = self.ldf_channels.clone();
-            let app_config = self.app_config.clone();
-            let selected_signals = self.selected_signals.clone();
-            let start_time = self.start_time;
-            let config_dir = self.config_dir.clone();
-            let config_file_path = self.config_file_path.clone();
-            let display_bounds = self.display_bounds;
-
-            // Open new maximized window
             if let Some(maximized_bounds) = self.display_bounds {
                 cx.open_window(
                     WindowOptions {
@@ -653,8 +648,8 @@ impl CanViewApp {
                                 start_time,
                                 config_dir,
                                 config_file_path,
-                                true,                 // is_maximized = true
-                                Some(current_bounds), // saved_window_bounds
+                                true,
+                                Some(current_bounds),
                                 display_bounds,
                             )
                         })

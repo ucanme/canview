@@ -2,8 +2,10 @@
 
 <div align="center">
 
-![CANVIEW Logo](assets/logo_modern.svg#gh-light-mode-only)
-![CANVIEW Logo](assets/logo_modern_light.svg#gh-dark-mode-only)
+![CANVIEW Logo](assets/svg/logo.svg)
+
+*Oscilloscope-style Logo - Modern CAN/LIN Bus Data Analyzer*
+</div>
 
 **Modern Bus Data Analyzer for CAN, LIN, FlexRay & Ethernet**
 
@@ -68,11 +70,29 @@
 
 ## 📸 Screenshots
 
+### Application Icon
+![CANVIEW Icon](assets/svg/logo-256x256.svg)
+
+*New oscilloscope-style icon design featuring signal waveforms and data points*
+
 ### BLF Logs Viewer
 ![BLF Logs Viewer](assets/blf_logs_screenshot.png)
 
 ### Signal Plotter
 ![Signal Plotter](assets/plot_screen.png)
+
+---
+
+## 🎨 Logo & Branding
+
+CANVIEW features a modern oscilloscope-style logo representing bus signal analysis:
+
+- **Design**: Oscilloscope screen with waveform patterns and animated data points
+- **Theme**: Professional dark theme suitable for technical applications
+- **Formats**: Available in SVG (vector), PNG, and Windows ICO formats
+- **Sizes**: From 16×16 (favicon) to 512×512 (high-resolution)
+
+For detailed logo usage guidelines, design specifications, and brand assets, see [LOGO_GUIDE.md](LOGO_GUIDE.md).
 
 ---
 
@@ -203,7 +223,6 @@ cargo build --release --bin view
 ---
 
 ## 📁 Project Structure
-
 ```
 canview/
 ├── src/
@@ -232,9 +251,18 @@ canview/
 │       └── Cargo.toml
 │
 ├── assets/                     # Application assets
+│   ├── svg/                    # Vector logos (multiple sizes)
+│   │   ├── logo.svg            # Main oscilloscope-style logo
+│   │   ├── logo-16x16.svg      # 16x16 pixels
+│   │   ├── logo-32x32.svg      # 32x32 pixels
+│   │   └── ...                 # Up to 512x512
 │   ├── ico/                    # Windows icons
-│   ├── png/                    # PNG icons
-│   └── *.svg                   # Logo source files
+│   │   └── canview.ico         # Compiled icon with all sizes
+│   ├── png/                    # PNG versions
+│   │   ├── logo_16.png         # 16x16 pixels
+│   │   └── ...                 # Up to 512x512
+│   ├── draw_logo.py            # Logo generation script
+│   └── *.svg                   # Other logo source files
 │
 ├── .github/
 │   └── workflows/

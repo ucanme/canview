@@ -1,5 +1,13 @@
 # CanView: BLF 解析库与可视化工具
 
+<div align="center">
+
+![CANVIEW Logo](assets/svg/logo.svg)
+
+*示波器风格 Logo - 现代 CAN/LIN 总线数据分析工具*
+
+</div>
+
 [English Version](README_en.md)
 
 ## 简介
@@ -11,7 +19,17 @@ CanView 是一个高性能的 BLF (Binary Logging Format) 工具集，包含：
 
 BLF 是一种广泛应用于汽车工业中的二进制日志文件格式，用于存储 CAN、LIN、FlexRay 和 Ethernet 等总线通信数据。
 
-## 截图
+## 📸 截图
+
+### 应用图标
+![CANVIEW Icon](assets/svg/logo-256x256.svg)
+
+*全新的示波器风格图标设计，展示信号波形和数据点*
+
+### 应用图标
+![CANVIEW Icon](assets/svg/logo-256x256.svg)
+
+*全新的示波器风格图标设计，展示信号波形和数据点*
 
 ### BLF 日志查看器
 ![BLF 日志截图](assets/blf_logs_screenshot.png)
