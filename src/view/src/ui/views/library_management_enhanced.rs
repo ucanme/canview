@@ -467,18 +467,15 @@ fn render_right_column(
         })
 }
 
-/// 渲染过滤按钮
+/// 渲染过滤按钮 - 现在使用Button组件
 fn render_filter_button(label: &'static str, is_active: bool) -> impl IntoElement {
-    div()
-        .px_3()
-        .py_1()
-        .rounded(px(4.0))
-        .cursor_pointer()
-        .when(is_active, |el| el.bg(rgb(0x3b82f6)))
-        .when(!is_active, |el| el.hover(|style| style.bg(rgb(0x374151))))
-        .text_color(rgb(0xffffff))
-        .text_sm()
-        .child(label)
+    use crate::ui::components::{Button, ButtonSize, ButtonVariant};
+
+    Button::new(label)
+        .size(ButtonSize::Small)
+        .variant(ButtonVariant::Secondary)
+        .active(is_active)
+        .build()
 }
 
 /// 渲染库项（保持不变）

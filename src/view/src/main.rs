@@ -3,6 +3,7 @@ use gpui::{prelude::*, *};
 // Declare modules
 mod app;
 mod config;
+mod domain;
 mod handlers;
 mod library;
 mod models;

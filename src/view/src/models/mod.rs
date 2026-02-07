@@ -1,7 +1,7 @@
 //! Data models for the CanView application
 
-pub mod library;
 pub mod chart;
+pub mod library;
 
 use serde::{Deserialize, Serialize};
 
@@ -41,6 +41,15 @@ impl ChannelType {
     }
 }
 
+impl std::fmt::Display for ChannelType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ChannelType::CAN => write!(f, "CAN"),
+            ChannelType::LIN => write!(f, "LIN"),
+        }
+    }
+}
+
 /// Channel mapping configuration
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct ChannelMapping {
@@ -65,7 +74,7 @@ fn default_channel_type() -> ChannelType {
 }
 
 /// Application configuration
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
 pub struct AppConfig {
     /// 信号库列表
     #[serde(default)]

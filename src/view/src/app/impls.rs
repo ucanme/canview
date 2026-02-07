@@ -2824,17 +2824,12 @@ impl CanViewApp {
                         div()
                             .flex()
                             .gap_2()
-                            .child(
-                                div()
-                                    .px_3()
-                                    .py_1()
-                                    .bg(rgb(0x3b82f6))
-                                    .rounded(px(4.))
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0x2563eb)))
-                                    .text_color(rgb(0xffffff))
-                                    .text_sm()
-                                    .child("Import Database")
+                            .child({
+                                use crate::ui::components::{Button, ButtonSize, ButtonVariant};
+                                Button::new("Import Database")
+                                    .size(ButtonSize::Small)
+                                    .variant(ButtonVariant::Secondary)
+                                    .build()
                                     .on_mouse_down(gpui::MouseButton::Left, {
                                         let view = cx.entity().clone();
                                         move |_event, _window, cx| {
@@ -2842,19 +2837,14 @@ impl CanViewApp {
                                                 this.import_database_file(cx);
                                             });
                                         }
-                                    }),
-                            )
-                            .child(
-                                div()
-                                    .px_3()
-                                    .py_1()
-                                    .bg(rgb(0x10b981))
-                                    .rounded(px(4.))
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0x059669)))
-                                    .text_color(rgb(0xffffff))
-                                    .text_sm()
-                                    .child("Save Config")
+                                    })
+                            })
+                            .child({
+                                use crate::ui::components::{Button, ButtonSize, ButtonVariant};
+                                Button::new("Save Config")
+                                    .size(ButtonSize::Small)
+                                    .variant(ButtonVariant::Secondary)
+                                    .build()
                                     .on_mouse_down(gpui::MouseButton::Left, {
                                         let view = cx.entity().clone();
                                         move |_event, _window, cx| {
@@ -2862,8 +2852,8 @@ impl CanViewApp {
                                                 this.save_config(cx);
                                             });
                                         }
-                                    }),
-                            ),
+                                    })
+                            }),
                     ),
             )
             .child(
@@ -3188,26 +3178,7 @@ impl Render for CanViewApp {
             .child(
                 // Unified top bar - Redesigned
                 {
-                    // Define button styles helper - Zed/Catppuccin theme
-                    let btn_style = |active: bool| {
-                        let base = div()
-                            .px_3()
-                            .h(px(24.)) // Fixed small height
-                            .flex()
-                            .items_center()
-                            .rounded(px(4.))
-                            .text_xs()
-                            .font_weight(FontWeight::MEDIUM)
-                            .cursor_pointer();
-
-                        if active {
-                            base.bg(rgb(0x313244)).text_color(rgb(0xcdd6f4)) // BG_ELEVATED, TEXT_PRIMARY
-                        } else {
-                            base.bg(gpui::transparent_black())
-                                .text_color(rgb(0x6c7086)) // OVERLAY0
-                                .hover(|s| s.bg(rgb(0x313244)).text_color(rgb(0x9399b2))) // BG_ELEVATED, OVERLAY2
-                        }
-                    };
+                    use crate::ui::components::{Button, ButtonSize, ButtonVariant};
 
                     let app_buttons = div()
                         .flex()
@@ -3215,7 +3186,11 @@ impl Render for CanViewApp {
                         .gap_2()
                         .child(
                             // File menu button
-                            btn_style(self.show_file_menu)
+                            Button::new("File")
+                                .size(ButtonSize::Small)
+                                .variant(ButtonVariant::Ghost)
+                                .active(self.show_file_menu)
+                                .build()
                                 .id("file_menu_btn")
                                 .on_mouse_down(gpui::MouseButton::Left, {
                                     let view = view.clone();
@@ -3226,11 +3201,14 @@ impl Render for CanViewApp {
                                             cx.notify();
                                         });
                                     }
-                                })
-                                .child("File"),
+                                }),
                         )
                         .child(
-                            btn_style(self.current_view == AppView::LibraryView)
+                            Button::new("Library")
+                                .size(ButtonSize::Small)
+                                .variant(ButtonVariant::Ghost)
+                                .active(self.current_view == AppView::LibraryView)
+                                .build()
                                 .id("library_tab")
                                 .on_mouse_down(gpui::MouseButton::Left, {
                                     let view = view.clone();
@@ -3241,32 +3219,29 @@ impl Render for CanViewApp {
                                             cx.notify();
                                         });
                                     }
-                                })
-                                .child("Library"),
+                                }),
                         )
                         .child(
-                            btn_style(self.current_view == AppView::PlotView)
+                            Button::new("Plot")
+                                .size(ButtonSize::Small)
+                                .variant(ButtonVariant::Ghost)
+                                .active(self.current_view == AppView::PlotView)
+                                .build()
                                 .id("plot_tab")
                                 .on_mouse_down(gpui::MouseButton::Left, {
                                     let view = view.clone();
                                     move |_event, _, cx| {
-                                        eprintln!("DEBUG: Plot button clicked");
                                         cx.stop_propagation();
                                         view.update(cx, |this, cx| {
-                                            eprintln!("DEBUG: Switching to PlotView");
                                             this.current_view = AppView::PlotView;
-                                            eprintln!("DEBUG: Extracting data...");
                                             this.plot_data =
                                                 crate::ui::views::chart_view::extract_series_data(
                                                     this,
                                                 );
-                                            eprintln!("DEBUG: Data extracted, notifying");
                                             cx.notify();
-                                            eprintln!("DEBUG: Notify complete");
                                         });
                                     }
-                                })
-                                .child("Plot"),
+                                }),
                         );
 
                     div()
