@@ -2,8 +2,17 @@
 fn main() {
     let mut res = winres::WindowsResource::new();
 
-    // Set icon
-    res.set_icon("../../assets/ico/canview.ico");
+    // 使用绝对路径设置图标
+    let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let icon_path = manifest_dir.join("../../assets/ico/canview.ico");
+
+    // 转换为字符串
+    let icon_path_str = icon_path.to_str().expect("Invalid icon path");
+
+    println!("cargo:rerun-if-changed={}", icon_path.display());
+
+    // 设置图标
+    res.set_icon(icon_path_str);
 
     // Compile the resource
     if let Err(e) = res.compile() {
