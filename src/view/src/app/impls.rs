@@ -556,66 +556,18 @@ impl CanViewApp {
             }
         }
 
-        // Simple approach: Just show a message to user explaining the situation
-        // Real maximizing requires window system support which is complex
-        eprintln!("Maximize/restore feature: This will open a new window");
-        self.status_msg = "Opening new window for maximize/restore...".into();
-
-        // Clone all necessary state
-        let current_view = self.current_view;
-        let messages = self.messages.clone();
-        let status_msg = self.status_msg.clone();
-        let dbc_channels = self.dbc_channels.clone();
-        let ldf_channels = self.ldf_channels.clone();
-        let app_config = self.app_config.clone();
-        let selected_signals = self.selected_signals.clone();
-        let start_time = self.start_time;
-        let config_dir = self.config_dir.clone();
-        let config_file_path = self.config_file_path.clone();
-        let display_bounds = self.display_bounds;
-
         if self.is_maximized {
             // Restore to normal size
             if let Some(saved_bounds) = self.saved_window_bounds {
-                let bounds = saved_bounds;
                 self.is_maximized = false;
                 self.saved_window_bounds = None;
 
-                cx.open_window(
-                    WindowOptions {
-                        window_bounds: Some(WindowBounds::Windowed(bounds)),
-                        titlebar: Some(TitlebarOptions {
-                            title: Some("CANVIEW - Bus Data Analyzer".into()),
-                            appears_transparent: true,
-                            traffic_light_position: None,
-                        }),
-                        kind: gpui::WindowKind::Normal,
-                        ..Default::default()
-                    },
-                    |_window, cx| {
-                        cx.new(|_| {
-                            Self::new_with_state(
-                                current_view,
-                                messages,
-                                status_msg,
-                                dbc_channels,
-                                ldf_channels,
-                                app_config,
-                                selected_signals,
-                                start_time,
-                                config_dir,
-                                config_file_path,
-                                false,
-                                None,
-                                display_bounds,
-                            )
-                        })
-                    },
-                )
-                .ok();
-
-                // Close current window
-                window.remove_window();
+                // Use window.resize to restore the saved size
+                window.resize(gpui::Size {
+                    width: saved_bounds.size.width,
+                    height: saved_bounds.size.height,
+                });
+                cx.notify();
             }
         } else {
             // Maximize
@@ -624,41 +576,11 @@ impl CanViewApp {
             self.is_maximized = true;
 
             if let Some(maximized_bounds) = self.display_bounds {
-                cx.open_window(
-                    WindowOptions {
-                        window_bounds: Some(WindowBounds::Windowed(maximized_bounds)),
-                        titlebar: Some(TitlebarOptions {
-                            title: Some("CANVIEW - Bus Data Analyzer".into()),
-                            appears_transparent: true,
-                            traffic_light_position: None,
-                        }),
-                        kind: gpui::WindowKind::Normal,
-                        ..Default::default()
-                    },
-                    |_window, cx| {
-                        cx.new(|_| {
-                            Self::new_with_state(
-                                current_view,
-                                messages,
-                                status_msg,
-                                dbc_channels,
-                                ldf_channels,
-                                app_config,
-                                selected_signals,
-                                start_time,
-                                config_dir,
-                                config_file_path,
-                                true,
-                                Some(current_bounds),
-                                display_bounds,
-                            )
-                        })
-                    },
-                )
-                .ok();
-
-                // Close current window
-                window.remove_window();
+                window.resize(gpui::Size {
+                    width: maximized_bounds.size.width,
+                    height: maximized_bounds.size.height,
+                });
+                cx.notify();
             }
         }
     }

@@ -105,7 +105,7 @@ impl Button {
             .justify_center()
             .rounded(px(4.))
             .text_sm()
-            .font_weight(FontWeight::MEDIUM)
+            .font_weight(FontWeight::BOLD)
             .text_color(text_color)
             .cursor_pointer()
             .when(disabled, |el| el.opacity(0.5).cursor_default());

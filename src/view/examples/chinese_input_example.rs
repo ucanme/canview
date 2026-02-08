@@ -2,7 +2,10 @@
 //
 // 这个示例展示如何使用 Zed 风格的 TextInput 组件进行中文输入
 
-use crate::ui::components::TextInputValidation;
+// 注意：这是一个示例文件，展示如何使用组件
+// 实际使用时，需要根据你的项目结构调整导入路径
+
+use crate::ui::components::text_input::TextInputValidation;
 use crate::ui::components::zed_style_text_input::ZedStyleTextInputBuilder;
 use gpui::*;
 
@@ -72,7 +75,31 @@ where
         .validation(TextInputValidation::VersionName) // ❌ 不支持中文
         .focused(is_focused)
         .min_width(px(150.))
-        .build("version_input", view, on_change, on_submit, on_cancel)
+        .build(
+            "version_input",
+            view,
+            {
+                let view = view.clone();
+                move |new_text, cx| {
+                    view.update(cx, |this, cx| {
+                        cx.notify();
+                    });
+                }
+            },
+            {
+                let view = view.clone();
+                move |text, cx| {
+                    view.update(cx, |this, cx| {
+                        cx.notify();
+                    });
+                }
+            },
+            {
+                move |cx| {
+                    // 取消逻辑
+                }
+            },
+        )
 }
 
 /// 示例 3: 无验证（接受所有输入）
@@ -115,7 +142,48 @@ where
         .validation(chinese_only_validation)
         .focused(is_focused)
         .min_width(px(300.))
-        .build("chinese_only_input", view, on_change, on_submit, on_cancel)
+        .build(
+            "chinese_only_input",
+            view,
+            {
+                let view = view.clone();
+                move |new_text, cx| {
+                    view.update(cx, |this, cx| {
+                        cx.notify();
+                    });
+                }
+            },
+            {
+                let view = view.clone();
+                move |text, cx| {
+                    view.update(cx, |this, cx| {
+                        cx.notify();
+                    });
+                }
+            },
+            {
+                move |cx| {
+                    // 取消逻辑
+                }
+            },
+        )
+}
+
+// ============================================================================
+// 主函数 - 如果要运行此示例
+// ============================================================================
+
+// 这是一个示例文件，展示如何使用 TextInput 组件
+// 要运行此示例，你需要：
+// 1. 取消注释上面的 use 语句
+// 2. 实现一个完整的 App 结构
+// 3. 在此 main 函数中创建和运行应用
+
+#[cfg(feature = "example")]
+fn main() {
+    println!("中文输入示例");
+    println!("这是一个示例文件，展示了如何使用 TextInput 组件进行中文输入");
+    println!("请参考上面的函数示例，将它们集成到你的应用中");
 }
 
 // ============================================================================
