@@ -704,7 +704,7 @@ impl CanViewApp {
 
         // Calculate actual list container height
         // Window height - top bar (56px) - status bar (24px) - log header (28px)
-        let container_height = window_height - 56.0 - 24.0 - 28.0;
+        let container_height = window_height - 37.0 - 25.0 - 29.0;  // 37px top bar (36+1 border), 25px status bar (24+1 border), 29px header (28+1 border)
 
         // Only update if it changed significantly (more than 10px difference)
         if (container_height - self.list_container_height).abs() > 10.0 {

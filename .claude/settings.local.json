@@ -14,7 +14,14 @@
       "Bash(./target/debug/view.exe:*)",
       "Bash(cargo run:*)",
       "Bash(set RUST_BACKTRACE=1:*)",
-      "Bash(./target/release/view.exe:*)"
+      "Bash(./target/release/view.exe:*)",
+      "Bash(timeout 60 cargo build:*)",
+      "Bash(git stash:*)",
+      "Bash(powershell:*)",
+      "Bash(nul:*)",
+      "Bash(timeout:*)",
+      "Bash(cat:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []
