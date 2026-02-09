@@ -22,7 +22,9 @@
       "Bash(timeout:*)",
       "Bash(cat:*)",
       "Bash(git checkout:*)",
-      "Bash(cargo test:*)"
+      "Bash(cargo test:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

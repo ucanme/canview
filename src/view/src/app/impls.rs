@@ -747,6 +747,85 @@ impl CanViewApp {
             ))
     }
 
+    /// Filter messages based on ID and channel filters
+    ///
+    /// Helper method to apply both ID and channel filters to the message list.
+    /// This is extracted from render_log_view to reduce complexity.
+    fn filter_messages(&self) -> Vec<LogObject> {
+        match (self.id_filter, self.channel_filter) {
+            (None, None) => self.messages.clone(),
+            (Some(filter_id), None) => {
+                // Only ID filter
+                self.messages
+                    .iter()
+                    .filter(|msg| match msg {
+                        LogObject::CanMessage(can_msg) => can_msg.id == filter_id,
+                        LogObject::CanMessage2(can_msg) => can_msg.id == filter_id,
+                        LogObject::CanFdMessage(fd_msg) => fd_msg.id == filter_id,
+                        LogObject::CanFdMessage64(fd_msg) => fd_msg.id == filter_id,
+                        LogObject::LinMessage(lin_msg) => lin_msg.id as u32 == filter_id,
+                        LogObject::LinMessage2(_) => false,
+                        _ => false,
+                    })
+                    .cloned()
+                    .collect()
+            }
+            (None, Some(filter_channel)) => {
+                // Only channel filter
+                self.messages
+                    .iter()
+                    .filter(|msg| match msg {
+                        LogObject::CanMessage(can_msg) => {
+                            can_msg.channel == filter_channel
+                        }
+                        LogObject::CanMessage2(can_msg) => {
+                            can_msg.channel == filter_channel
+                        }
+                        LogObject::CanFdMessage(fd_msg) => {
+                            fd_msg.channel == filter_channel
+                        }
+                        LogObject::CanFdMessage64(fd_msg) => {
+                            fd_msg.channel as u16 == filter_channel
+                        }
+                        LogObject::LinMessage(lin_msg) => {
+                            lin_msg.channel == filter_channel
+                        }
+                        LogObject::LinMessage2(_) => false,
+                        _ => false,
+                    })
+                    .cloned()
+                    .collect()
+            }
+            (Some(filter_id), Some(filter_channel)) => {
+                // Both ID and channel filters
+                self.messages
+                    .iter()
+                    .filter(|msg| match msg {
+                        LogObject::CanMessage(can_msg) => {
+                            can_msg.id == filter_id && can_msg.channel == filter_channel
+                        }
+                        LogObject::CanMessage2(can_msg) => {
+                            can_msg.id == filter_id && can_msg.channel == filter_channel
+                        }
+                        LogObject::CanFdMessage(fd_msg) => {
+                            fd_msg.id == filter_id && fd_msg.channel == filter_channel
+                        }
+                        LogObject::CanFdMessage64(fd_msg) => {
+                            fd_msg.id == filter_id && fd_msg.channel as u16 == filter_channel
+                        }
+                        LogObject::LinMessage(lin_msg) => {
+                            lin_msg.id as u32 == filter_id
+                                && lin_msg.channel == filter_channel
+                        }
+                        LogObject::LinMessage2(_) => false,
+                        _ => false,
+                    })
+                    .cloned()
+                    .collect()
+            }
+        }
+    }
+
     fn render_log_view(&self, view: Entity<CanViewApp>) -> impl IntoElement {
         // Clone view for use in multiple closures
         let view_clone1 = view.clone();
