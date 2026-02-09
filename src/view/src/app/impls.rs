@@ -260,40 +260,8 @@ impl CanViewApp {
                 }
 
                 // === 调试输出：检查时间戳 ===
-                println!("\n=== BLF 时间戳诊断 ===");
                 println!("基准时间: {:?}", result.file_stats.measurement_start_time);
-                println!("总消息数: {}", result.objects.len());
-
-                // 检查前 10 条消息的时间戳
-                println!("\n前 10 条消息的时间戳:");
-                for (i, obj) in result.objects.iter().take(10).enumerate() {
-                    let ts = obj.timestamp();
-                    println!(
-                        "  Message {}: {} ns ({:.9} s)",
-                        i,
-                        ts,
-                        ts as f64 / 1_000_000_000.0
-                    );
-                }
-
-                // 检查时间戳是否都相同
-                if result.objects.len() > 1 {
-                    let first_ts = result.objects[0].timestamp();
-                    let last_ts = result.objects.last().unwrap().timestamp();
-                    let time_span = (last_ts - first_ts) as f64 / 1_000_000_000.0;
-
-                    println!("\n时间跨度分析:");
-                    println!("  第一条: {} ns", first_ts);
-                    println!("  最后一条: {} ns", last_ts);
-                    println!("  时间跨度: {:.6} 秒", time_span);
-
-                    if time_span < 0.000001 {
-                        println!("  ⚠️  警告: 所有消息的时间戳几乎相同!");
-                    } else {
-                        println!("  ✅ 时间戳正常变化");
-                    }
-                }
-                println!("===================\n");
+                Self::print_timestamp_diagnostics(&result.objects);
 
                 // Parse start time with nanosecond precision
                 let st = result.file_stats.measurement_start_time.clone();
@@ -3191,6 +3159,46 @@ impl CanViewApp {
                 self.ldf_channels.insert(channel_id, ldf);
             }
         }
+    }
+
+    /// Print timestamp diagnostics for BLF data
+    ///
+    /// Helper method to validate and print timestamp information
+    /// for loaded BLF objects, helping identify timestamp issues.
+    fn print_timestamp_diagnostics(objects: &[blf::LogObject]) {
+        println!("\n=== BLF 时间戳诊断 ===");
+        println!("总消息数: {}", objects.len());
+
+        // 检查前 10 条消息的时间戳
+        println!("\n前 10 条消息的时间戳:");
+        for (i, obj) in objects.iter().take(10).enumerate() {
+            let ts = obj.timestamp();
+            println!(
+                "  Message {}: {} ns ({:.9} s)",
+                i,
+                ts,
+                ts as f64 / 1_000_000_000.0
+            );
+        }
+
+        // 检查时间戳是否都相同
+        if objects.len() > 1 {
+            let first_ts = objects[0].timestamp();
+            let last_ts = objects.last().unwrap().timestamp();
+            let time_span = (last_ts - first_ts) as f64 / 1_000_000_000.0;
+
+            println!("\n时间跨度分析:");
+            println!("  第一条: {} ns", first_ts);
+            println!("  最后一条: {} ns", last_ts);
+            println!("  时间跨度: {:.6} 秒", time_span);
+
+            if time_span < 0.000001 {
+                println!("  ⚠️  警告: 所有消息的时间戳几乎相同!");
+            } else {
+                println!("  ✅ 时间戳正常变化");
+            }
+        }
+        println!("===================\n");
     }
 
     /// Show channel input for adding a new channel (inline)
