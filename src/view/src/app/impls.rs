@@ -227,14 +227,7 @@ impl CanViewApp {
 
                 // 如果有解析错误，先打印到控制台
                 if error_count > 0 {
-                    eprintln!("\n⚠️  BLF 解析过程中发现 {} 个错误:", error_count);
-                    for (i, error) in result.errors.iter().enumerate() {
-                        eprintln!("  错误 {}: {}", i + 1, error);
-                    }
-                    eprintln!(
-                        "  ✅ 但仍成功解析了 {} 个对象，这些对象将正常显示\n",
-                        result.objects.len()
-                    );
+                    Self::log_blf_errors(&result.errors, result.objects.len());
                 }
 
                 // 只有在成功加载后才清空之前的数据
@@ -3199,6 +3192,20 @@ impl CanViewApp {
             }
         }
         println!("===================\n");
+    }
+
+    /// Log BLF parsing errors to console
+    ///
+    /// Helper method to print BLF parsing errors in a formatted way.
+    fn log_blf_errors(errors: &[blf::BlfParseError], object_count: usize) {
+        eprintln!("\n⚠️  BLF 解析过程中发现 {} 个错误:", errors.len());
+        for (i, error) in errors.iter().enumerate() {
+            eprintln!("  错误 {}: {}", i + 1, error);
+        }
+        eprintln!(
+            "  ✅ 但仍成功解析了 {} 个对象，这些对象将正常显示\n",
+            object_count
+        );
     }
 
     /// Show channel input for adding a new channel (inline)
