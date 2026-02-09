@@ -236,8 +236,7 @@ impl CanViewApp {
             }
             Err(e) => {
                 // 在状态栏显示详细的错误信息（不清空之前的数据）
-                let error_display = format!("❌ File Error: {}", e);
-                self.status_msg = error_display.into();
+                self.status_msg = format!("❌ File Error: {}", e).into();
 
                 // 保持当前视图不变，不切换到 LogView
                 // 这样用户可以看到之前成功加载的数据
@@ -280,14 +279,12 @@ impl CanViewApp {
                 Ok(Some(path_str)) => {
                     // File selected successfully
                     self.new_channel_db_path = path_str.clone();
-                    self.status_msg = format!("✅ Selected: {}", path_str).into();
-                    cx.notify();
+                    self.set_status(format!("✅ Selected: {}", path_str), cx);
                     true
                 }
                 Ok(None) => {
                     // User cancelled
-                    self.status_msg = "❌ File selection cancelled".into();
-                    cx.notify();
+                    self.set_status("❌ File selection cancelled", cx);
                     true
                 }
                 Err(std::sync::mpsc::TryRecvError::Empty) => {
@@ -297,7 +294,7 @@ impl CanViewApp {
                 }
                 Err(std::sync::mpsc::TryRecvError::Disconnected) => {
                     // Thread ended without result
-                    self.status_msg = "".into();
+                    self.set_status("", cx);
                     true
                 }
             }
@@ -3237,6 +3234,15 @@ impl CanViewApp {
                 });
             }
         }
+    }
+
+    /// Set status message and trigger UI update
+    ///
+    /// Helper method to consistently set status messages and notify the UI.
+    /// This ensures all status updates follow the same pattern.
+    fn set_status(&mut self, msg: impl Into<SharedString>, cx: &mut Context<Self>) {
+        self.status_msg = msg.into();
+        cx.notify();
     }
 
     /// Show channel input for adding a new channel (inline)
