@@ -422,11 +422,7 @@ impl CanViewApp {
             ),
         };
 
-        let bg_color = if index.is_multiple_of(2) {
-            rgb(0x09090b) // Zed's dark background (zebra)
-        } else {
-            rgb(0x0c0c0e) // Zed's dark background (base)
-        };
+        let bg_color = Self::get_zebra_bg_color(index);
 
         div()
             .flex()
@@ -3243,6 +3239,18 @@ impl CanViewApp {
     fn set_status(&mut self, msg: impl Into<SharedString>, cx: &mut Context<Self>) {
         self.status_msg = msg.into();
         cx.notify();
+    }
+
+    /// Get zebra striping background color
+    ///
+    /// Helper method to determine background color for zebra striping in lists.
+    /// Returns alternating colors based on index parity.
+    fn get_zebra_bg_color(index: usize) -> Rgba {
+        if index.is_multiple_of(2) {
+            rgb(0x09090b) // Zed's dark background (zebra)
+        } else {
+            rgb(0x0c0c0e) // Zed's dark background (base)
+        }
     }
 
     /// Show channel input for adding a new channel (inline)
