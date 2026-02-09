@@ -358,6 +358,42 @@ impl CanViewApp {
         }
     }
 
+    /// Handle pending file dialog result
+    ///
+    /// Helper method to check and process file dialog results.
+    /// Returns true if a result was processed, false otherwise.
+    fn handle_file_dialog_result(&mut self, cx: &mut Context<Self>) -> bool {
+        if let Some(receiver) = self.pending_file_path.take() {
+            match receiver.try_recv() {
+                Ok(Some(path_str)) => {
+                    // File selected successfully
+                    self.new_channel_db_path = path_str.clone();
+                    self.status_msg = format!("✅ Selected: {}", path_str).into();
+                    cx.notify();
+                    true
+                }
+                Ok(None) => {
+                    // User cancelled
+                    self.status_msg = "❌ File selection cancelled".into();
+                    cx.notify();
+                    true
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    // Not ready yet, put it back
+                    self.pending_file_path = Some(receiver);
+                    false
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    // Thread ended without result
+                    self.status_msg = "".into();
+                    true
+                }
+            }
+        } else {
+            false
+        }
+    }
+
     #[allow(dead_code)]
     /// Format data bytes as hexadecimal string
     ///
@@ -2291,29 +2327,7 @@ impl Render for CanViewApp {
         }
 
         // Check for file dialog result (non-blocking poll)
-        if let Some(receiver) = self.pending_file_path.take() {
-            match receiver.try_recv() {
-                Ok(Some(path_str)) => {
-                    // File selected successfully
-                    self.new_channel_db_path = path_str.clone();
-                    self.status_msg = format!("✅ Selected: {}", path_str).into();
-                    cx.notify();
-                }
-                Ok(None) => {
-                    // User cancelled
-                    self.status_msg = "❌ File selection cancelled".into();
-                    cx.notify();
-                }
-                Err(std::sync::mpsc::TryRecvError::Empty) => {
-                    // Not ready yet, put it back
-                    self.pending_file_path = Some(receiver);
-                }
-                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                    // Thread ended without result
-                    self.status_msg = "".into();
-                }
-            }
-        }
+        self.handle_file_dialog_result(cx);
 
         let view = cx.entity().clone();
 
