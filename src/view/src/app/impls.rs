@@ -508,21 +508,7 @@ impl CanViewApp {
 impl CanViewApp {
     fn toggle_maximize(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         // Initialize display bounds on first use
-        if self.display_bounds.is_none() {
-            let displays = cx.displays();
-            if let Some(display) = displays.first() {
-                let display_bounds = display.bounds();
-                // Leave a small margin for the task bar and dock
-                let margin = px(4.0);
-                self.display_bounds = Some(Bounds {
-                    origin: Point::new(margin, margin),
-                    size: Size {
-                        width: display_bounds.size.width - margin * 2.0,
-                        height: display_bounds.size.height - margin * 2.0,
-                    },
-                });
-            }
-        }
+        self.initialize_display_bounds(cx);
 
         if self.is_maximized {
             // Restore to normal size
@@ -3230,6 +3216,27 @@ impl CanViewApp {
         }
 
         (library_manager.libraries().len(), total_versions, total_channels)
+    }
+
+    /// Initialize display bounds from context
+    ///
+    /// Helper method to calculate and set display bounds on first use.
+    fn initialize_display_bounds(&mut self, cx: &mut Context<Self>) {
+        if self.display_bounds.is_none() {
+            let displays = cx.displays();
+            if let Some(display) = displays.first() {
+                let display_bounds = display.bounds();
+                // Leave a small margin for the task bar and dock
+                let margin = px(4.0);
+                self.display_bounds = Some(Bounds {
+                    origin: Point::new(margin, margin),
+                    size: Size {
+                        width: display_bounds.size.width - margin * 2.0,
+                        height: display_bounds.size.height - margin * 2.0,
+                    },
+                });
+            }
+        }
     }
 
     /// Show channel input for adding a new channel (inline)
