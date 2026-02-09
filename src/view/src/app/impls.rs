@@ -752,68 +752,8 @@ impl CanViewApp {
         let view_clone1 = view.clone();
         let view_clone2 = view.clone();
 
-        // Apply filters (both ID and Channel)
-        let filtered_messages: Vec<LogObject> = match (self.id_filter, self.channel_filter) {
-            (None, None) => self.messages.clone(),
-            (Some(filter_id), None) => {
-                // Only ID filter
-                self.messages
-                    .iter()
-                    .filter(|msg| match msg {
-                        LogObject::CanMessage(can_msg) => can_msg.id == filter_id,
-                        LogObject::CanMessage2(can_msg) => can_msg.id == filter_id,
-                        LogObject::CanFdMessage(fd_msg) => fd_msg.id == filter_id,
-                        LogObject::CanFdMessage64(fd_msg) => fd_msg.id == filter_id,
-                        LogObject::LinMessage(lin_msg) => lin_msg.id as u32 == filter_id,
-                        LogObject::LinMessage2(_) => false,
-                        _ => false,
-                    })
-                    .cloned()
-                    .collect()
-            }
-            (None, Some(filter_ch)) => {
-                // Only Channel filter
-                self.messages
-                    .iter()
-                    .filter(|msg| match msg {
-                        LogObject::CanMessage(can_msg) => can_msg.channel == filter_ch,
-                        LogObject::CanMessage2(can_msg) => can_msg.channel == filter_ch,
-                        LogObject::CanFdMessage(fd_msg) => fd_msg.channel == filter_ch,
-                        LogObject::CanFdMessage64(fd_msg) => fd_msg.channel as u16 == filter_ch,
-                        LogObject::LinMessage(lin_msg) => lin_msg.channel == filter_ch,
-                        LogObject::LinMessage2(_) => false,
-                        _ => false,
-                    })
-                    .cloned()
-                    .collect()
-            }
-            (Some(filter_id), Some(filter_ch)) => {
-                // Both filters
-                self.messages
-                    .iter()
-                    .filter(|msg| match msg {
-                        LogObject::CanMessage(can_msg) => {
-                            can_msg.id == filter_id && can_msg.channel == filter_ch
-                        }
-                        LogObject::CanMessage2(can_msg) => {
-                            can_msg.id == filter_id && can_msg.channel == filter_ch
-                        }
-                        LogObject::CanFdMessage(fd_msg) => {
-                            fd_msg.id == filter_id && fd_msg.channel == filter_ch
-                        }
-                        LogObject::CanFdMessage64(fd_msg) => {
-                            fd_msg.id == filter_id && fd_msg.channel as u16 == filter_ch
-                        }
-                        LogObject::LinMessage(lin_msg) => {
-                            lin_msg.id as u32 == filter_id && lin_msg.channel == filter_ch
-                        }
-                        LogObject::LinMessage2(_) => false,
-                        _ => false,
-                    })
-                    .cloned()
-                    .collect()
-            }
-        };
+        // Apply filters (both ID and Channel) using helper method
+        let filtered_messages = self.filter_messages();
 
         // Save filtered message count BEFORE filtered_messages is moved
         let filtered_count = filtered_messages.len();

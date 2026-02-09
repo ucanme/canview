@@ -3,6 +3,7 @@
 //! Contains the core application state and implementation.
 
 mod impls;
+mod impls_helper;
 mod state;
 mod helpers;
 mod commands;
