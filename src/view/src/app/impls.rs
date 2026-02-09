@@ -923,17 +923,17 @@ impl CanViewApp {
             // Handle keyboard input for ID filter
             .on_key_down(move |event, _window, cx| {
                 eprintln!("Global on_key_down: keystroke={}", event.keystroke);
+                let view = view_for_keyboard.clone();
+                let keystroke_str = format!("{}", event.keystroke);
+
                 // Check if filter box is active
-                let show_filter = view_for_keyboard.read(cx).show_id_filter_input;
-                eprintln!("  show_filter={}", show_filter);
+                let show_filter = view.read(cx).show_id_filter_input;
 
                 // If filter box is active, handle input for it
                 if show_filter {
-                    eprintln!("  Filter box active, handling input");
-                    let keystroke_str = format!("{}", event.keystroke);
                     match keystroke_str.as_str() {
                         "backspace" => {
-                            view_for_keyboard.update(cx, |app, cx| {
+                            view.update(cx, |app, cx| {
                                 let mut text = app.id_filter_text.to_string();
                                 if !text.is_empty() {
                                     text.pop();
@@ -942,10 +942,10 @@ impl CanViewApp {
                                     cx.notify();
                                 }
                             });
-                            return;  // Don't continue to default handler
+                            return;
                         }
                         "escape" => {
-                            view_for_keyboard.update(cx, |app, cx| {
+                            view.update(cx, |app, cx| {
                                 app.show_id_filter_input = false;
                                 eprintln!("  Filter box closed (escape)");
                                 cx.notify();
@@ -953,8 +953,7 @@ impl CanViewApp {
                             return;
                         }
                         "enter" => {
-                            view_for_keyboard.update(cx, |app, cx| {
-                                // Apply filter and close
+                            view.update(cx, |app, cx| {
                                 if let Ok(parsed_id) = u32::from_str_radix(app.id_filter_text.as_ref(), 10) {
                                     if !app.id_filter_text.is_empty() {
                                         app.id_filter = Some(parsed_id);
@@ -967,11 +966,10 @@ impl CanViewApp {
                             return;
                         }
                         _ => {
-                            // Handle digit input
                             if keystroke_str.len() == 1 {
                                 if let Some(ch) = keystroke_str.chars().next() {
                                     if ch.is_ascii_digit() {
-                                        view_for_keyboard.update(cx, |app, cx| {
+                                        view.update(cx, |app, cx| {
                                             let mut text = app.id_filter_text.to_string();
                                             text.push(ch);
                                             app.id_filter_text = text.into();
@@ -984,16 +982,13 @@ impl CanViewApp {
                             }
                         }
                     }
-                    // For non-digit keys when filter is active, still don't pass through
                     return;
                 }
 
-                // Convert Keystroke to string for matching
-                let keystroke_str = format!("{}", event.keystroke);
+                // Handle global shortcuts
                 match keystroke_str.as_str() {
-                    // Backspace to delete
                     "backspace" => {
-                        view_for_keyboard.update(cx, |app, cx| {
+                        view.update(cx, |app, cx| {
                             let mut text = app.id_filter_text.to_string();
                             if !text.is_empty() {
                                 text.pop();
@@ -1011,26 +1006,23 @@ impl CanViewApp {
                             }
                         });
                     }
-                    // Escape to clear filter
                     "escape" => {
-                        view_for_keyboard.update(cx, |app, cx| {
+                        view.update(cx, |app, cx| {
                             app.id_filter = None;
                             app.id_filter_text = "".into();
                             cx.notify();
                         });
                     }
                     _ => {
-                        // Check if it's a single digit (0-9)
                         if keystroke_str.len() == 1 {
                             let ch = keystroke_str.chars().next().unwrap();
                             if ch.is_ascii_digit() {
-                                view_for_keyboard.update(cx, |app, cx| {
+                                view.update(cx, |app, cx| {
                                     let mut text = app.id_filter_text.to_string();
                                     text.push(ch);
                                     let new_text = text.clone();
                                     app.id_filter_text = text.into();
 
-                                    // Try to parse the ID
                                     if let Ok(parsed_id) = u32::from_str_radix(&new_text, 10) {
                                         app.id_filter = Some(parsed_id);
                                     }
@@ -3083,24 +3075,10 @@ impl CanViewApp {
             // Use the default path (backward compatibility)
             let path = &version.path;
 
-            // Check if path is empty
-            if path.trim().is_empty() {
-                self.status_msg = format!(
-                    "❌ Database path is empty for version '{}'. Please add a database file in the Library view.",
-                    version_name
-                ).into();
-                eprintln!("ERROR: Empty database path for version '{}'", version_name);
-                return;
-            }
-
-            // Check if file exists
-            if !std::path::Path::new(path).exists() {
-                self.status_msg = format!(
-                    "❌ Database file not found: {}. Please check the file path in Library view.",
-                    path
-                )
-                .into();
-                eprintln!("ERROR: Database file not found: {}", path);
+            // Validate path
+            if let Err(err_msg) = self.validate_database_path(path, &format!("version '{}'", version_name)) {
+                self.status_msg = err_msg.clone().into();
+                eprintln!("ERROR: {}", err_msg);
                 return;
             }
 
@@ -3130,30 +3108,11 @@ impl CanViewApp {
         } else {
             // Load all configured channels
             for channel_db in channel_dbs {
-                // Check if path is empty
-                if channel_db.database_path.trim().is_empty() {
-                    self.status_msg = format!(
-                        "❌ Database path is empty for channel {}. Please add a database file in the Library view.",
-                        channel_db.channel_id
-                    ).into();
-                    eprintln!(
-                        "ERROR: Empty database path for channel {}",
-                        channel_db.channel_id
-                    );
-                    continue;
-                }
-
-                // Check if file exists
-                if !std::path::Path::new(&channel_db.database_path).exists() {
-                    self.status_msg = format!(
-                        "❌ Database file not found for channel {}: {}",
-                        channel_db.channel_id, channel_db.database_path
-                    )
-                    .into();
-                    eprintln!(
-                        "ERROR: Database file not found for channel {}: {}",
-                        channel_db.channel_id, channel_db.database_path
-                    );
+                // Validate path
+                let context = format!("channel {}", channel_db.channel_id);
+                if let Err(err_msg) = self.validate_database_path(&channel_db.database_path, &context) {
+                    self.status_msg = err_msg.clone().into();
+                    eprintln!("ERROR: {}", err_msg);
                     continue;
                 }
 
@@ -3208,6 +3167,30 @@ impl CanViewApp {
     }
 
     // ========== Channel Configuration Methods ==========
+
+    /// Validate database path and file existence
+    ///
+    /// Helper method to validate database file path.
+    /// Returns Ok(()) if valid, Err with error message if invalid.
+    fn validate_database_path(&self, path: &str, context: &str) -> Result<(), String> {
+        // Check if path is empty
+        if path.trim().is_empty() {
+            return Err(format!(
+                "❌ Database path is empty for {}. Please add a database file in the Library view.",
+                context
+            ));
+        }
+
+        // Check if file exists
+        if !std::path::Path::new(path).exists() {
+            return Err(format!(
+                "❌ Database file not found: {}. Please check the file path in Library view.",
+                path
+            ));
+        }
+
+        Ok(())
+    }
 
     /// Show channel input for adding a new channel (inline)
     pub fn show_add_channel_dialog(&mut self, cx: &mut Context<Self>) {
