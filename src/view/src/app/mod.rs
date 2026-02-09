@@ -24,6 +24,7 @@ pub use commands::{
     dialog::{ShowLibraryDialog, HideLibraryDialog, ShowChannelConfigDialog, HideChannelConfigDialog},
     config::{SaveConfig, LoadConfig, LoadStartupConfig},
     load::{LoadBlfFile, ImportDatabaseFile, ProcessBlfResult, BlfLoadStats},
+    library::{CreateLibrary, DeleteLibrary, AddLibraryVersion, DeleteLibraryVersion, LoadLibraryVersion, ApplyVersionToMappings, LibraryOperationResult, LibraryVersionInfo},
 };
 
 // Define actions for text input handling (public, so other modules can use them)
