@@ -3068,8 +3068,14 @@ impl CanViewApp {
             }
         };
 
+        // Extract needed data from library to avoid borrow conflicts
+        let library_name = library.name.clone();
+        let channel_type = library.channel_type;
+
         // Load the database for each channel in the version
-        let channel_dbs = &version.channel_databases;
+        // Clone to break borrow chain so we can mutably borrow self later
+        let channel_dbs: Vec<_> = version.channel_databases.clone();
+        let num_channels = channel_dbs.len();
 
         if channel_dbs.is_empty() {
             // Use the default path (backward compatibility)
@@ -3084,21 +3090,12 @@ impl CanViewApp {
 
             match self
                 .library_manager
-                .load_database(path, library.channel_type)
+                .load_database(path, channel_type)
             {
                 Ok(database) => {
-                    match database {
-                        crate::library::Database::Dbc(dbc) => {
-                            eprintln!("DEBUG: Inserting DBC into channel {}", default_channel_id);
-                            self.dbc_channels.insert(default_channel_id, dbc);
-                        }
-                        crate::library::Database::Ldf(ldf) => {
-                            eprintln!("DEBUG: Inserting LDF into channel {}", default_channel_id);
-                            self.ldf_channels.insert(default_channel_id, ldf);
-                        }
-                    }
+                    self.insert_database_into_channel(database, default_channel_id);
                     self.status_msg =
-                        format!("✅ Loaded version {} of {}", version_name, library.name).into();
+                        format!("✅ Loaded version {} of {}", version_name, library_name).into();
                 }
                 Err(e) => {
                     self.status_msg = format!("❌ Error loading database: {}", e).into();
@@ -3118,24 +3115,11 @@ impl CanViewApp {
 
                 match self
                     .library_manager
-                    .load_database(&channel_db.database_path, library.channel_type)
+                    .load_database(&channel_db.database_path, channel_type)
                 {
-                    Ok(database) => match database {
-                        crate::library::Database::Dbc(dbc) => {
-                            eprintln!(
-                                "DEBUG: Inserting DBC into channel {}",
-                                channel_db.channel_id
-                            );
-                            self.dbc_channels.insert(channel_db.channel_id, dbc);
-                        }
-                        crate::library::Database::Ldf(ldf) => {
-                            eprintln!(
-                                "DEBUG: Inserting LDF into channel {}",
-                                channel_db.channel_id
-                            );
-                            self.ldf_channels.insert(channel_db.channel_id, ldf);
-                        }
-                    },
+                    Ok(database) => {
+                        self.insert_database_into_channel(database, channel_db.channel_id);
+                    }
                     Err(e) => {
                         self.status_msg =
                             format!("❌ Error loading channel {}: {}", channel_db.channel_id, e)
@@ -3150,8 +3134,8 @@ impl CanViewApp {
             self.status_msg = format!(
                 "Loaded version {} of {} ({} channels)",
                 version_name,
-                library.name,
-                channel_dbs.len()
+                library_name,
+                num_channels
             )
             .into();
         }
@@ -3190,6 +3174,23 @@ impl CanViewApp {
         }
 
         Ok(())
+    }
+
+    /// Insert database into the appropriate channel map
+    ///
+    /// Helper method to insert a loaded database (DBC or LDF) into the
+    /// corresponding channel map based on the database type.
+    fn insert_database_into_channel(&mut self, database: crate::library::Database, channel_id: u16) {
+        match database {
+            crate::library::Database::Dbc(dbc) => {
+                eprintln!("DEBUG: Inserting DBC into channel {}", channel_id);
+                self.dbc_channels.insert(channel_id, dbc);
+            }
+            crate::library::Database::Ldf(ldf) => {
+                eprintln!("DEBUG: Inserting LDF into channel {}", channel_id);
+                self.ldf_channels.insert(channel_id, ldf);
+            }
+        }
     }
 
     /// Show channel input for adding a new channel (inline)
