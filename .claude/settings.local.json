@@ -21,7 +21,8 @@
       "Bash(nul:*)",
       "Bash(timeout:*)",
       "Bash(cat:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(cargo test:*)"
     ],
     "deny": [],
     "ask": []

@@ -90,7 +90,7 @@ impl Channel {
 
     /// Create a new LIN channel
     pub fn lin(number: u16, name: String) -> Self {
-        Self::new(number, ChannelType::Lin)
+        Self::new(number, name, ChannelType::Lin)
     }
 
     /// Set the database path
