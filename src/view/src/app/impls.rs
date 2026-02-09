@@ -359,36 +359,85 @@ impl CanViewApp {
     }
 
     #[allow(dead_code)]
+    /// Format data bytes as hexadecimal string
+    ///
+    /// Helper method to convert CAN/LIN data to hex string representation.
+    /// This reduces code duplication in message rendering.
+    fn format_data_hex(data: &[u8], dlc: u8) -> String {
+        let actual_data_len = data.len().min(dlc as usize);
+        data.iter()
+            .take(actual_data_len)
+            .map(|b| format!("{:02X}", b))
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    /// Extract and format CAN signals from DBC database
+    ///
+    /// Helper method to decode and format signals from a CAN message.
+    /// Returns a comma-separated string of signal=value pairs.
+    fn extract_can_signals(
+        &self,
+        channel: u16,
+        msg_id: u32,
+        data: &[u8],
+    ) -> String {
+        if let Some(db) = self.dbc_channels.get(&channel) {
+            if let Some(message) = db.messages.get(&msg_id) {
+                return message
+                    .signals
+                    .iter()
+                    .map(|(name, signal)| {
+                        let val = signal.decode(data);
+                        format!("{}={:.2}", name, val)
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+            }
+        }
+        String::new()
+    }
+
+    /// Extract and format LIN signals from LDF database
+    ///
+    /// Helper method to decode and format signals from a LIN message.
+    /// Returns a comma-separated string of signal=value pairs.
+    fn extract_lin_signals(
+        &self,
+        channel: u16,
+        frame_id: u8,
+        data: &[u8],
+    ) -> String {
+        if let Some(db) = self.ldf_channels.get(&channel) {
+            // Search for the frame with the matching ID
+            if let Some(frame) = db.frames.values().find(|f| f.id == frame_id as u32) {
+                return frame
+                    .signals
+                    .iter()
+                    .filter_map(|mapping| {
+                        db.signals
+                            .get(&mapping.signal_name)
+                            .map(|sig| (mapping, sig))
+                    })
+                    .map(|(mapping, signal)| {
+                        let val = signal.decode(data, mapping.offset);
+                        format!("{}={}", signal.name, val)
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+            }
+        }
+        String::new()
+    }
+
     fn render_message_row(&self, msg: &LogObject, index: usize) -> impl IntoElement {
         let (time_str, channel_id, msg_type, id_str, dlc_str, data_str, signals_str) = match msg {
             LogObject::CanMessage(can_msg) => {
                 let timestamp = can_msg.header.object_time_stamp;
                 let time_str = self.get_timestamp_string(timestamp);
+                let data_hex = Self::format_data_hex(&can_msg.data, can_msg.dlc);
                 let actual_data_len = can_msg.data.len().min(can_msg.dlc as usize);
-                let data_hex = can_msg
-                    .data
-                    .iter()
-                    .take(actual_data_len)
-                    .map(|b| format!("{:02X}", b))
-                    .collect::<Vec<_>>()
-                    .join(" ");
-                let signals = if let Some(db) = self.dbc_channels.get(&can_msg.channel) {
-                    if let Some(message) = db.messages.get(&can_msg.id) {
-                        message
-                            .signals
-                            .iter()
-                            .map(|(name, signal)| {
-                                let val = signal.decode(&can_msg.data);
-                                format!("{}={:.2}", name, val)
-                            })
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    } else {
-                        String::new()
-                    }
-                } else {
-                    String::new()
-                };
+                let signals = self.extract_can_signals(can_msg.channel, can_msg.id, &can_msg.data);
 
                 (
                     time_str,
@@ -403,38 +452,9 @@ impl CanViewApp {
             LogObject::LinMessage(lin_msg) => {
                 let timestamp = lin_msg.header.object_time_stamp;
                 let time_str = self.get_timestamp_string(timestamp);
+                let data_hex = Self::format_data_hex(&lin_msg.data, lin_msg.dlc);
                 let actual_data_len = lin_msg.data.len().min(lin_msg.dlc as usize);
-                let data_hex = lin_msg
-                    .data
-                    .iter()
-                    .take(actual_data_len)
-                    .map(|b| format!("{:02X}", b))
-                    .collect::<Vec<_>>()
-                    .join(" ");
-
-                let signals = if let Some(db) = self.ldf_channels.get(&lin_msg.channel) {
-                    // Search for the frame with the matching ID
-                    if let Some(frame) = db.frames.values().find(|f| f.id == lin_msg.id as u32) {
-                        frame
-                            .signals
-                            .iter()
-                            .filter_map(|mapping| {
-                                db.signals
-                                    .get(&mapping.signal_name)
-                                    .map(|sig| (mapping, sig))
-                            })
-                            .map(|(mapping, signal)| {
-                                let val = signal.decode(&lin_msg.data, mapping.offset);
-                                format!("{}={}", signal.name, val)
-                            })
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    } else {
-                        String::new()
-                    }
-                } else {
-                    String::new()
-                };
+                let signals = self.extract_lin_signals(lin_msg.channel, lin_msg.id, &lin_msg.data);
 
                 (
                     time_str,
