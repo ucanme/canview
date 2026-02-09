@@ -257,26 +257,7 @@ impl CanViewApp {
                 Self::print_timestamp_diagnostics(&result.objects);
 
                 // Parse start time with nanosecond precision
-                let st = result.file_stats.measurement_start_time.clone();
-                println!("\n起始时间解析:");
-                println!("  原始 SystemTime: {:?}", st);
-
-                let date_opt =
-                    chrono::NaiveDate::from_ymd_opt(st.year as i32, st.month as u32, st.day as u32);
-                let time_opt = chrono::NaiveTime::from_hms_nano_opt(
-                    st.hour as u32,
-                    st.minute as u32,
-                    st.second as u32,
-                    st.milliseconds as u32 * 1_000_000, // Convert milliseconds to nanoseconds
-                );
-
-                if let (Some(date), Some(time)) = (date_opt, time_opt) {
-                    self.start_time = Some(chrono::NaiveDateTime::new(date, time));
-                    println!("  ✅ 解析成功: {:?}", self.start_time);
-                } else {
-                    self.start_time = None;
-                    println!("  ❌ 解析失败");
-                }
+                self.start_time = Self::parse_blf_start_time(&result.file_stats.measurement_start_time);
 
                 self.messages = result.objects;
             }
@@ -289,10 +270,7 @@ impl CanViewApp {
                 // 这样用户可以看到之前成功加载的数据
 
                 // 打印详细错误信息到控制台
-                eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                eprintln!("📂 BLF File Loading Failed");
-                eprintln!("Error: {:?}", e);
-                eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                Self::display_blf_load_error(&e);
             }
         }
     }
@@ -3206,6 +3184,45 @@ impl CanViewApp {
             "  ✅ 但仍成功解析了 {} 个对象，这些对象将正常显示\n",
             object_count
         );
+    }
+
+    /// Parse BLF file start time from SystemTime
+    ///
+    /// Helper method to convert BLF file statistics SystemTime
+    /// to chrono NaiveDateTime with nanosecond precision.
+    fn parse_blf_start_time(st: &blf::SystemTime) -> Option<chrono::NaiveDateTime> {
+        println!("\n起始时间解析:");
+        println!("  原始 SystemTime: {:?}", st);
+
+        let date_opt = chrono::NaiveDate::from_ymd_opt(st.year as i32, st.month as u32, st.day as u32);
+        let time_opt = chrono::NaiveTime::from_hms_nano_opt(
+            st.hour as u32,
+            st.minute as u32,
+            st.second as u32,
+            st.milliseconds as u32 * 1_000_000, // Convert milliseconds to nanoseconds
+        );
+
+        match (date_opt, time_opt) {
+            (Some(date), Some(time)) => {
+                let dt = chrono::NaiveDateTime::new(date, time);
+                println!("  ✅ 解析成功: {:?}", dt);
+                Some(dt)
+            }
+            _ => {
+                println!("  ❌ 解析失败");
+                None
+            }
+        }
+    }
+
+    /// Display BLF file loading error
+    ///
+    /// Helper method to print and display BLF file loading errors.
+    fn display_blf_load_error<E: std::fmt::Display + std::fmt::Debug>(error: E) {
+        eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        eprintln!("📂 BLF File Loading Failed");
+        eprintln!("Error: {:?}", error);
+        eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     }
 
     /// Show channel input for adding a new channel (inline)
