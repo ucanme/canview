@@ -146,40 +146,13 @@ impl CanViewApp {
                             self.library_manager =
                                 LibraryManager::from_libraries(config.libraries.clone());
 
-                            // 统计信息
-                            let total_versions: usize = self
-                                .library_manager
-                                .libraries()
-                                .iter()
-                                .map(|lib| lib.versions.len())
-                                .sum();
-                            let total_channels: usize = self
-                                .library_manager
-                                .libraries()
-                                .iter()
-                                .flat_map(|lib| &lib.versions)
-                                .map(|ver| ver.channel_databases.len())
-                                .sum();
-
-                            eprintln!("  ✅ 加载完成:");
-                            eprintln!("     - {} 个库", self.library_manager.libraries().len());
-                            eprintln!("     - {} 个版本", total_versions);
-                            eprintln!("     - {} 个通道", total_channels);
-
-                            // 显示库列表
-                            for library in self.library_manager.libraries() {
-                                eprintln!(
-                                    "     📦 {}: {} 个版本",
-                                    library.name,
-                                    library.versions.len()
-                                );
-                            }
+                            // 统计信息并显示
+                            let (lib_count, ver_count, chan_count) =
+                                Self::display_library_stats(&self.library_manager);
 
                             self.status_msg = format!(
                                 "Configuration loaded: {} libraries, {} versions, {} channels",
-                                self.library_manager.libraries().len(),
-                                total_versions,
-                                total_channels
+                                lib_count, ver_count, chan_count
                             )
                             .into();
 
@@ -3223,6 +3196,40 @@ impl CanViewApp {
         eprintln!("📂 BLF File Loading Failed");
         eprintln!("Error: {:?}", error);
         eprintln!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    }
+
+    /// Display library loading statistics
+    ///
+    /// Helper method to print library manager statistics after loading.
+    fn display_library_stats(library_manager: &crate::library::LibraryManager) -> (usize, usize, usize) {
+        // 统计信息
+        let total_versions: usize = library_manager
+            .libraries()
+            .iter()
+            .map(|lib| lib.versions.len())
+            .sum();
+        let total_channels: usize = library_manager
+            .libraries()
+            .iter()
+            .flat_map(|lib| &lib.versions)
+            .map(|ver| ver.channel_databases.len())
+            .sum();
+
+        eprintln!("  ✅ 加载完成:");
+        eprintln!("     - {} 个库", library_manager.libraries().len());
+        eprintln!("     - {} 个版本", total_versions);
+        eprintln!("     - {} 个通道", total_channels);
+
+        // 显示库列表
+        for library in library_manager.libraries() {
+            eprintln!(
+                "     📦 {}: {} 个版本",
+                library.name,
+                library.versions.len()
+            );
+        }
+
+        (library_manager.libraries().len(), total_versions, total_channels)
     }
 
     /// Show channel input for adding a new channel (inline)
