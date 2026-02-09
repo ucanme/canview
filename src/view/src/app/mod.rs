@@ -5,6 +5,7 @@
 mod impls;
 mod state;
 mod helpers;
+mod commands;
 
 // Re-export the main types
 pub use state::{AppView, CanViewApp, LibraryDialogType};
@@ -15,6 +16,12 @@ pub use helpers::{
     format_timestamp_static,
     format_timestamp_with_date,
     format_time_difference,
+};
+
+// Re-export commands
+pub use commands::{
+    navigation::{NavigateToView, ToggleMaximize, UpdateContainerHeight},
+    dialog::{ShowLibraryDialog, HideLibraryDialog, ShowChannelConfigDialog, HideChannelConfigDialog},
 };
 
 // Define actions for text input handling (public, so other modules can use them)
