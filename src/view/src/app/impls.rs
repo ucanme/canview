@@ -390,6 +390,9 @@ impl CanViewApp {
         // Initialize display bounds on first use
         self.initialize_display_bounds(cx);
 
+        // Preserve runtime state across window recreation
+        let runtime_state = self.save_runtime_state();
+
         // CRITICAL SAFETY: Reset all unsafe state before window recreation
         // These fields contain Entity handles or complex state that becomes invalid
         // after window recreation. Must be reset to None/default values.
@@ -401,6 +404,7 @@ impl CanViewApp {
         self.channel_name_input = None;
         self.channel_db_path_input = None;
         self.signal_search_input = None;
+        self.signal_filter_text = "".into();  // Reset filter text to prevent observe callback loop
 
         // Reset view to LogView (safest view with no complex state)
         self.current_view = AppView::LogView;
@@ -454,12 +458,14 @@ impl CanViewApp {
                     },
                     |_window, cx| {
                         let mut app = cx.new(|_cx| Self::new_with_maximized_state_and_bounds(false, None));
-                        // Load configuration to restore library data
+                        let view = app.clone();
+                        // Restore runtime state and load configuration
                         app.update(cx, |app, cx| {
+                            app.restore_runtime_state(runtime_state);
                             app.load_startup_config();
                             cx.notify();
                         });
-                        app
+                        cx.new(|cx| gpui_component::Root::new(view, _window, cx))
                     },
                 )
                 .ok();
@@ -489,12 +495,14 @@ impl CanViewApp {
                     },
                     |_window, cx| {
                         let mut app = cx.new(|_cx| Self::new_with_maximized_state_and_bounds(true, saved_bounds));
-                        // Load configuration to restore library data
+                        // Restore runtime state and load configuration
+                        let view = app.clone();
                         app.update(cx, |app, cx| {
+                            app.restore_runtime_state(runtime_state);
                             app.load_startup_config();
                             cx.notify();
                         });
-                        app
+                        cx.new(|cx| gpui_component::Root::new(view, _window, cx))
                     },
                 )
                 .ok();

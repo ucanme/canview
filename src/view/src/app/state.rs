@@ -9,6 +9,18 @@ pub struct SimpleDeprecatedInputState {
     pub cursor_position: usize,
 }
 
+/// Runtime state that needs to be preserved across window operations
+/// This data is NOT stored in config files but needs to survive window recreate
+/// NOTE: We intentionally do NOT preserve messages across window operations
+/// because they can be too large and cause stack overflow. Users can reload BLF files.
+pub struct RuntimeState {
+    pub selected_signals: Vec<String>,
+    pub dbc_channels: HashMap<u16, DbcDatabase>,
+    pub ldf_channels: HashMap<u16, LdfDatabase>,
+    pub start_time: Option<chrono::NaiveDateTime>,
+    pub is_streaming_mode: bool,
+}
+
 use blf::LogObject;
 use gpui::{Bounds, Entity, Pixels, UniformListScrollHandle};
 use parser::dbc::DbcDatabase;
@@ -288,5 +300,38 @@ impl CanViewApp {
             // File menu dropdown state
             show_file_menu: false,
         }
+    }
+
+    /// Save runtime state that needs to be preserved across window operations
+    /// This includes loaded data but NOT messages (too large) or UI state
+    pub fn save_runtime_state(&self) -> RuntimeState {
+        eprintln!("💾 Saving runtime state: {} messages (will be cleared), {} signals, {} DBC, {} LDF",
+            self.messages.len(), self.selected_signals.len(),
+            self.dbc_channels.len(), self.ldf_channels.len());
+        RuntimeState {
+            selected_signals: self.selected_signals.clone(),
+            dbc_channels: self.dbc_channels.clone(),
+            ldf_channels: self.ldf_channels.clone(),
+            start_time: self.start_time,
+            is_streaming_mode: self.is_streaming_mode,
+        }
+    }
+
+    /// Restore runtime state after window operations
+    /// This preserves the loaded configuration when maximizing/restoring windows
+    /// NOTE: messages remain empty - user needs to reload BLF file if needed
+    pub fn restore_runtime_state(&mut self, state: RuntimeState) {
+        eprintln!("♻️  Restoring runtime state: {} signals, {} DBC, {} LDF",
+            state.selected_signals.len(),
+            state.dbc_channels.len(), state.ldf_channels.len());
+        self.selected_signals = state.selected_signals;
+        self.dbc_channels = state.dbc_channels;
+        self.ldf_channels = state.ldf_channels;
+        self.start_time = state.start_time;
+        self.is_streaming_mode = state.is_streaming_mode;
+        // messages remain empty - cleared during window recreate
+        eprintln!("✅ State restored. Now have: {} messages, {} signals, {} DBC, {} LDF",
+            self.messages.len(), self.selected_signals.len(),
+            self.dbc_channels.len(), self.ldf_channels.len());
     }
 }

@@ -28,7 +28,12 @@
       "Bash(Select-String:*)",
       "Bash(find:*)",
       "Bash(findstr:*)",
-      "Bash(git ls-tree:*)"
+      "Bash(git ls-tree:*)",
+      "Bash(tee:*)",
+      "Bash(/tmp/impls_part1.txt)",
+      "Bash(/tmp/impls_part2.txt)",
+      "Bash(/tmp/impls_middle.txt:*)",
+      "Bash(impls.rs)"
     ],
     "deny": [],
     "ask": []

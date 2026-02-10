@@ -11,7 +11,7 @@ use std::sync::Arc;
 use chrono::{Timelike, Datelike};
 
 /// Render the plot view with signal charts
-pub fn render_plot_view(window: &mut Window, app: &mut CanViewApp, view: Entity<CanViewApp>, cx: &mut Context<CanViewApp>) -> impl IntoElement {
+pub fn render_plot_view(window: &mut Window, app: &mut CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoElement {
     // Safety check: prevent crash from invalid plot state after window operations
     let series_data = app.plot_data.clone();
 
@@ -44,7 +44,7 @@ pub fn render_plot_view(window: &mut Window, app: &mut CanViewApp, view: Entity<
                 .border_color(rgb(0x27272a))
                 .flex()
                 .flex_col()
-                .child(render_signal_sidebar(window, app, view.clone(), cx))
+                .child(render_signal_sidebar(window, app, cx))
         )
         .child(
             // Right Main Area: Charts
@@ -236,7 +236,7 @@ enum SidebarItem {
 }
 
 /// Render the signal selection sidebar
-fn render_signal_sidebar(window: &mut Window, app: &mut CanViewApp, view: Entity<CanViewApp>, cx: &mut Context<CanViewApp>) -> impl IntoElement {
+fn render_signal_sidebar(window: &mut Window, app: &mut CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoElement {
     // 1. Prepare the flattened and filtered list of items
     let mut items = Vec::new();
     let filter_text = app.signal_filter_text.to_lowercase();
@@ -469,7 +469,7 @@ fn render_signal_sidebar(window: &mut Window, app: &mut CanViewApp, view: Entity
                     } else {
                         let _scroll_handle = app.signal_scroll_handle.clone();
                         let item_count = items.len();
-                        let view_entity = view.clone();
+                        let view_entity = cx.entity().clone();
 
                         // Wrap items in Arc to avoid copying large Vec into closure
                         let items_arc = std::sync::Arc::new(items);

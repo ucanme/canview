@@ -1675,17 +1675,12 @@ impl Render for CanViewApp {
                 .new(|cx| InputState::new(window, cx).placeholder("查询信号/消息/ID (Search...)"));
 
             // 使用 observe 来监听输入状态的任何变化，而不仅仅是 Change 事件
-            // CRITICAL: Prevent infinite rendering loop by using String comparison
             cx.observe(&input, |this, entity, cx| {
                 let val = entity.read(cx).value().to_string();
-                let current = this.signal_filter_text.to_string();
-                // Use String comparison instead of SharedString to be absolutely sure
-                if current != val {
-                    eprintln!("🔍 Signal filter changed: '{}' -> '{}'", current, val);
+                // 只有当值真的改变时才更新和通知，避免无限循环
+                if this.signal_filter_text != val {
                     this.signal_filter_text = val.into();
                     cx.notify();
-                } else {
-                    eprintln!("🔍 Signal filter unchanged: '{}'", current);
                 }
             })
             .detach();
@@ -2021,7 +2016,7 @@ impl Render for CanViewApp {
                         AppView::ConfigView => self.render_config_view(cx).into_any_element(),
                         AppView::LibraryView => self.render_library_view(cx).into_any_element(),
                         AppView::PlotView => {
-                            crate::ui::views::chart_view::render_plot_view(window, self, cx.entity().clone(), cx)
+                            crate::ui::views::chart_view::render_plot_view(window, self, cx)
                                 .into_any_element()
                         }
                     }),
