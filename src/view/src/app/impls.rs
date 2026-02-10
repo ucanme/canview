@@ -440,6 +440,7 @@ impl CanViewApp {
             if let Some(saved_bounds) = self.saved_window_bounds {
                 // Open new window with saved bounds
                 // New window should NOT be maximized (is_maximized = false)
+                // Also pass None for saved_window_bounds (restored, so no saved bounds)
                 cx.open_window(
                     WindowOptions {
                         window_bounds: Some(WindowBounds::Windowed(saved_bounds)),
@@ -452,7 +453,7 @@ impl CanViewApp {
                         ..Default::default()
                     },
                     |_window, cx| {
-                        cx.new(|_cx| Self::new_with_maximized_state(false))
+                        cx.new(|_cx| Self::new_with_maximized_state_and_bounds(false, None))
                     },
                 )
                 .ok();
@@ -464,10 +465,11 @@ impl CanViewApp {
             // Maximize to display bounds
             if let Some(display_bounds) = self.display_bounds {
                 // Save current bounds first
-                self.saved_window_bounds = Some(window.bounds());
+                let saved_bounds = Some(window.bounds());
 
                 // Open new maximized window
                 // New window should be maximized (is_maximized = true)
+                // Pass saved bounds so it can restore later
                 cx.open_window(
                     WindowOptions {
                         window_bounds: Some(WindowBounds::Windowed(display_bounds)),
@@ -480,7 +482,7 @@ impl CanViewApp {
                         ..Default::default()
                     },
                     |_window, cx| {
-                        cx.new(|_cx| Self::new_with_maximized_state(true))
+                        cx.new(|_cx| Self::new_with_maximized_state_and_bounds(true, saved_bounds))
                     },
                 )
                 .ok();

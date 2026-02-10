@@ -196,6 +196,11 @@ impl CanViewApp {
 
     /// Create a new CanViewApp instance with specified maximize state
     pub fn new_with_maximized_state(is_maximized: bool) -> Self {
+        Self::new_with_maximized_state_and_bounds(is_maximized, None)
+    }
+
+    /// Create a new CanViewApp instance with maximize state and saved bounds
+    pub fn new_with_maximized_state_and_bounds(is_maximized: bool, saved_window_bounds: Option<Bounds<Pixels>>) -> Self {
         Self {
             current_view: AppView::LogView, // Force LogView to prevent chart/library crashes
             messages: Vec::new(),
@@ -211,7 +216,7 @@ impl CanViewApp {
             signal_storage: crate::library::SignalLibraryStorage::new().ok(),
             is_maximized,
             is_streaming_mode: false,
-            saved_window_bounds: None,
+            saved_window_bounds,
             display_bounds: None,
             list_scroll_handle: UniformListScrollHandle::new(),
             scrollbar_drag_state: None,
