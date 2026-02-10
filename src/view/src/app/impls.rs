@@ -390,49 +390,57 @@ impl CanViewApp {
         // Initialize display bounds on first use
         self.initialize_display_bounds(cx);
 
-        #[cfg(target_os = "windows")]
-        {
-            use crate::platform::windows::{set_window_position};
-            use gpui::Pixels;
+        if self.is_maximized {
+            // Restore to normal size
+            if let Some(saved_bounds) = self.saved_window_bounds {
+                // Open new window with saved bounds
+                cx.open_window(
+                    WindowOptions {
+                        window_bounds: Some(WindowBounds::Windowed(saved_bounds)),
+                        titlebar: Some(TitlebarOptions {
+                            title: Some("CANVIEW - Bus Data Analyzer".into()),
+                            appears_transparent: true,
+                            traffic_light_position: None,
+                        }),
+                        kind: WindowKind::Normal,
+                        ..Default::default()
+                    },
+                    |_window, cx| {
+                        cx.new(|_cx| Self::new())
+                    },
+                )
+                .ok();
 
-            if self.is_maximized {
-                // Restore to saved bounds
-                if let Some(saved_bounds) = self.saved_window_bounds {
-                    let x = f32::from(saved_bounds.origin.x).round() as i32;
-                    let y = f32::from(saved_bounds.origin.y).round() as i32;
-                    let width = f32::from(saved_bounds.size.width).round() as i32;
-                    let height = f32::from(saved_bounds.size.height).round() as i32;
-
-                    unsafe {
-                        let _ = set_window_position(x, y, width, height);
-                    }
-
-                    self.is_maximized = false;
-                }
-            } else {
-                // Maximize to display bounds
-                if let Some(display_bounds) = self.display_bounds {
-                    // Save current bounds first
-                    self.saved_window_bounds = Some(window.bounds());
-
-                    let x = f32::from(display_bounds.origin.x).round() as i32;
-                    let y = f32::from(display_bounds.origin.y).round() as i32;
-                    let width = f32::from(display_bounds.size.width).round() as i32;
-                    let height = f32::from(display_bounds.size.height).round() as i32;
-
-                    unsafe {
-                        let _ = set_window_position(x, y, width, height);
-                    }
-
-                    self.is_maximized = true;
-                }
+                // Close current window
+                window.remove_window();
             }
-        }
+        } else {
+            // Maximize to display bounds
+            if let Some(display_bounds) = self.display_bounds {
+                // Save current bounds first
+                self.saved_window_bounds = Some(window.bounds());
 
-        #[cfg(not(target_os = "windows"))]
-        {
-            // Fallback for non-Windows: do nothing
-            eprintln!("Window maximize not supported on this platform");
+                // Open new maximized window
+                cx.open_window(
+                    WindowOptions {
+                        window_bounds: Some(WindowBounds::Windowed(display_bounds)),
+                        titlebar: Some(TitlebarOptions {
+                            title: Some("CANVIEW - Bus Data Analyzer".into()),
+                            appears_transparent: true,
+                            traffic_light_position: None,
+                        }),
+                        kind: WindowKind::Normal,
+                        ..Default::default()
+                    },
+                    |_window, cx| {
+                        cx.new(|_cx| Self::new())
+                    },
+                )
+                .ok();
+
+                // Close current window
+                window.remove_window();
+            }
         }
     }
 

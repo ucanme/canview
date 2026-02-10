@@ -53,6 +53,10 @@ const SWP_NOSIZE: u32 = 0x0001;
 const SWP_NOZORDER: u32 = 0x0004;
 #[cfg(target_os = "windows")]
 const SWP_NOACTIVATE: u32 = 0x0010;
+#[cfg(target_os = "windows")]
+const SWP_SHOWWINDOW: u32 = 0x0040;
+#[cfg(target_os = "windows")]
+const SWP_FRAMECHANGED: u32 = 0x0020;
 
 /// Set window position and size on Windows
 ///
