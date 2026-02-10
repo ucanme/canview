@@ -191,6 +191,11 @@ pub enum LibraryDialogType {
 impl CanViewApp {
     /// Create a new CanViewApp instance with default state
     pub fn new_state() -> Self {
+        Self::new_with_maximized_state(false)
+    }
+
+    /// Create a new CanViewApp instance with specified maximize state
+    pub fn new_with_maximized_state(is_maximized: bool) -> Self {
         Self {
             current_view: AppView::LogView, // Force LogView to prevent chart/library crashes
             messages: Vec::new(),
@@ -204,7 +209,7 @@ impl CanViewApp {
             config_dir: None,
             config_file_path: None,
             signal_storage: crate::library::SignalLibraryStorage::new().ok(),
-            is_maximized: false,
+            is_maximized,
             is_streaming_mode: false,
             saved_window_bounds: None,
             display_bounds: None,
