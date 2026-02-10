@@ -391,31 +391,115 @@ impl CanViewApp {
         self.initialize_display_bounds(cx);
 
         if self.is_maximized {
-            // Restore to normal size
+            // Restore to normal size - recreate window with saved bounds
             if let Some(saved_bounds) = self.saved_window_bounds {
-                self.is_maximized = false;
-                self.saved_window_bounds = None;
+                // Clone all necessary state
+                let current_view = self.current_view;
+                let messages = self.messages.clone();
+                let status_msg = self.status_msg.clone();
+                let dbc_channels = self.dbc_channels.clone();
+                let ldf_channels = self.ldf_channels.clone();
+                let app_config = self.app_config.clone();
+                let selected_signals = self.selected_signals.clone();
+                let start_time = self.start_time;
+                let config_dir = self.config_dir.clone();
+                let config_file_path = self.config_file_path.clone();
+                let display_bounds = self.display_bounds;
 
-                // Restore window size
-                window.resize(gpui::Size {
-                    width: saved_bounds.size.width,
-                    height: saved_bounds.size.height,
-                });
-                cx.notify();
+                // Close current window
+                window.remove_window();
+
+                // Open new window with saved bounds
+                cx.open_window(
+                    WindowOptions {
+                        window_bounds: Some(WindowBounds::Windowed(saved_bounds)),
+                        titlebar: Some(TitlebarOptions {
+                            title: Some("CanView - CAN/LIN Bus Analyzer".into()),
+                            appears_transparent: true,
+                            traffic_light_position: None,
+                        }),
+                        kind: WindowKind::Normal,
+                        ..Default::default()
+                    },
+                    move |_window, cx| {
+                        cx.new(|_cx| {
+                            Self::new_with_state(
+                                current_view,
+                                messages,
+                                status_msg,
+                                dbc_channels,
+                                ldf_channels,
+                                app_config,
+                                selected_signals,
+                                start_time,
+                                config_dir,
+                                config_file_path,
+                                false, // is_maximized = false
+                                None,  // saved_window_bounds = None
+                                display_bounds,
+                            )
+                        })
+                    },
+                )
+                .ok();
             }
         } else {
-            // Maximize - save current bounds first
-            let current_bounds = window.bounds();
-            self.saved_window_bounds = Some(current_bounds);
-            self.is_maximized = true;
-
+            // Maximize - recreate window with maximized bounds
             if let Some(maximized_bounds) = self.display_bounds {
-                // Resize to fill the screen
-                window.resize(gpui::Size {
-                    width: maximized_bounds.size.width,
-                    height: maximized_bounds.size.height,
-                });
-                cx.notify();
+                // Save current bounds first
+                let current_bounds = window.bounds();
+                self.saved_window_bounds = Some(current_bounds);
+
+                // Clone all necessary state
+                let current_view = self.current_view;
+                let messages = self.messages.clone();
+                let status_msg = self.status_msg.clone();
+                let dbc_channels = self.dbc_channels.clone();
+                let ldf_channels = self.ldf_channels.clone();
+                let app_config = self.app_config.clone();
+                let selected_signals = self.selected_signals.clone();
+                let start_time = self.start_time;
+                let config_dir = self.config_dir.clone();
+                let config_file_path = self.config_file_path.clone();
+                let saved_bounds = self.saved_window_bounds;
+                let display_bounds = self.display_bounds;
+
+                // Close current window
+                window.remove_window();
+
+                // Open new maximized window
+                cx.open_window(
+                    WindowOptions {
+                        window_bounds: Some(WindowBounds::Windowed(maximized_bounds)),
+                        titlebar: Some(TitlebarOptions {
+                            title: Some("CanView - CAN/LIN Bus Analyzer".into()),
+                            appears_transparent: true,
+                            traffic_light_position: None,
+                        }),
+                        kind: WindowKind::Normal,
+                        ..Default::default()
+                    },
+                    move |_window, cx| {
+                        cx.new(|_cx| {
+                            Self::new_with_state(
+                                current_view,
+                                messages,
+                                status_msg,
+                                dbc_channels,
+                                ldf_channels,
+                                app_config,
+                                selected_signals,
+                                start_time,
+                                config_dir,
+                                config_file_path,
+                                true,  // is_maximized = true
+                                saved_bounds,
+                                display_bounds,
+                            )
+                        })
+                    },
+                )
+                .ok();
             }
         }
     }

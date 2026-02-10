@@ -7,6 +7,7 @@ mod domain;
 mod handlers;
 mod library;
 mod models;
+mod platform;
 mod rendering;
 mod ui;
 
