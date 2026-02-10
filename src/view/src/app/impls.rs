@@ -390,12 +390,37 @@ impl CanViewApp {
         // Initialize display bounds on first use
         self.initialize_display_bounds(cx);
 
-        // Safety: Force switch to LogView before window recreation
-        // This prevents crashes from trying to render library/plot views with invalid state
-        let was_in_problematic_view = matches!(self.current_view, AppView::PlotView | AppView::LibraryView);
-        if was_in_problematic_view {
-            self.current_view = AppView::LogView;
-        }
+        // CRITICAL SAFETY: Reset all unsafe state before window recreation
+        // These fields contain Entity handles or complex state that becomes invalid
+        // after window recreation. Must be reset to None/default values.
+
+        // Reset all Entity<InputState> handles (they point to destroyed window objects)
+        self.library_name_input = None;
+        self.version_name_input = None;
+        self.channel_id_input = None;
+        self.channel_name_input = None;
+        self.channel_db_path_input = None;
+        self.signal_search_input = None;
+
+        // Reset view to LogView (safest view with no complex state)
+        self.current_view = AppView::LogView;
+
+        // Reset dialog states
+        self.show_library_dialog = false;
+        self.show_channel_config_dialog = false;
+        self.show_add_channel_input = false;
+        self.show_version_input = false;
+
+        // Reset scroll handles (create fresh instances)
+        use gpui::UniformListScrollHandle;
+        self.list_scroll_handle = UniformListScrollHandle::new();
+        self.filter_scroll_handle = UniformListScrollHandle::new();
+        self.channel_filter_scroll_handle = UniformListScrollHandle::new();
+        self.signal_scroll_handle = UniformListScrollHandle::new();
+
+        // Reset interaction state
+        self.scrollbar_drag_state = None;
+        self.scroll_offset = px(0.0);
 
         if self.is_maximized {
             // Restore to normal size
