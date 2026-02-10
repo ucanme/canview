@@ -2,13 +2,12 @@
 //!
 //! This file contains all impl blocks for CanViewApp.
 
-use super::state::{AppView, CanViewApp, LibraryManager, ScrollbarDragState};
+use super::state::{AppView, CanViewApp, LibraryManager};
 use crate::AppConfig;
 use crate::ChannelType;
-use crate::rendering::{calculate_column_widths, render_message_row_static_with_widths};
-use blf::{BlfResult, LogObject, read_blf_from_file};
+use blf::BlfResult;
 use gpui::{prelude::*, *};
-use gpui_component::input::{InputEvent, InputState};
+use gpui_component::input::InputState;
 use parser::dbc::DbcDatabase;
 use parser::ldf::LdfDatabase;
 use std::collections::HashMap;

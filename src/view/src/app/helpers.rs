@@ -3,7 +3,7 @@
 //! This module contains utility functions and helpers used throughout the application.
 //! These are pure functions that don't depend on application state.
 
-use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+use chrono::{TimeZone, Utc};
 
 /// Convert BLF timestamp to seconds
 ///
