@@ -456,7 +456,7 @@ impl CanViewApp {
                         kind: WindowKind::Normal,
                         ..Default::default()
                     },
-                    |_window, cx| {
+                    |window, cx| {
                         let mut app = cx.new(|_cx| Self::new_with_maximized_state_and_bounds(false, None));
                         let view = app.clone();
                         // Restore runtime state and load configuration
@@ -465,7 +465,7 @@ impl CanViewApp {
                             app.load_startup_config();
                             cx.notify();
                         });
-                        cx.new(|cx| gpui_component::Root::new(view, _window, cx))
+                        cx.new(|cx| gpui_component::Root::new(view, window, cx))
                     },
                 )
                 .ok();
@@ -493,7 +493,7 @@ impl CanViewApp {
                         kind: WindowKind::Normal,
                         ..Default::default()
                     },
-                    |_window, cx| {
+                    |window, cx| {
                         let mut app = cx.new(|_cx| Self::new_with_maximized_state_and_bounds(true, saved_bounds));
                         // Restore runtime state and load configuration
                         let view = app.clone();
@@ -502,7 +502,7 @@ impl CanViewApp {
                             app.load_startup_config();
                             cx.notify();
                         });
-                        cx.new(|cx| gpui_component::Root::new(view, _window, cx))
+                        cx.new(|cx| gpui_component::Root::new(view, window, cx))
                     },
                 )
                 .ok();
