@@ -390,121 +390,49 @@ impl CanViewApp {
         // Initialize display bounds on first use
         self.initialize_display_bounds(cx);
 
-        if self.is_maximized {
-            // Restore to normal size - recreate window with saved bounds
-            if let Some(saved_bounds) = self.saved_window_bounds {
-                // Clone all necessary state
-                let current_view = self.current_view;
-                let messages = self.messages.clone();
-                let status_msg = self.status_msg.clone();
-                let dbc_channels = self.dbc_channels.clone();
-                let ldf_channels = self.ldf_channels.clone();
-                let app_config = self.app_config.clone();
-                let selected_signals = self.selected_signals.clone();
-                let start_time = self.start_time;
-                let config_dir = self.config_dir.clone();
-                let config_file_path = self.config_file_path.clone();
-                let display_bounds = self.display_bounds;
-                let library_manager = self.library_manager.clone();
+        #[cfg(target_os = "windows")]
+        {
+            use crate::platform::windows::{set_window_position};
+            use gpui::Pixels;
 
-                // Open new window with saved bounds FIRST
-                cx.open_window(
-                    WindowOptions {
-                        window_bounds: Some(WindowBounds::Windowed(saved_bounds)),
-                        titlebar: Some(TitlebarOptions {
-                            title: Some("CanView - CAN/LIN Bus Analyzer".into()),
-                            appears_transparent: true,
-                            traffic_light_position: None,
-                        }),
-                        kind: WindowKind::Normal,
-                        ..Default::default()
-                    },
-                    move |_window, cx| {
-                        cx.new(|_cx| {
-                            Self::new_with_state(
-                                current_view,
-                                messages,
-                                status_msg,
-                                dbc_channels,
-                                ldf_channels,
-                                app_config,
-                                selected_signals,
-                                start_time,
-                                config_dir,
-                                config_file_path,
-                                false, // is_maximized = false
-                                None,  // saved_window_bounds = None
-                                display_bounds,
-                                library_manager,
-                            )
-                        })
-                    },
-                )
-                .ok();
+            if self.is_maximized {
+                // Restore to saved bounds
+                if let Some(saved_bounds) = self.saved_window_bounds {
+                    let x = f32::from(saved_bounds.origin.x).round() as i32;
+                    let y = f32::from(saved_bounds.origin.y).round() as i32;
+                    let width = f32::from(saved_bounds.size.width).round() as i32;
+                    let height = f32::from(saved_bounds.size.height).round() as i32;
 
-                // Close current window AFTER new window is created
-                window.remove_window();
+                    unsafe {
+                        let _ = set_window_position(x, y, width, height);
+                    }
+
+                    self.is_maximized = false;
+                }
+            } else {
+                // Maximize to display bounds
+                if let Some(display_bounds) = self.display_bounds {
+                    // Save current bounds first
+                    self.saved_window_bounds = Some(window.bounds());
+
+                    let x = f32::from(display_bounds.origin.x).round() as i32;
+                    let y = f32::from(display_bounds.origin.y).round() as i32;
+                    let width = f32::from(display_bounds.size.width).round() as i32;
+                    let height = f32::from(display_bounds.size.height).round() as i32;
+
+                    unsafe {
+                        let _ = set_window_position(x, y, width, height);
+                    }
+
+                    self.is_maximized = true;
+                }
             }
-        } else {
-            // Maximize - recreate window with maximized bounds
-            if let Some(maximized_bounds) = self.display_bounds {
-                // Save current bounds first
-                let current_bounds = window.bounds();
-                self.saved_window_bounds = Some(current_bounds);
+        }
 
-                // Clone all necessary state
-                let current_view = self.current_view;
-                let messages = self.messages.clone();
-                let status_msg = self.status_msg.clone();
-                let dbc_channels = self.dbc_channels.clone();
-                let ldf_channels = self.ldf_channels.clone();
-                let app_config = self.app_config.clone();
-                let selected_signals = self.selected_signals.clone();
-                let start_time = self.start_time;
-                let config_dir = self.config_dir.clone();
-                let config_file_path = self.config_file_path.clone();
-                let saved_bounds = self.saved_window_bounds;
-                let display_bounds = self.display_bounds;
-                let library_manager = self.library_manager.clone();
-
-                // Open new maximized window FIRST
-                cx.open_window(
-                    WindowOptions {
-                        window_bounds: Some(WindowBounds::Windowed(maximized_bounds)),
-                        titlebar: Some(TitlebarOptions {
-                            title: Some("CanView - CAN/LIN Bus Analyzer".into()),
-                            appears_transparent: true,
-                            traffic_light_position: None,
-                        }),
-                        kind: WindowKind::Normal,
-                        ..Default::default()
-                    },
-                    move |_window, cx| {
-                        cx.new(|_cx| {
-                            Self::new_with_state(
-                                current_view,
-                                messages,
-                                status_msg,
-                                dbc_channels,
-                                ldf_channels,
-                                app_config,
-                                selected_signals,
-                                start_time,
-                                config_dir,
-                                config_file_path,
-                                true,  // is_maximized = true
-                                saved_bounds,
-                                display_bounds,
-                                library_manager,
-                            )
-                        })
-                    },
-                )
-                .ok();
-
-                // Close current window AFTER new window is created
-                window.remove_window();
-            }
+        #[cfg(not(target_os = "windows"))]
+        {
+            // Fallback for non-Windows: do nothing
+            eprintln!("Window maximize not supported on this platform");
         }
     }
 
