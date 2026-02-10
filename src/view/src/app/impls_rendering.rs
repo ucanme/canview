@@ -3,13 +3,12 @@
 //! This file contains all rendering methods for CanViewApp.
 //! Separated from impls.rs to improve code organization and reduce file size.
 
-use super::state::{AppView, CanViewApp};
-use crate::AppConfig;
+use super::state::{AppView, CanViewApp, ScrollbarDragState};
+use crate::ChannelType;
 use crate::rendering::{calculate_column_widths, render_message_row_static_with_widths};
-use blf::LogObject;
+use blf::{LogObject, read_blf_from_file};
 use gpui::{prelude::*, *};
-use gpui_component::input::InputState;
-use std::path::PathBuf;
+use gpui_component::input::{InputEvent, InputState};
 
 impl CanViewApp {
     // ===== Rendering Methods =====
@@ -1620,7 +1619,9 @@ impl CanViewApp {
                     ),
             )
     }
+}
 
+impl Render for CanViewApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // Update container height based on current window size
         self.update_container_height(window);

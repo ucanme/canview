@@ -193,7 +193,7 @@ impl CanViewApp {
         }
     }
 
-    pub(crate) fn apply_blf_result(&mut self, result: anyhow::Result<BlfResult>) {
+    fn apply_blf_result(&mut self, result: anyhow::Result<BlfResult>) {
         match result {
             Ok(result) => {
                 let error_count = result.errors.len();
@@ -253,12 +253,12 @@ impl CanViewApp {
             "Config loading temporarily unavailable. Please use command-line arguments.".into();
     }
 
-    pub(crate) fn import_database_file(&mut self, _cx: &mut Context<Self>) {
+    fn import_database_file(&mut self, _cx: &mut Context<Self>) {
         // TODO: File dialog integration requires fixing GPUI async lifetime issues on Windows
         self.status_msg =
             "Database import temporarily unavailable. Please use library management.".into();
     }
-    pub(crate) fn get_timestamp_string(&self, timestamp: u64) -> String {
+    fn get_timestamp_string(&self, timestamp: u64) -> String {
         if let Some(start) = &self.start_time {
             let msg_time = *start + chrono::Duration::nanoseconds(timestamp as i64);
             // Format: YYYY-MM-DD HH:MM:SS.mmmmmm (microseconds)
@@ -273,7 +273,7 @@ impl CanViewApp {
     ///
     /// Helper method to check and process file dialog results.
     /// Returns true if a result was processed, false otherwise.
-    pub(crate) fn handle_file_dialog_result(&mut self, cx: &mut Context<Self>) -> bool {
+    fn handle_file_dialog_result(&mut self, cx: &mut Context<Self>) -> bool {
         if let Some(receiver) = self.pending_file_path.take() {
             match receiver.try_recv() {
                 Ok(Some(path_str)) => {
@@ -308,7 +308,7 @@ impl CanViewApp {
     ///
     /// Helper method to convert CAN/LIN data to hex string representation.
     /// This reduces code duplication in message rendering.
-    pub(crate) fn format_data_hex(data: &[u8], dlc: u8) -> String {
+    fn format_data_hex(data: &[u8], dlc: u8) -> String {
         let actual_data_len = data.len().min(dlc as usize);
         data.iter()
             .take(actual_data_len)
@@ -321,7 +321,7 @@ impl CanViewApp {
     ///
     /// Helper method to decode and format signals from a CAN message.
     /// Returns a comma-separated string of signal=value pairs.
-    pub(crate) fn extract_can_signals(
+    fn extract_can_signals(
         &self,
         channel: u16,
         msg_id: u32,
@@ -347,7 +347,7 @@ impl CanViewApp {
     ///
     /// Helper method to decode and format signals from a LIN message.
     /// Returns a comma-separated string of signal=value pairs.
-    pub(crate) fn extract_lin_signals(
+    fn extract_lin_signals(
         &self,
         channel: u16,
         frame_id: u8,
@@ -377,7 +377,7 @@ impl CanViewApp {
 
     /// Import a database file
     /// Save the current configuration to file
-    pub(crate) fn save_config(&self, cx: &mut Context<Self>) {
+    fn save_config(&self, cx: &mut Context<Self>) {
         let config_path = PathBuf::from("multi_channel_config.json");
         if let Ok(content) = serde_json::to_string_pretty(&self.app_config) {
             if std::fs::write(&config_path, content).is_ok() {
@@ -387,7 +387,7 @@ impl CanViewApp {
     }
 }
 impl CanViewApp {
-    pub(crate) fn toggle_maximize(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    fn toggle_maximize(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         // Initialize display bounds on first use
         self.initialize_display_bounds(cx);
 
@@ -532,7 +532,7 @@ impl CanViewApp {
         app
     }
 
-    pub(crate) fn update_container_height(&mut self, window: &mut Window) {
+    fn update_container_height(&mut self, window: &mut Window) {
         // Get window bounds
         let window_size = window.bounds();
         let window_height = f32::from(window_size.size.height);
@@ -547,7 +547,97 @@ impl CanViewApp {
         }
     }
 
-}
+    /// Filter messages based on ID and channel filters
+    ///
+    /// Helper method to apply both ID and channel filters to the message list.
+    /// This is extracted from render_log_view to reduce complexity.
+    fn filter_messages(&self) -> Vec<LogObject> {
+        match (self.id_filter, self.channel_filter) {
+            (None, None) => self.messages.clone(),
+            (Some(filter_id), None) => {
+                // Only ID filter
+                self.messages
+                    .iter()
+                    .filter(|msg| match msg {
+                        LogObject::CanMessage(can_msg) => can_msg.id == filter_id,
+                        LogObject::CanMessage2(can_msg) => can_msg.id == filter_id,
+                        LogObject::CanFdMessage(fd_msg) => fd_msg.id == filter_id,
+                        LogObject::CanFdMessage64(fd_msg) => fd_msg.id == filter_id,
+                        LogObject::LinMessage(lin_msg) => lin_msg.id as u32 == filter_id,
+                        LogObject::LinMessage2(_) => false,
+                        _ => false,
+                    })
+                    .cloned()
+                    .collect()
+            }
+            (None, Some(filter_channel)) => {
+                // Only channel filter
+                self.messages
+                    .iter()
+                    .filter(|msg| match msg {
+                        LogObject::CanMessage(can_msg) => {
+                            can_msg.channel == filter_channel
+                        }
+                        LogObject::CanMessage2(can_msg) => {
+                            can_msg.channel == filter_channel
+                        }
+                        LogObject::CanFdMessage(fd_msg) => {
+                            fd_msg.channel == filter_channel
+                        }
+                        LogObject::CanFdMessage64(fd_msg) => {
+                            fd_msg.channel as u16 == filter_channel
+                        }
+                        LogObject::LinMessage(lin_msg) => {
+                            lin_msg.channel == filter_channel
+                        }
+                        LogObject::LinMessage2(_) => false,
+                        _ => false,
+                    })
+                    .cloned()
+                    .collect()
+            }
+            (Some(filter_id), Some(filter_channel)) => {
+                // Both ID and channel filters
+                self.messages
+                    .iter()
+                    .filter(|msg| match msg {
+                        LogObject::CanMessage(can_msg) => {
+                            can_msg.id == filter_id && can_msg.channel == filter_channel
+                        }
+                        LogObject::CanMessage2(can_msg) => {
+                            can_msg.id == filter_id && can_msg.channel == filter_channel
+                        }
+                        LogObject::CanFdMessage(fd_msg) => {
+                            fd_msg.id == filter_id && fd_msg.channel == filter_channel
+                        }
+                        LogObject::CanFdMessage64(fd_msg) => {
+                            fd_msg.id == filter_id && fd_msg.channel as u16 == filter_channel
+                        }
+                        LogObject::LinMessage(lin_msg) => {
+                            lin_msg.id as u32 == filter_id
+                                && lin_msg.channel == filter_channel
+                        }
+                        LogObject::LinMessage2(_) => false,
+                        _ => false,
+                    })
+                    .cloned()
+                    .collect()
+            }
+        }
+    }
+
+    #[allow(dead_code)]
+    // Render channel filter dropdown
+    /// Convert BLF timestamp to seconds based on object_flags
+    fn convert_timestamp_to_seconds(timestamp: u64, flags: u32) -> f64 {
+        if flags & 0x01 != 0 {
+            // TimeTenMics: 10 microseconds per tick
+            timestamp as f64 / 100_000.0
+        } else {
+            // TimeOneNans (default): 1 nanosecond per tick
+            timestamp as f64 / 1_000_000_000.0
+        }
+    }
 
 // ========== Library Management Methods ==========
 impl CanViewApp {
@@ -1094,7 +1184,7 @@ impl CanViewApp {
     ///
     /// Helper method to determine background color for zebra striping in lists.
     /// Returns alternating colors based on index parity.
-    pub(crate) fn get_zebra_bg_color(index: usize) -> Rgba {
+    fn get_zebra_bg_color(index: usize) -> Rgba {
         if index.is_multiple_of(2) {
             rgb(0x09090b) // Zed's dark background (zebra)
         } else {
