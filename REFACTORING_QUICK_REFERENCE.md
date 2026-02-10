@@ -127,10 +127,36 @@ git commit -m "Phase 2.X: 描述"
 - ✅ 从 impls.rs 删除已迁移的渲染方法
 - ✅ 运行 cargo check 验证编译
 
-### Phase 3 - 待规划
-- [ ] 修复控制器层编译错误
-- [ ] 分离业务逻辑
-- [ ] 创建新控制器模块
+### Phase 3 - 待执行
+
+详见 [PHASE3_PLAN.md](./PHASE3_PLAN.md)
+
+#### Phase 3.1: 文件对话框异步问题 🔥 (优先级: 高)
+- [ ] 研究 GPUI 文件对话框 API
+- [ ] 实现 import_database_file
+- [ ] 实现 quick_import_database
+- [ ] 实现库版本文件选择
+- [ ] 测试 Windows 平台兼容性
+
+#### Phase 3.2: 拆分库管理逻辑 (优先级: 中)
+- [ ] 创建 impls_library_management.rs
+- [ ] 迁移库管理方法 (~750 行)
+- [ ] 验证编译和功能
+
+#### Phase 3.3: 状态管理模块 (优先级: 中)
+- [ ] 创建 state_management.rs
+- [ ] 实现状态转换验证
+- [ ] 改善状态更新逻辑
+
+#### Phase 3.4: 错误处理改进 (优先级: 中)
+- [ ] 创建 error_handling.rs
+- [ ] 定义 AppError 枚举
+- [ ] 改善错误提示
+
+#### Phase 3.5: 单元测试 (优先级: 低)
+- [ ] 为 helpers.rs 添加测试
+- [ ] 为命令模块添加测试
+- [ ] 提升测试覆盖率到 >50%
 
 ---
 
