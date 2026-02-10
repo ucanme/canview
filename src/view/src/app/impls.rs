@@ -5,7 +5,7 @@
 use super::state::{AppView, CanViewApp, LibraryManager};
 use crate::AppConfig;
 use crate::ChannelType;
-use blf::BlfResult;
+use blf::{BlfResult, LogObject};
 use gpui::{prelude::*, *};
 use gpui_component::input::InputState;
 use parser::dbc::DbcDatabase;
