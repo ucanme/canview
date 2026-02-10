@@ -1888,7 +1888,18 @@ impl Render for CanViewApp {
                                     move |_event, _, cx| {
                                         cx.stop_propagation();
                                         view.update(cx, |this, cx| {
-                                            // Safety check: prevent crash from excessive message count
+                                            // CRITICAL SAFETY: Block PlotView after any window operation
+                                            // The rendering logic has deep closure chains that cause
+                                            // stack overflow even with empty data.
+                                            // Window recreation marks this unsafe state.
+                                            if this.is_maximized || this.saved_window_bounds.is_some() {
+                                                this.status_msg =
+                                                    "Plot view unavailable after window resize. Please restart application.".into();
+                                                cx.notify();
+                                                return;
+                                            }
+
+                                            // Also check message count as additional safety
                                             if this.messages.len() > 100_000 {
                                                 this.status_msg = format!(
                                                     "Cannot plot: too many messages ({}). Limit: 100,000",
