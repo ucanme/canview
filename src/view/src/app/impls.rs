@@ -426,18 +426,13 @@ impl CanViewApp {
         self.scrollbar_drag_state = None;
         self.scroll_offset = px(0.0);
 
-        // Reset plot state (prevent plot view crashes)
-        self.plot_data = std::sync::Arc::from([]);
-        self.plot_zoom_start = None;
-        self.plot_zoom_end = None;
+        // Reset only transient plot interaction state (not zoom state or width)
         self.is_dragging_zoom = false;
         self.zoom_drag_start_x = None;
         self.zoom_drag_current_x = None;
-        self.show_plot_points = true;
         self.hover_point = None;
         self.plot_hover_time = None;
         self.plot_hover_x = None;
-        self.plot_width_px = px(0.0);
 
         if self.is_maximized {
             // Restore to normal size
