@@ -65,6 +65,7 @@ pub struct DatabaseStats {
 }
 
 /// 信号库管理器
+#[derive(Clone)]
 pub struct LibraryManager {
     libraries: Vec<SignalLibrary>,
 }

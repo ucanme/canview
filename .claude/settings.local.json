@@ -25,7 +25,9 @@
       "Bash(cargo test:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(Select-String:*)"
+      "Bash(Select-String:*)",
+      "Bash(find:*)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []

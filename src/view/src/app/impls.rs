@@ -405,6 +405,7 @@ impl CanViewApp {
                 let config_dir = self.config_dir.clone();
                 let config_file_path = self.config_file_path.clone();
                 let display_bounds = self.display_bounds;
+                let library_manager = self.library_manager.clone();
 
                 // Close current window
                 window.remove_window();
@@ -437,6 +438,7 @@ impl CanViewApp {
                                 false, // is_maximized = false
                                 None,  // saved_window_bounds = None
                                 display_bounds,
+                                library_manager,
                             )
                         })
                     },
@@ -463,6 +465,7 @@ impl CanViewApp {
                 let config_file_path = self.config_file_path.clone();
                 let saved_bounds = self.saved_window_bounds;
                 let display_bounds = self.display_bounds;
+                let library_manager = self.library_manager.clone();
 
                 // Close current window
                 window.remove_window();
@@ -495,6 +498,7 @@ impl CanViewApp {
                                 true,  // is_maximized = true
                                 saved_bounds,
                                 display_bounds,
+                                library_manager,
                             )
                         })
                     },
@@ -518,6 +522,7 @@ impl CanViewApp {
         is_maximized: bool,
         saved_window_bounds: Option<Bounds<Pixels>>,
         display_bounds: Option<Bounds<Pixels>>,
+        library_manager: LibraryManager,
     ) -> Self {
         let mut app = Self {
             current_view,
