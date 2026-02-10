@@ -27,7 +27,8 @@
       "Bash(git commit:*)",
       "Bash(Select-String:*)",
       "Bash(find:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(git ls-tree:*)"
     ],
     "deny": [],
     "ask": []

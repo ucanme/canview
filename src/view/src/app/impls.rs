@@ -407,10 +407,7 @@ impl CanViewApp {
                 let display_bounds = self.display_bounds;
                 let library_manager = self.library_manager.clone();
 
-                // Close current window
-                window.remove_window();
-
-                // Open new window with saved bounds
+                // Open new window with saved bounds FIRST
                 cx.open_window(
                     WindowOptions {
                         window_bounds: Some(WindowBounds::Windowed(saved_bounds)),
@@ -444,6 +441,9 @@ impl CanViewApp {
                     },
                 )
                 .ok();
+
+                // Close current window AFTER new window is created
+                window.remove_window();
             }
         } else {
             // Maximize - recreate window with maximized bounds
@@ -467,10 +467,7 @@ impl CanViewApp {
                 let display_bounds = self.display_bounds;
                 let library_manager = self.library_manager.clone();
 
-                // Close current window
-                window.remove_window();
-
-                // Open new maximized window
+                // Open new maximized window FIRST
                 cx.open_window(
                     WindowOptions {
                         window_bounds: Some(WindowBounds::Windowed(maximized_bounds)),
@@ -504,6 +501,9 @@ impl CanViewApp {
                     },
                 )
                 .ok();
+
+                // Close current window AFTER new window is created
+                window.remove_window();
             }
         }
     }
