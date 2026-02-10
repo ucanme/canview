@@ -453,7 +453,13 @@ impl CanViewApp {
                         ..Default::default()
                     },
                     |_window, cx| {
-                        cx.new(|_cx| Self::new_with_maximized_state_and_bounds(false, None))
+                        let mut app = cx.new(|_cx| Self::new_with_maximized_state_and_bounds(false, None));
+                        // Load configuration to restore library data
+                        app.update(cx, |app, cx| {
+                            app.load_startup_config();
+                            cx.notify();
+                        });
+                        app
                     },
                 )
                 .ok();
@@ -482,7 +488,13 @@ impl CanViewApp {
                         ..Default::default()
                     },
                     |_window, cx| {
-                        cx.new(|_cx| Self::new_with_maximized_state_and_bounds(true, saved_bounds))
+                        let mut app = cx.new(|_cx| Self::new_with_maximized_state_and_bounds(true, saved_bounds));
+                        // Load configuration to restore library data
+                        app.update(cx, |app, cx| {
+                            app.load_startup_config();
+                            cx.notify();
+                        });
+                        app
                     },
                 )
                 .ok();
