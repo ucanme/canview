@@ -564,7 +564,7 @@ impl CanViewApp {
             signal_search_input: None,
             signal_scroll_handle: gpui::UniformListScrollHandle::new(),
             // Library management
-            library_manager: LibraryManager::new(),
+            library_manager,
             selected_library_id: None,
             selected_version_id: None,
             new_library_name: String::new(),
