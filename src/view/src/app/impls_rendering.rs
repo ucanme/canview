@@ -130,6 +130,19 @@ impl CanViewApp {
     fn render_library_view(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
         use crate::ui::views::library_management::render_library_management_view;
 
+        // Safety check: prevent stack overflow from invalid state
+        let libraries = self.library_manager.libraries();
+        if libraries.len() > 1000 {
+            eprintln!("Warning: Too many libraries ({}), limiting to prevent stack overflow", libraries.len());
+            // Return empty view if too many libraries
+            return gpui::div()
+                .flex_1()
+                .size_full()
+                .bg(rgb(0x0a0a0a))
+                .child(gpui::div().px_4().py_2().text_sm().text_color(rgb(0xff0000))
+                    .child(format!("Error: Too many libraries ({}). Please remove some libraries.", libraries.len())));
+        }
+
         // Initialize input states if needed (only do this once)
         // Note: We can't create InputState here without window, so we'll handle it differently
         // The Input components will be created lazily when needed
@@ -138,7 +151,7 @@ impl CanViewApp {
             .flex_1()
             .size_full()
             .child(render_library_management_view(
-                self.library_manager.libraries(),
+                libraries,
                 &self.selected_library_id,
                 &self.selected_version_id, // Add selected version ID
                 &self.app_config.mappings,

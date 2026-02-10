@@ -390,6 +390,13 @@ impl CanViewApp {
         // Initialize display bounds on first use
         self.initialize_display_bounds(cx);
 
+        // Safety: Force switch to LogView before window recreation
+        // This prevents crashes from trying to render library/plot views with invalid state
+        let was_in_problematic_view = matches!(self.current_view, AppView::PlotView | AppView::LibraryView);
+        if was_in_problematic_view {
+            self.current_view = AppView::LogView;
+        }
+
         if self.is_maximized {
             // Restore to normal size
             if let Some(saved_bounds) = self.saved_window_bounds {

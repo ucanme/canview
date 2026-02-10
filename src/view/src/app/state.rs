@@ -192,7 +192,7 @@ impl CanViewApp {
     /// Create a new CanViewApp instance with default state
     pub fn new_state() -> Self {
         Self {
-            current_view: AppView::LogView,
+            current_view: AppView::LogView, // Force LogView to prevent chart/library crashes
             messages: Vec::new(),
             status_msg: gpui::SharedString::from(""),
             dbc_channels: HashMap::new(),
