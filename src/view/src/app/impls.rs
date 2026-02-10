@@ -396,7 +396,7 @@ impl CanViewApp {
                 self.is_maximized = false;
                 self.saved_window_bounds = None;
 
-                // Use window.resize to restore the saved size
+                // Restore window size
                 window.resize(gpui::Size {
                     width: saved_bounds.size.width,
                     height: saved_bounds.size.height,
@@ -404,12 +404,13 @@ impl CanViewApp {
                 cx.notify();
             }
         } else {
-            // Maximize
+            // Maximize - save current bounds first
             let current_bounds = window.bounds();
             self.saved_window_bounds = Some(current_bounds);
             self.is_maximized = true;
 
             if let Some(maximized_bounds) = self.display_bounds {
+                // Resize to fill the screen
                 window.resize(gpui::Size {
                     width: maximized_bounds.size.width,
                     height: maximized_bounds.size.height,
