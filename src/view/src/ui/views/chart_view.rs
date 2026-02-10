@@ -12,7 +12,22 @@ use chrono::{Timelike, Datelike};
 
 /// Render the plot view with signal charts
 pub fn render_plot_view(window: &mut Window, app: &mut CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoElement {
+    // Safety check: prevent crash from invalid plot state after window operations
     let series_data = app.plot_data.clone();
+
+    // Check if plot data size is reasonable
+    if series_data.len() > 100 {
+        eprintln!("Warning: Excessive plot data ({} series). This may indicate a state corruption issue.", series_data.len());
+        return div()
+            .size_full()
+            .flex()
+            .items_center()
+            .justify_center()
+            .bg(rgb(0x0f0f10))
+            .child(div().px_4().py_2().text_sm().text_color(rgb(0xff0000))
+                .child(format!("Error: Too many plot series ({}). Please reload the application.", series_data.len())));
+    }
+
     let has_data = !series_data.is_empty();
 
     div()

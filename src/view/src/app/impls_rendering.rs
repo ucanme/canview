@@ -1888,6 +1888,16 @@ impl Render for CanViewApp {
                                     move |_event, _, cx| {
                                         cx.stop_propagation();
                                         view.update(cx, |this, cx| {
+                                            // Safety check: prevent crash from excessive message count
+                                            if this.messages.len() > 100_000 {
+                                                this.status_msg = format!(
+                                                    "Cannot plot: too many messages ({}). Limit: 100,000",
+                                                    this.messages.len()
+                                                ).into();
+                                                cx.notify();
+                                                return;
+                                            }
+
                                             this.current_view = AppView::PlotView;
                                             this.plot_data =
                                                 crate::ui::views::chart_view::extract_series_data(
