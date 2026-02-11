@@ -11,10 +11,9 @@ pub struct SimpleDeprecatedInputState {
 
 /// Runtime state that needs to be preserved across window operations
 /// This data is NOT stored in config files but needs to survive window recreate
-/// NOTE: We intentionally do NOT preserve messages across window operations
-/// because they can be too large and cause stack overflow. Users can reload BLF files.
 pub struct RuntimeState {
     pub current_view: AppView,
+    pub messages: Vec<LogObject>,
     pub plot_data: std::sync::Arc<[crate::models::Series]>,
     pub plot_zoom_start: Option<f64>,
     pub plot_zoom_end: Option<f64>,
@@ -308,15 +307,16 @@ impl CanViewApp {
     }
 
     /// Save runtime state that needs to be preserved across window operations
-    /// This includes loaded data but NOT messages (too large) or UI state
+    /// This includes loaded data and messages
     pub fn save_runtime_state(&self) -> RuntimeState {
-        eprintln!("💾 Saving runtime state: {:?} view, {} messages (will be cleared), {} plot series, zoom: {:?}-{:?}, {} signals, {} DBC, {} LDF",
+        eprintln!("💾 Saving runtime state: {:?} view, {} messages, {} plot series, zoom: {:?}-{:?}, {} signals, {} DBC, {} LDF",
             self.current_view, self.messages.len(), self.plot_data.len(),
             self.plot_zoom_start, self.plot_zoom_end,
             self.selected_signals.len(),
             self.dbc_channels.len(), self.ldf_channels.len());
         RuntimeState {
             current_view: self.current_view.clone(),
+            messages: self.messages.clone(),
             plot_data: self.plot_data.clone(),
             plot_zoom_start: self.plot_zoom_start,
             plot_zoom_end: self.plot_zoom_end,
@@ -330,16 +330,17 @@ impl CanViewApp {
     }
 
     /// Restore runtime state after window operations
-    /// This preserves the loaded configuration when maximizing/restoring windows
-    /// NOTE: messages remain empty - user needs to reload BLF file if needed
+    /// This preserves the loaded configuration and messages when maximizing/restoring windows
     pub fn restore_runtime_state(&mut self, state: RuntimeState) {
-        eprintln!("♻️  Restoring runtime state: {:?} view, {} plot series, zoom: {:?}-{:?}, {} signals, {} DBC, {} LDF",
+        eprintln!("♻️  Restoring runtime state: {:?} view, {} messages, {} plot series, zoom: {:?}-{:?}, {} signals, {} DBC, {} LDF",
             state.current_view,
+            state.messages.len(),
             state.plot_data.len(),
             state.plot_zoom_start, state.plot_zoom_end,
             state.selected_signals.len(),
             state.dbc_channels.len(), state.ldf_channels.len());
         self.current_view = state.current_view;
+        self.messages = state.messages;
         self.plot_data = state.plot_data;
         self.plot_zoom_start = state.plot_zoom_start;
         self.plot_zoom_end = state.plot_zoom_end;
@@ -351,12 +352,12 @@ impl CanViewApp {
         self.ldf_channels = state.ldf_channels;
         self.start_time = state.start_time;
         self.is_streaming_mode = state.is_streaming_mode;
-        // messages remain empty - cleared during window recreate
-        eprintln!("✅ State restored. Now have: {:?} view, {} plot series, zoom: {:?}-{:?}, {} messages, {} signals, {} DBC, {} LDF",
+        eprintln!("✅ State restored. Now have: {:?} view, {} messages, {} plot series, zoom: {:?}-{:?}, {} signals, {} DBC, {} LDF",
             self.current_view,
+            self.messages.len(),
             self.plot_data.len(),
             self.plot_zoom_start, self.plot_zoom_end,
-            self.messages.len(), self.selected_signals.len(),
+            self.selected_signals.len(),
             self.dbc_channels.len(), self.ldf_channels.len());
     }
 }

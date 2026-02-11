@@ -128,17 +128,17 @@ pub unsafe fn restore_window() -> Result<(), String> {
 // Stub implementations for non-Windows platforms
 #[cfg(not(target_os = "windows"))]
 pub fn set_window_position(_x: i32, _y: i32, _width: i32, _height: i32) -> Result<(), String> {
-    Err!("Window positioning not supported on this platform".to_string())
+    Err("Window positioning not supported on this platform".to_string())
 }
 
 #[cfg(not(target_os = "windows"))]
 pub fn maximize_window() -> Result<(), String> {
-    Err!("Window maximize not supported on this platform".to_string())
+    Err("Window maximize not supported on this platform".to_string())
 }
 
 #[cfg(not(target_os = "windows"))]
 pub fn restore_window() -> Result<(), String> {
-    Err!("Window restore not supported on this platform".to_string())
+    Err("Window restore not supported on this platform".to_string())
 }
 
 #[cfg(test)]
