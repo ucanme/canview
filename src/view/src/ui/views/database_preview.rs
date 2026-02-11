@@ -89,7 +89,7 @@ pub fn render_database_preview(
                                 .cursor_pointer()
                                 .hover(|s| s.bg(rgb(0xb4befe)))
                                 .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                    this.plot_data = crate::ui::views::chart_view::extract_series_data(this);
+                                    crate::ui::views::chart_view::extract_and_update_series_data(this);
                                     this.current_view = crate::app::AppView::PlotView;
                                     cx.notify();
                                 }))

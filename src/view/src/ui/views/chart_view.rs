@@ -123,7 +123,7 @@ fn render_toolbar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoEl
                             .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this: &mut CanViewApp, _, _, cx| {
                                 this.plot_zoom_start = None;
                                 this.plot_zoom_end = None;
-                                this.plot_data = crate::ui::views::chart_view::extract_series_data(this);
+                                crate::ui::views::chart_view::extract_and_update_series_data(this);
                                 cx.notify();
                             }))
                             .child(div().text_xs().text_color(rgb(0xffffff)).child("Reset Zoom"))
@@ -160,7 +160,7 @@ fn render_toolbar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoEl
                                  let range = max_t - min_t;
                                  this.plot_zoom_start = Some(min_t + range * 0.25);
                                  this.plot_zoom_end = Some(max_t - range * 0.25);
-                                 this.plot_data = crate::ui::views::chart_view::extract_series_data(this);
+                                 crate::ui::views::chart_view::extract_and_update_series_data(this);
                                  cx.notify();
                              }
                         }))
@@ -176,7 +176,7 @@ fn render_toolbar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoEl
                         .hover(|s| s.bg(rgb(0x2563eb)))
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this: &mut CanViewApp, _event: &gpui::MouseDownEvent, _window, cx| {
                             eprintln!("🔄 Redraw button clicked - extracting series data...");
-                            this.plot_data = crate::ui::views::chart_view::extract_series_data(this);
+                            crate::ui::views::chart_view::extract_and_update_series_data(this);
                             eprintln!("✅ Data extraction complete, series count: {}", this.plot_data.len());
                             cx.notify();
                         }))
@@ -236,7 +236,7 @@ enum SidebarItem {
 }
 
 /// Render the signal selection sidebar
-fn render_signal_sidebar(window: &mut Window, app: &mut CanViewApp, view: Entity<CanViewApp>, cx: &mut Context<CanViewApp>) -> impl IntoElement {
+fn render_signal_sidebar(_window: &mut Window, app: &mut CanViewApp, view: Entity<CanViewApp>, cx: &mut Context<CanViewApp>) -> impl IntoElement {
     // 1. Prepare the flattened and filtered list of items
     let mut items = Vec::new();
     let filter_text = app.signal_filter_text.to_lowercase();
@@ -507,7 +507,7 @@ fn render_signal_sidebar(window: &mut Window, app: &mut CanViewApp, view: Entity
                             .hover(|s| s.bg(rgb(0x2563eb)))
                             .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
                                 eprintln!("Redraw button clicked!");
-                                this.plot_data = crate::ui::views::chart_view::extract_series_data(this);
+                                crate::ui::views::chart_view::extract_and_update_series_data(this);
                                 cx.notify();
                             }))
                             .child(
@@ -763,6 +763,16 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
         })
         // Global Canvas Interactions
         .on_mouse_down(MouseButton::Left, cx.listener(move |this: &mut CanViewApp, event: &MouseDownEvent, _, cx| {
+             // Check for double-click to reset zoom
+             if event.click_count == 2 {
+                 this.plot_zoom_start = None;
+                 this.plot_zoom_end = None;
+                 crate::ui::views::chart_view::extract_and_update_series_data(this);
+                 eprintln!("🔄 Double-click detected - resetting zoom");
+                 cx.notify();
+                 return;
+             }
+             
              this.is_dragging_zoom = true;
              this.zoom_drag_start_x = Some(event.position.x);
              this.zoom_drag_current_x = Some(event.position.x);
@@ -855,7 +865,7 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                         
                         this.plot_zoom_start = Some(new_start.max(0.0));
                         this.plot_zoom_end = Some(new_end);
-                        this.plot_data = crate::ui::views::chart_view::extract_series_data(this);
+                        crate::ui::views::chart_view::extract_and_update_series_data(this);
                     }
                 }
             }
@@ -875,9 +885,9 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                 return;
             }
 
+            // Let's remove unused chart_width_px
             // Calculate chart dimensions
             let window_width = window.bounds().size.width;
-            let chart_width_px = window_width - chart_start_x - padding;
 
             // Check if mouse is over the chart area
             let mouse_x = event.position.x;
@@ -885,16 +895,25 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                 return;
             }
 
-            // Calculate absolute data boundaries (never zoom beyond these)
-            let mut abs_min_t = f64::MAX;
-            let mut abs_max_t = f64::MIN;
-            for series in this.plot_data.iter() {
-                for p in series.points.iter() {
-                    if p.time < abs_min_t { abs_min_t = p.time; }
-                    if p.time > abs_max_t { abs_max_t = p.time; }
+            // Use stored full data time range (not from filtered plot_data!)
+            // plot_data is filtered by zoom range, so computing min/max from it
+            // would give us the zoomed range, not the full data range.
+            let (abs_min_t, abs_max_t) = match (this.plot_full_time_min, this.plot_full_time_max) {
+                (Some(min_t), Some(max_t)) if min_t < max_t => (min_t, max_t),
+                _ => {
+                    // Fallback: compute from plot_data (only correct when not zoomed)
+                    let mut min_t = f64::MAX;
+                    let mut max_t = f64::MIN;
+                    for series in this.plot_data.iter() {
+                        for p in series.points.iter() {
+                            if p.time < min_t { min_t = p.time; }
+                            if p.time > max_t { max_t = p.time; }
+                        }
+                    }
+                    if min_t == f64::MAX { return; }
+                    (min_t, max_t)
                 }
-            }
-            if abs_min_t == f64::MAX { return; } // No valid data
+            };
 
             // Get current zoomed range (or use full data range if not zoomed)
             let (current_min, current_max) = if let (Some(s), Some(e)) = (this.plot_zoom_start, this.plot_zoom_end) {
@@ -943,13 +962,7 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                 (new_min, new_max)
             } else {
                 // Zoom out: expand toward full data range
-                let abs_range = abs_max_t - abs_min_t;
-
-                // If we're already showing all data, don't expand further
-                if current_range >= abs_range * 0.999 {
-                    eprintln!("⚠️  Already at full data range ({:.3}s)", abs_range);
-                    return;
-                }
+                // abs_range removed as it was unused
 
                 // Simple expansion: multiply by zoom_factor
                 let new_range = current_range * zoom_factor;
@@ -959,7 +972,7 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                 let mut new_min = center - new_range / 2.0;
                 let mut new_max = center + new_range / 2.0;
 
-                // Clamp to data boundaries (this may reduce the range)
+                // Clamp to data boundaries
                 new_min = new_min.max(abs_min_t);
                 new_max = new_max.min(abs_max_t);
 
@@ -968,12 +981,13 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
 
             let new_range = new_max - new_min;
 
-            // Check if we've reset to full range (only clear zoom state if truly at full range)
+            // Check if we've reached or exceeded the full range
             let abs_range = abs_max_t - abs_min_t;
-            let is_full_range = (new_min - abs_min_t).abs() < 0.001 && (new_max - abs_max_t).abs() < 0.001;
+            // Use a more lenient threshold (0.95 instead of 0.999) to make it easier to reset
+            let is_at_or_near_full_range = new_range >= abs_range * 0.95;
 
-            if is_full_range {
-                // Reset to show full data - ONLY if we're actually at the boundaries
+            if is_at_or_near_full_range {
+                // Reset to show full data
                 this.plot_zoom_start = None;
                 this.plot_zoom_end = None;
                 eprintln!("🔍 Zoom OUT - reset to full range ({:.3}s)", abs_range);
@@ -986,7 +1000,7 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
             }
 
             // Refresh plot data with new zoom range
-            this.plot_data = crate::ui::views::chart_view::extract_series_data(this);
+            crate::ui::views::chart_view::extract_and_update_series_data(this);
             cx.notify();
         }))
         .into_any_element()
@@ -1610,4 +1624,27 @@ pub fn extract_series_data(app: &CanViewApp) -> Arc<[Series]> {
 
     eprintln!("✅ Extraction complete: {} series generated", all_series.len());
     Arc::from(all_series)
+}
+
+/// Wrapper that extracts series data and updates the full time range in app state.
+/// Call this instead of extract_series_data directly.
+pub fn extract_and_update_series_data(app: &mut CanViewApp) {
+    app.plot_data = extract_series_data(app);
+
+    // When not zoomed, store the full data time range for zoom-out reference
+    if app.plot_zoom_start.is_none() && app.plot_zoom_end.is_none() {
+        let mut min_t = f64::MAX;
+        let mut max_t = f64::MIN;
+        for series in app.plot_data.iter() {
+            for p in series.points.iter() {
+                if p.time < min_t { min_t = p.time; }
+                if p.time > max_t { max_t = p.time; }
+            }
+        }
+        if min_t < max_t {
+            app.plot_full_time_min = Some(min_t);
+            app.plot_full_time_max = Some(max_t);
+            eprintln!("📏 Stored full time range: {:.3}s - {:.3}s", min_t, max_t);
+        }
+    }
 }

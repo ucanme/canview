@@ -1894,10 +1894,7 @@ impl Render for CanViewApp {
                                         cx.stop_propagation();
                                         view.update(cx, |this, cx| {
                                             this.current_view = AppView::PlotView;
-                                            this.plot_data =
-                                                crate::ui::views::chart_view::extract_series_data(
-                                                    this,
-                                                );
+                                            crate::ui::views::chart_view::extract_and_update_series_data(this);
                                             cx.notify();
                                         });
                                     }

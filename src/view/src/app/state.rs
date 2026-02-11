@@ -17,6 +17,8 @@ pub struct RuntimeState {
     pub plot_data: std::sync::Arc<[crate::models::Series]>,
     pub plot_zoom_start: Option<f64>,
     pub plot_zoom_end: Option<f64>,
+    pub plot_full_time_min: Option<f64>,
+    pub plot_full_time_max: Option<f64>,
     pub show_plot_points: bool,
     pub selected_signals: Vec<String>,
     pub dbc_channels: HashMap<u16, DbcDatabase>,
@@ -170,6 +172,8 @@ pub struct CanViewApp {
     // Plot zoom state
     pub plot_zoom_start: Option<f64>,
     pub plot_zoom_end: Option<f64>,
+    pub plot_full_time_min: Option<f64>,
+    pub plot_full_time_max: Option<f64>,
     pub is_dragging_zoom: bool,
     pub zoom_drag_start_x: Option<Pixels>,
     pub zoom_drag_current_x: Option<Pixels>,
@@ -292,6 +296,8 @@ impl CanViewApp {
             // Plot zoom state
             plot_zoom_start: None,
             plot_zoom_end: None,
+            plot_full_time_min: None,
+            plot_full_time_max: None,
             is_dragging_zoom: false,
             zoom_drag_start_x: None,
             zoom_drag_current_x: None,
@@ -320,6 +326,8 @@ impl CanViewApp {
             plot_data: self.plot_data.clone(),
             plot_zoom_start: self.plot_zoom_start,
             plot_zoom_end: self.plot_zoom_end,
+            plot_full_time_min: self.plot_full_time_min,
+            plot_full_time_max: self.plot_full_time_max,
             show_plot_points: self.show_plot_points,
             selected_signals: self.selected_signals.clone(),
             dbc_channels: self.dbc_channels.clone(),
@@ -344,6 +352,8 @@ impl CanViewApp {
         self.plot_data = state.plot_data;
         self.plot_zoom_start = state.plot_zoom_start;
         self.plot_zoom_end = state.plot_zoom_end;
+        self.plot_full_time_min = state.plot_full_time_min;
+        self.plot_full_time_max = state.plot_full_time_max;
         self.show_plot_points = state.show_plot_points;
         // plot_width_px will be recalculated based on new window size
         self.plot_width_px = gpui::px(0.0);
