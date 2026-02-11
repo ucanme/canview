@@ -865,6 +865,130 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
             this.zoom_drag_current_x = None;
             cx.notify();
         }))
+        // Mouse wheel zoom
+        .on_scroll_wheel(cx.listener(move |this: &mut CanViewApp, event: &ScrollWheelEvent, window, cx| {
+            // Stop event propagation to prevent parent container from scrolling
+            cx.stop_propagation();
+
+            // Prevent zooming if no data
+            if this.plot_data.is_empty() {
+                return;
+            }
+
+            // Calculate chart dimensions
+            let window_width = window.bounds().size.width;
+            let chart_width_px = window_width - chart_start_x - padding;
+
+            // Check if mouse is over the chart area
+            let mouse_x = event.position.x;
+            if mouse_x < chart_start_x || mouse_x > (window_width - padding) {
+                return;
+            }
+
+            // Calculate absolute data boundaries (never zoom beyond these)
+            let mut abs_min_t = f64::MAX;
+            let mut abs_max_t = f64::MIN;
+            for series in this.plot_data.iter() {
+                for p in series.points.iter() {
+                    if p.time < abs_min_t { abs_min_t = p.time; }
+                    if p.time > abs_max_t { abs_max_t = p.time; }
+                }
+            }
+            if abs_min_t == f64::MAX { return; } // No valid data
+
+            // Get current zoomed range (or use full data range if not zoomed)
+            let (current_min, current_max) = if let (Some(s), Some(e)) = (this.plot_zoom_start, this.plot_zoom_end) {
+                (s, e)
+            } else {
+                (abs_min_t, abs_max_t)
+            };
+
+            let current_range = current_max - current_min;
+            if current_range <= 0.0 {
+                return;
+            }
+
+            // Determine zoom direction based on scroll delta
+            let scroll_delta = match event.delta {
+                gpui::ScrollDelta::Lines(point) => point.y,
+                gpui::ScrollDelta::Pixels(pixels) => f32::from(pixels.y),
+            };
+
+            // Lower threshold for better responsiveness
+            if scroll_delta.abs() < 0.01 {
+                return;
+            }
+
+            // Try reversed direction:
+            // Scroll backward (toward user) = positive delta = zoom IN
+            // Scroll forward (away from user) = negative delta = zoom OUT
+            let zoom_in = scroll_delta > 0.0;
+
+            let zoom_factor = 1.2;
+
+            let (new_min, new_max) = if zoom_in {
+                // Zoom in: reduce range
+                let new_range = current_range / zoom_factor;
+
+                // Ensure we don't go below minimum range
+                let min_range = 0.01;
+                if new_range < min_range {
+                    eprintln!("⚠️  Cannot zoom in further: minimum range ({:.3}s) reached", min_range);
+                    return;
+                }
+
+                let center = (current_min + current_max) / 2.0;
+                let new_min = center - new_range / 2.0;
+                let new_max = center + new_range / 2.0;
+                (new_min, new_max)
+            } else {
+                // Zoom out: expand toward full data range
+                let abs_range = abs_max_t - abs_min_t;
+
+                // If we're already showing all data, don't expand further
+                if current_range >= abs_range * 0.999 {
+                    eprintln!("⚠️  Already at full data range ({:.3}s)", abs_range);
+                    return;
+                }
+
+                // Simple expansion: multiply by zoom_factor
+                let new_range = current_range * zoom_factor;
+
+                // Expand from center
+                let center = (current_min + current_max) / 2.0;
+                let mut new_min = center - new_range / 2.0;
+                let mut new_max = center + new_range / 2.0;
+
+                // Clamp to data boundaries (this may reduce the range)
+                new_min = new_min.max(abs_min_t);
+                new_max = new_max.min(abs_max_t);
+
+                (new_min, new_max)
+            };
+
+            let new_range = new_max - new_min;
+
+            // Check if we've reset to full range (only clear zoom state if truly at full range)
+            let abs_range = abs_max_t - abs_min_t;
+            let is_full_range = (new_min - abs_min_t).abs() < 0.001 && (new_max - abs_max_t).abs() < 0.001;
+
+            if is_full_range {
+                // Reset to show full data - ONLY if we're actually at the boundaries
+                this.plot_zoom_start = None;
+                this.plot_zoom_end = None;
+                eprintln!("🔍 Zoom OUT - reset to full range ({:.3}s)", abs_range);
+            } else {
+                this.plot_zoom_start = Some(new_min);
+                this.plot_zoom_end = Some(new_max);
+                eprintln!("🔍 Zoom {}: {:.3}s -> {:.3}s (span: {:.3}s)",
+                    if zoom_in { "IN" } else { "OUT" },
+                    new_min, new_max, new_range);
+            }
+
+            // Refresh plot data with new zoom range
+            this.plot_data = crate::ui::views::chart_view::extract_series_data(this);
+            cx.notify();
+        }))
         .into_any_element()
 }
 
