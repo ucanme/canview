@@ -789,6 +789,10 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
             // We need to calculate time based on mouse position
             let mouse_x = event.position.x;
             
+            // Throttle: only notify if mouse moved more than 1px to reduce render load
+            let prev_hover_x = this.plot_hover_x.unwrap_or(px(-9999.0));
+            let moved_enough = (mouse_x - prev_hover_x).abs() > px(1.0);
+            
             // Calculate visible width
             let window_width = window.bounds().size.width;
             let chart_width_px = window_width - chart_start_x - padding;
@@ -796,32 +800,34 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
             
             // Bounds check
             if mouse_x >= chart_start_x && mouse_x <= (window_width - padding) {
-                this.plot_hover_x = Some(mouse_x);
-                
-                // Determine time range
-                let (min_t, max_t) = if let (Some(s), Some(e)) = (this.plot_zoom_start, this.plot_zoom_end) {
-                    (s, e)
-                } else {
-                    let mut min_t = f64::MAX;
-                    let mut max_t = f64::MIN;
-                    for series in this.plot_data.iter() {
-                        for p in series.points.iter() {
-                            if p.time < min_t { min_t = p.time; }
-                            if p.time > max_t { max_t = p.time; }
+                if moved_enough || this.is_dragging_zoom {
+                    this.plot_hover_x = Some(mouse_x);
+                    
+                    // Determine time range
+                    let (min_t, max_t) = if let (Some(s), Some(e)) = (this.plot_zoom_start, this.plot_zoom_end) {
+                        (s, e)
+                    } else {
+                        let mut min_t = f64::MAX;
+                        let mut max_t = f64::MIN;
+                        for series in this.plot_data.iter() {
+                            for p in series.points.iter() {
+                                if p.time < min_t { min_t = p.time; }
+                                if p.time > max_t { max_t = p.time; }
+                            }
                         }
-                    }
-                    if min_t == f64::MAX { (0.0, 1.0) } else { (min_t, max_t) }
-                };
-                
-                // Interpolate
-                let rel_x = (mouse_x - chart_start_x) / chart_width_px;
-                let rel_x = f32::max(0.0, f32::min(1.0, rel_x)); // Clamp
-                
-                let time_range = max_t - min_t;
-                let time = min_t + time_range * rel_x as f64;
-                
-                this.plot_hover_time = Some(time);
-                cx.notify();
+                        if min_t == f64::MAX { (0.0, 1.0) } else { (min_t, max_t) }
+                    };
+                    
+                    // Interpolate
+                    let rel_x = (mouse_x - chart_start_x) / chart_width_px;
+                    let rel_x = f32::max(0.0, f32::min(1.0, rel_x)); // Clamp
+                    
+                    let time_range = max_t - min_t;
+                    let time = min_t + time_range * rel_x as f64;
+                    
+                    this.plot_hover_time = Some(time);
+                    cx.notify();
+                }
             } else if this.plot_hover_x.is_some() {
                  // Clear hover if moved out (approximate)
                  this.plot_hover_x = None;
@@ -838,34 +844,45 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                 
                 // Only zoom if the selection is significant (> 10 pixels)
                 if (x1 - x2).abs() > px(10.0) {
-                    // Let's find the current min/max time in the visible plot_data
-                    let mut min_t = f64::MAX;
-                    let mut max_t = f64::MIN;
-                    for series in this.plot_data.iter() {
-                        for p in series.points.iter() {
-                            if p.time < min_t { min_t = p.time; }
-                            if p.time > max_t { max_t = p.time; }
+                    // Use stored full data time range for accurate mapping
+                    let (min_t, max_t) = match (this.plot_full_time_min, this.plot_full_time_max) {
+                        (Some(mn), Some(mx)) if mn < mx => (mn, mx),
+                        _ => {
+                            let mut min_t = f64::MAX;
+                            let mut max_t = f64::MIN;
+                            for series in this.plot_full_data.iter() {
+                                for p in series.points.iter() {
+                                    if p.time < min_t { min_t = p.time; }
+                                    if p.time > max_t { max_t = p.time; }
+                                }
+                            }
+                            if min_t == f64::MAX { (0.0, 1.0) } else { (min_t, max_t) }
                         }
-                    }
+                    };
                     
-                    if min_t == f64::MAX { min_t = 0.0; max_t = 1.0; }
-
-                    if min_t < max_t {
-                        // Assuming the plot area is roughly the width of the canvas minus sidebars
+                    // Get current zoomed range for coordinate mapping
+                    let (cur_min, cur_max) = if let (Some(s), Some(e)) = (this.plot_zoom_start, this.plot_zoom_end) {
+                        (s, e)
+                    } else {
+                        (min_t, max_t)
+                    };
+                    
+                    if cur_min < cur_max {
                         let window_width = window.bounds().size.width;
                         let plot_width = f32::from(window_width - chart_start_x - padding); 
                         
-                        // Map relative x to time
+                        // Map relative x to time within current visible range
                         let start_rel = f32::from(x1 - chart_start_x) / plot_width; 
                         let end_rel = f32::from(x2 - chart_start_x) / plot_width;
                         
-                        let t_range = max_t - min_t;
-                        let new_start = min_t + t_range * start_rel as f64;
-                        let new_end = min_t + t_range * end_rel as f64;
+                        let cur_range = cur_max - cur_min;
+                        let new_start = cur_min + cur_range * start_rel as f64;
+                        let new_end = cur_min + cur_range * end_rel as f64;
                         
-                        this.plot_zoom_start = Some(new_start.max(0.0));
-                        this.plot_zoom_end = Some(new_end);
-                        crate::ui::views::chart_view::extract_and_update_series_data(this);
+                        this.plot_zoom_start = Some(new_start.max(min_t));
+                        this.plot_zoom_end = Some(new_end.min(max_t));
+                        // Fast filter: just slice plot_full_data, no message re-scan
+                        crate::ui::views::chart_view::apply_zoom_to_full_data(this);
                     }
                 }
             }
@@ -999,8 +1016,8 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                     new_min, new_max, new_range);
             }
 
-            // Refresh plot data with new zoom range
-            crate::ui::views::chart_view::extract_and_update_series_data(this);
+            // Fast filter: slice plot_full_data without re-decoding messages
+            crate::ui::views::chart_view::apply_zoom_to_full_data(this);
             cx.notify();
         }))
         .into_any_element()
@@ -1626,16 +1643,84 @@ pub fn extract_series_data(app: &CanViewApp) -> Arc<[Series]> {
     Arc::from(all_series)
 }
 
+/// Fast zoom filter: slice plot_full_data by zoom range without re-decoding messages.
+/// This is called every time zoom changes; it's O(points), not O(messages).
+pub fn apply_zoom_to_full_data(app: &mut CanViewApp) {
+    if app.plot_full_data.is_empty() {
+        // plot_full_data hasn't been populated yet.
+        // Do NOT call extract_and_update_series_data here — that would cause
+        // mutual recursion (extract_and_update_series_data → apply_zoom_to_full_data).
+        // Just keep plot_data empty; the caller is responsible for filling
+        // plot_full_data first before calling us.
+        app.plot_data = std::sync::Arc::from([]);
+        return;
+    }
+
+    let zoom_start = app.plot_zoom_start;
+    let zoom_end = app.plot_zoom_end;
+
+    if zoom_start.is_none() && zoom_end.is_none() {
+        // No zoom: display full data directly
+        app.plot_data = app.plot_full_data.clone();
+        return;
+    }
+
+    // Filter each series by zoom range and reassign point indices
+    let filtered: Vec<crate::models::Series> = app.plot_full_data.iter().map(|series| {
+        // Collect filtered points while remembering each point's original index
+        // (original index → lookup in time_labels; new sequential index → label spacing)
+        let orig_indexed: Vec<(usize, crate::models::DataPoint)> = series.points.iter()
+            .filter(|p| {
+                if let Some(s) = zoom_start { if p.time < s { return false; } }
+                if let Some(e) = zoom_end   { if p.time > e { return false; } }
+                true
+            })
+            .map(|p| (p.index, *p))  // save original index before we overwrite it
+            .collect();
+
+        // Build time_labels using the ORIGINAL index, then reassign sequential index
+        let time_labels: Vec<String> = orig_indexed.iter()
+            .map(|(orig_idx, _)| series.time_labels.get(*orig_idx).cloned().unwrap_or_default())
+            .collect();
+
+        let mut filtered_pts: Vec<crate::models::DataPoint> = orig_indexed.into_iter()
+            .enumerate()
+            .map(|(new_i, (_, mut p))| { p.index = new_i; p })
+            .collect();
+
+        // Sanity: ensure pts len matches labels len (they always should)
+        debug_assert_eq!(filtered_pts.len(), time_labels.len());
+        let _ = &mut filtered_pts; // suppress unused-mut warning
+
+        crate::models::Series {
+            name: series.name.clone(),
+            color: series.color,
+            unit: series.unit.clone(),
+            points: filtered_pts,
+            time_labels,
+        }
+    }).collect();
+
+    app.plot_data = std::sync::Arc::from(filtered);
+}
+
 /// Wrapper that extracts series data and updates the full time range in app state.
 /// Call this instead of extract_series_data directly.
 pub fn extract_and_update_series_data(app: &mut CanViewApp) {
-    app.plot_data = extract_series_data(app);
+    // Always decode ALL data (ignoring zoom range) into plot_full_data
+    let saved_start = app.plot_zoom_start.take();
+    let saved_end = app.plot_zoom_end.take();
 
-    // When not zoomed, store the full data time range for zoom-out reference
-    if app.plot_zoom_start.is_none() && app.plot_zoom_end.is_none() {
+    app.plot_full_data = extract_series_data(app);
+
+    app.plot_zoom_start = saved_start;
+    app.plot_zoom_end = saved_end;
+
+    // Store the full data time range for zoom-out reference
+    {
         let mut min_t = f64::MAX;
         let mut max_t = f64::MIN;
-        for series in app.plot_data.iter() {
+        for series in app.plot_full_data.iter() {
             for p in series.points.iter() {
                 if p.time < min_t { min_t = p.time; }
                 if p.time > max_t { max_t = p.time; }
@@ -1647,4 +1732,7 @@ pub fn extract_and_update_series_data(app: &mut CanViewApp) {
             eprintln!("📏 Stored full time range: {:.3}s - {:.3}s", min_t, max_t);
         }
     }
+
+    // Now apply zoom filter to set plot_data
+    apply_zoom_to_full_data(app);
 }

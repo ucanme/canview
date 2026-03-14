@@ -1,4 +1,4 @@
-﻿//! CanViewApp implementation blocks
+//! CanViewApp implementation blocks
 //!
 //! This file contains all impl blocks for CanViewApp.
 
@@ -25,6 +25,7 @@ impl CanViewApp {
             selected_signals: Vec::new(),
             start_time: None,
             plot_data: std::sync::Arc::from([]),
+            plot_full_data: std::sync::Arc::from([]),
             config_dir: None,
             config_file_path: None,
             signal_storage: crate::library::SignalLibraryStorage::new().ok(),
@@ -207,6 +208,7 @@ impl CanViewApp {
                 // 只有在成功加载后才清空之前的数据
                 self.messages.clear();
                 self.plot_data = std::sync::Arc::from([]);
+                self.plot_full_data = std::sync::Arc::from([]);
                 self.selected_signals.clear();
 
                 // 自动切换到数据列表视图
@@ -536,6 +538,7 @@ impl CanViewApp {
             selected_signals,
             start_time,
             plot_data: std::sync::Arc::from([]),
+            plot_full_data: std::sync::Arc::from([]),
             config_dir,
             config_file_path,
             signal_storage: crate::library::SignalLibraryStorage::new().ok(),

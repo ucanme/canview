@@ -15,6 +15,8 @@ pub struct RuntimeState {
     pub current_view: AppView,
     pub messages: Vec<LogObject>,
     pub plot_data: std::sync::Arc<[crate::models::Series]>,
+    /// Full (unfiltered) decoded data cache — used for fast zoom-only re-filter
+    pub plot_full_data: std::sync::Arc<[crate::models::Series]>,
     pub plot_zoom_start: Option<f64>,
     pub plot_zoom_end: Option<f64>,
     pub plot_full_time_min: Option<f64>,
@@ -76,6 +78,8 @@ pub struct CanViewApp {
     pub selected_signals: Vec<String>,
     pub start_time: Option<chrono::NaiveDateTime>,
     pub plot_data: std::sync::Arc<[crate::models::Series]>,
+    /// Full (unfiltered) decoded series — zoom only re-filters this, never re-decodes messages
+    pub plot_full_data: std::sync::Arc<[crate::models::Series]>,
 
     // Configuration
     pub config_dir: Option<PathBuf>,
@@ -231,6 +235,7 @@ impl CanViewApp {
             selected_signals: Vec::new(),
             start_time: None,
             plot_data: std::sync::Arc::from([]),
+            plot_full_data: std::sync::Arc::from([]),
             config_dir: None,
             config_file_path: None,
             signal_storage: crate::library::SignalLibraryStorage::new().ok(),
@@ -324,6 +329,7 @@ impl CanViewApp {
             current_view: self.current_view.clone(),
             messages: self.messages.clone(),
             plot_data: self.plot_data.clone(),
+            plot_full_data: self.plot_full_data.clone(),
             plot_zoom_start: self.plot_zoom_start,
             plot_zoom_end: self.plot_zoom_end,
             plot_full_time_min: self.plot_full_time_min,
@@ -350,6 +356,7 @@ impl CanViewApp {
         self.current_view = state.current_view;
         self.messages = state.messages;
         self.plot_data = state.plot_data;
+        self.plot_full_data = state.plot_full_data;
         self.plot_zoom_start = state.plot_zoom_start;
         self.plot_zoom_end = state.plot_zoom_end;
         self.plot_full_time_min = state.plot_full_time_min;
