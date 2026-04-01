@@ -1,4 +1,5 @@
 # CanView: BLF 解析库与可视化工具
+软件完全开源，您的star是我持续迭代的动力，决定了我投入的精力
 
 <div align="center">
 
