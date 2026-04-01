@@ -1,12 +1,12 @@
 # CANVIEW
-
 <div align="center">
 
-![CANVIEW Logo](assets/png/icon_128.svg)
+![CANVIEW Icon](assets/svg/logo-256x256.svg)
 
 *Oscilloscope-style Logo - Modern CAN/LIN Bus Data Analyzer*
 </div>
 
+The software is completely open source; your star is my motivation for development.
 **Modern Bus Data Analyzer for CAN, LIN, FlexRay & Ethernet**
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/canview/canview/build.yml?branch=main)](https://github.com/canview/canview/actions)
