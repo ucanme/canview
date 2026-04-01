@@ -5,15 +5,13 @@
 
 *Oscilloscope-style Logo - Modern CAN/LIN Bus Data Analyzer*
 </div>
-
-The software is completely open source; your star is my motivation for development.
 **Modern Bus Data Analyzer for CAN, LIN, FlexRay & Ethernet**
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/canview/canview/build.yml?branch=main)](https://github.com/canview/canview/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/canview/canview/releases)
-
+The software is completely open source; your star is my motivation for development.
 [English](README.md) | [中文文档](README_zh.md)
 
 </div>
