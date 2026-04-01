@@ -477,7 +477,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Issues**: [GitHub Issues](https://github.com/ucanme/canview/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/ucanme/canview/discussions)
-- **Email**: admin@ucan,me
+- **Email**: admin@ucan.me
 
 ---
 
