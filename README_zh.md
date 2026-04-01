@@ -3,7 +3,7 @@
 
 <div align="center">
 
-![CANVIEW Logo](assets/svg/logo.svg)
+![CANVIEW Icon](assets/svg/logo-256x256.svg)
 
 *示波器风格 Logo - 现代 CAN/LIN 总线数据分析工具*
 
