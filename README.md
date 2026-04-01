@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![CANVIEW Logo](assets/svg/logo.svg)
+![CANVIEW Logo](assets/png/icon_128.svg)
 
 *Oscilloscope-style Logo - Modern CAN/LIN Bus Data Analyzer*
 </div>
