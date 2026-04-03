@@ -27,11 +27,6 @@ BLF 是一种广泛应用于汽车工业中的二进制日志文件格式，用�
 
 *全新的示波器风格图标设计，展示信号波形和数据点*
 
-### 应用图标
-![CANVIEW Icon](assets/svg/logo-256x256.svg)
-
-*全新的示波器风格图标设计，展示信号波形和数据点*
-
 ### BLF 日志查看器
 ![BLF 日志截图](assets/blf_logs_screenshot.png)
 
