@@ -24,13 +24,19 @@ pub struct ServerHandle {
     pub addr: SocketAddr,
     pub token: String,
     pub share_url: String,
+    pub local_url: String,
     shutdown_tx: Option<oneshot::Sender<()>>,
 }
 
 impl ServerHandle {
-    /// Get the full share URL (with token)
+    /// Get the full share URL (with token) — LAN IP if available, else localhost
     pub fn url(&self) -> &str {
         &self.share_url
+    }
+
+    /// Get the localhost URL (always works on the same machine)
+    pub fn local_url(&self) -> &str {
+        &self.local_url
     }
 
     /// Shut down the server
@@ -102,14 +108,18 @@ pub fn start_server(
         .recv_timeout(std::time::Duration::from_secs(5))
         .map_err(|_| "Timeout waiting for server to start".to_string())?;
 
-    // Try to get local IP for LAN sharing
+    // Try to get local IP for LAN sharing, prefer real private network IPs
     let ip = get_local_ip().unwrap_or_else(|| addr.ip());
-    let share_url = format!("http://{}:{}/api/libraries?token={}", ip, addr.port(), token);
+    let local_url = format!("http://127.0.0.1:{}/api/libraries?token={}", addr.port(), token);
+    let lan_url = format!("http://{}:{}/api/libraries?token={}", ip, addr.port(), token);
+    // Share URL: use LAN IP if it's a real private address, otherwise fall back to localhost
+    let share_url = if is_preferred_lan_ip(&ip) { lan_url } else { local_url.clone() };
 
     Ok(ServerHandle {
         addr,
         token,
         share_url,
+        local_url,
         shutdown_tx: Some(shutdown_tx),
     })
 }
@@ -219,6 +229,24 @@ fn get_local_ip() -> Option<std::net::IpAddr> {
     let socket = std::net::UdpSocket::bind("0.0.0.0:0").ok()?;
     socket.connect("8.8.8.8:80").ok()?;
     socket.local_addr().ok().map(|a| a.ip())
+}
+
+/// Returns true if the IP is a standard private LAN address (not a virtual adapter range).
+fn is_preferred_lan_ip(ip: &std::net::IpAddr) -> bool {
+    match ip {
+        std::net::IpAddr::V4(v4) => {
+            let octets = v4.octets();
+            // Standard private ranges: 10.x.x.x, 172.16-31.x.x, 192.168.x.x
+            let is_private = octets[0] == 10
+                || (octets[0] == 172 && octets[1] >= 16 && octets[1] <= 31)
+                || (octets[0] == 192 && octets[1] == 168);
+            // Exclude benchmark/virtual ranges: 198.18.0.0/15, 169.254.x.x (link-local)
+            let is_virtual = (octets[0] == 198 && (octets[1] == 18 || octets[1] == 19))
+                || (octets[0] == 169 && octets[1] == 254);
+            is_private && !is_virtual
+        }
+        std::net::IpAddr::V6(_) => false, // Prefer IPv4 LAN for sharing
+    }
 }
 
 #[cfg(test)]

@@ -43,9 +43,14 @@ impl CanViewApp {
         }
     }
 
-    /// Get the current share URL (if server is running)
+    /// Get the current share URL (if server is running) — LAN IP or localhost
     pub fn share_url(&self) -> Option<&str> {
         self.server_handle.as_ref().map(|h| h.url())
+    }
+
+    /// Get the localhost URL (always accessible on this machine)
+    pub fn local_share_url(&self) -> Option<&str> {
+        self.server_handle.as_ref().map(|h| h.local_url())
     }
 
     /// Import libraries from a remote URL (runs async on a background thread)

@@ -2170,8 +2170,12 @@ impl Render for CanViewApp {
             .child({
                 if self.show_share_dialog {
                     let url = self.share_url().unwrap_or("").to_string();
+                    let local_url = self.local_share_url().unwrap_or("").to_string();
+                    let show_local = url == local_url; // True when LAN IP same as localhost (virtual adapter)
                     let url_for_copy = url.clone();
                     let url_for_open = url.clone();
+                    let local_url_for_copy = local_url.clone();
+                    let local_url_for_open = local_url.clone();
                     let view_for_close = view.clone();
                     div()
                         .absolute()
@@ -2222,7 +2226,7 @@ impl Render for CanViewApp {
                             div()
                                 .text_xs()
                                 .text_color(rgb(0xa6adc8))
-                                .child("Share this URL with others to let them import your libraries:"),
+                                .child("🌐 LAN Share URL (for other devices on the same network):"),
                         )
                         .child(
                             div()
@@ -2274,6 +2278,67 @@ impl Render for CanViewApp {
                                         .child("🌐 Open")
                                 }),
                         )
+                        .child(if !show_local {
+                            div()
+                                .text_xs()
+                                .text_color(rgb(0xa6adc8))
+                                .child("💻 Local URL (for this machine only):")
+                        } else {
+                            div().hidden()
+                        })
+                        .child(if !show_local {
+                            // Show localhost URL for direct local access
+                            div()
+                                .flex()
+                                .gap_2()
+                                .items_center()
+                                .child(
+                                    div()
+                                        .flex_1()
+                                        .bg(rgb(0x11111b))
+                                        .rounded(px(4.))
+                                        .px_3()
+                                        .py_2()
+                                        .text_xs()
+                                        .text_color(rgb(0xa6e3a1))
+                                        .overflow_x_hidden()
+                                        .child(local_url),
+                                )
+                                .child(
+                                    div()
+                                        .px_3()
+                                        .py_2()
+                                        .bg(rgb(0x313244))
+                                        .rounded(px(4.))
+                                        .cursor_pointer()
+                                        .text_xs()
+                                        .text_color(rgb(0xcdd6f4))
+                                        .hover(|s| s.bg(rgb(0x45475a)))
+                                        .on_mouse_down(gpui::MouseButton::Left, move |_, _window, cx| {
+                                            cx.stop_propagation();
+                                            cx.write_to_clipboard(gpui::ClipboardItem::new_string(local_url_for_copy.clone()));
+                                        })
+                                        .child("📋 Copy")
+                                )
+                                .child(
+                                    div()
+                                        .px_3()
+                                        .py_2()
+                                        .bg(rgb(0x313244))
+                                        .rounded(px(4.))
+                                        .cursor_pointer()
+                                        .text_xs()
+                                        .text_color(rgb(0xcdd6f4))
+                                        .hover(|s| s.bg(rgb(0x45475a)))
+                                        .on_mouse_down(gpui::MouseButton::Left, move |_, _window, cx| {
+                                            cx.stop_propagation();
+                                            cx.open_url(&local_url_for_open);
+                                        })
+                                        .child("🌐 Open")
+                                )
+                        } else {
+                            div().hidden()
+                        })
                         .child(
                             div()
                                 .text_xs()
