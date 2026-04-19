@@ -68,7 +68,12 @@ pub fn start_server(
     // Bind the port first (in the main thread) so we know the address before building SharedState
     let std_listener = std::net::TcpListener::bind("0.0.0.0:0")
         .map_err(|e| format!("Failed to bind server port: {}", e))?;
-    let addr = std_listener.local_addr()
+    // tokio::net::TcpListener::from_std requires the socket to be non-blocking
+    std_listener
+        .set_nonblocking(true)
+        .map_err(|e| format!("Failed to set non-blocking: {}", e))?;
+    let addr = std_listener
+        .local_addr()
         .map_err(|e| format!("Failed to get local address: {}", e))?;
 
     // Try to get local IP for LAN sharing, prefer real private network IPs
