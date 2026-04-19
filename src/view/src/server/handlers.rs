@@ -49,7 +49,7 @@ pub async fn health() -> Json<HealthResponse> {
     })
 }
 
-/// GET /api/libraries?token=xxx — list all signal libraries
+/// GET /api/libraries?token=xxx — list all signal libraries, with database_path replaced by HTTP download URLs
 pub async fn list_libraries(
     State(state): State<Arc<SharedState>>,
     Query(query): Query<TokenQuery>,
@@ -66,7 +66,27 @@ pub async fn list_libraries(
             .into_response()
     })?;
 
-    Ok(Json(libraries.clone()))
+    let token = state.token_manager.token();
+    let base_url = &state.base_url;
+
+    // Return libraries with database_path replaced by HTTP download URLs
+    let mut libs_with_urls: Vec<crate::models::SignalLibrary> = libraries.clone();
+    for lib in &mut libs_with_urls {
+        for version in &mut lib.versions {
+            for channel_db in &mut version.channel_databases {
+                channel_db.database_path = format!(
+                    "{}/api/libraries/{}/versions/{}/files/{}?token={}",
+                    base_url,
+                    lib.id,
+                    urlencoding::encode(&version.name),
+                    channel_db.channel_id,
+                    token
+                );
+            }
+        }
+    }
+
+    Ok(Json(libs_with_urls))
 }
 
 /// GET /api/libraries/{lib_id}/versions/{version_name}/files/{channel_id}?token=xxx

@@ -17,6 +17,8 @@ pub struct SharedState {
     pub token_manager: TokenManager,
     pub config_path: std::path::PathBuf,
     pub libraries: Mutex<Vec<crate::models::SignalLibrary>>,
+    /// Base URL (e.g. "http://192.168.1.100:8080") for constructing download URLs in API responses
+    pub base_url: String,
 }
 
 /// Handle to a running server instance
@@ -63,14 +65,29 @@ pub fn start_server(
     let token_manager = TokenManager::new();
     let token = token_manager.token().to_string();
 
+    // Bind the port first (in the main thread) so we know the address before building SharedState
+    let std_listener = std::net::TcpListener::bind("0.0.0.0:0")
+        .map_err(|e| format!("Failed to bind server port: {}", e))?;
+    let addr = std_listener.local_addr()
+        .map_err(|e| format!("Failed to get local address: {}", e))?;
+
+    // Try to get local IP for LAN sharing, prefer real private network IPs
+    let ip = get_local_ip().unwrap_or_else(|| addr.ip());
+    let lan_base = format!("http://{}:{}", ip, addr.port());
+    let local_base = format!("http://127.0.0.1:{}", addr.port());
+    let base_url = if is_preferred_lan_ip(&ip) { lan_base } else { local_base.clone() };
+
+    let local_url = format!("{}/api/libraries?token={}", local_base, token);
+    let share_url = format!("{}/api/libraries?token={}", base_url, token);
+
     let state = Arc::new(SharedState {
         token_manager,
         config_path,
         libraries: Mutex::new(libraries),
+        base_url: base_url.clone(),
     });
 
     let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
-    let (addr_tx, addr_rx) = std::sync::mpsc::channel::<SocketAddr>();
 
     // Spawn server on a dedicated thread with its own tokio runtime
     std::thread::Builder::new()
@@ -84,12 +101,9 @@ pub fn start_server(
             rt.block_on(async move {
                 let app = routes::create_router(state);
 
-                let listener = tokio::net::TcpListener::bind("0.0.0.0:0")
-                    .await
-                    .expect("Failed to bind server port");
-
-                let addr = listener.local_addr().expect("Failed to get local address");
-                let _ = addr_tx.send(addr);
+                // Convert std listener to tokio listener inside the async context
+                let listener = tokio::net::TcpListener::from_std(std_listener)
+                    .expect("Failed to convert std listener to tokio listener");
 
                 log::info!("CANVIEW server started on {}", addr);
 
@@ -103,17 +117,6 @@ pub fn start_server(
             });
         })
         .map_err(|e| format!("Failed to spawn server thread: {}", e))?;
-
-    let addr = addr_rx
-        .recv_timeout(std::time::Duration::from_secs(5))
-        .map_err(|_| "Timeout waiting for server to start".to_string())?;
-
-    // Try to get local IP for LAN sharing, prefer real private network IPs
-    let ip = get_local_ip().unwrap_or_else(|| addr.ip());
-    let local_url = format!("http://127.0.0.1:{}/api/libraries?token={}", addr.port(), token);
-    let lan_url = format!("http://{}:{}/api/libraries?token={}", ip, addr.port(), token);
-    // Share URL: use LAN IP if it's a real private address, otherwise fall back to localhost
-    let share_url = if is_preferred_lan_ip(&ip) { lan_url } else { local_url.clone() };
 
     Ok(ServerHandle {
         addr,
@@ -169,15 +172,22 @@ pub async fn import_from_url(
         // Download database files for each version
         for version in &mut lib.versions {
             for channel_db in &mut version.channel_databases {
-                // Try to download the file from the remote server
-                let download_url = format!(
-                    "{}/api/libraries/{}/versions/{}/files/{}?token={}",
-                    base_url,
-                    original_id, // use original remote ID for download
-                    urlencoding::encode(&version.name),
-                    channel_db.channel_id,
-                    token
-                );
+                // The server now returns HTTP download URLs directly in database_path.
+                // Fall back to constructing the URL if database_path isn't already an HTTP URL.
+                let download_url = if channel_db.database_path.starts_with("http://")
+                    || channel_db.database_path.starts_with("https://")
+                {
+                    channel_db.database_path.clone()
+                } else {
+                    format!(
+                        "{}/api/libraries/{}/versions/{}/files/{}?token={}",
+                        base_url,
+                        original_id,
+                        urlencoding::encode(&version.name),
+                        channel_db.channel_id,
+                        token
+                    )
+                };
 
                 match client.get(&download_url).send().await {
                     Ok(file_resp) if file_resp.status().is_success() => {
