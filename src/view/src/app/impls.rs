@@ -1378,7 +1378,14 @@ impl CanViewApp {
         if let Some(ref storage) = self.signal_storage {
             // 获取库名用于存储路径
             let library_name = {
-                let library = self.library_manager.find_library(&library_id).unwrap();
+                let library = match self.library_manager.find_library(&library_id) {
+                    Some(lib) => lib,
+                    None => {
+                        self.status_msg = "Error: Library not found during file copy".into();
+                        cx.notify();
+                        return;
+                    }
+                };
                 library.name.clone()
             };
 
@@ -1410,23 +1417,23 @@ impl CanViewApp {
         }
 
         // Add to the version (we need mutable access)
-        let library = self.library_manager.find_library_mut(&library_id).unwrap();
+        let library = match self.library_manager.find_library_mut(&library_id) {
+            Some(lib) => lib,
+            None => {
+                self.status_msg = "Error: Library not found".into();
+                cx.notify();
+                return;
+            }
+        };
         if let Some(version) = library.versions.iter_mut().find(|v| v.name == version_name) {
             match version.add_channel_database(channel_db) {
                 Ok(_) => {
                     self.status_msg = format!("Channel {} added successfully", channel_id).into();
-                    // Keep input row open for continuous adding
-                    self.show_add_channel_input = true;
 
-                    // Clear input fields
-                    self.new_channel_id.clear();
-                    self.new_channel_name.clear();
-                    self.new_channel_db_path.clear();
-
-                    // Reset input entities so they can be recreated next time
-                    self.channel_id_input = None;
-                    self.channel_name_input = None;
-                    self.channel_db_path_input = None;
+                    // Close input form cleanly — prevents inconsistent state
+                    // where show_add_channel_input=true but all input entities are None.
+                    // User can click "Add Channel" again to add more channels.
+                    self.hide_add_channel_input(cx);
 
                     // Reset type to CAN
                     self.new_channel_type = crate::models::ChannelType::CAN;
