@@ -90,7 +90,7 @@ pub fn render_database_preview(
                                 .hover(|s| s.bg(rgb(0xb4befe)))
                                 .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
                                     crate::ui::views::chart_view::extract_and_update_series_data(this);
-                                    this.show_plot_panel = true;
+                                    this.current_view = crate::app::AppView::PlotView;
                                     cx.notify();
                                 }))
                                 .child("Plot Selected")
