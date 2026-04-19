@@ -58,6 +58,13 @@ impl CanViewApp {
         let existing = self.library_manager.libraries().to_vec();
         self.import_status = Some("Importing...".into());
 
+        // Determine local directory for saving downloaded files
+        let local_lib_dir = self
+            .config_file_path
+            .as_ref()
+            .and_then(|p| p.parent().map(|d| d.join("libraries")))
+            .unwrap_or_else(|| std::path::PathBuf::from("libraries"));
+
         let (tx, rx) = std::sync::mpsc::channel();
 
         std::thread::Builder::new()
@@ -68,7 +75,7 @@ impl CanViewApp {
                     .build()
                     .expect("Failed to create tokio runtime for import");
 
-                let result = rt.block_on(crate::server::import_from_url(&url, &existing));
+                let result = rt.block_on(crate::server::import_from_url(&url, &existing, Some(local_lib_dir)));
                 let _ = tx.send(result);
             })
             .expect("Failed to spawn import thread");

@@ -1088,6 +1088,7 @@ fn render_channel_item(
     let channel_id = channel_db.channel_id;
 
     div()
+        .id(format!("ch-item-{}", channel_id))
         .px_3()
         .py_1()
         .mb_1()
@@ -1156,6 +1157,7 @@ fn render_channel_item(
         .child(
             // 删除按钮
             div()
+                .id(format!("ch-del-{}", channel_id))
                 .w(px(16.))
                 .h(px(16.))
                 .cursor_pointer()
@@ -1275,6 +1277,7 @@ fn render_add_channel_input_row_with_path(
             // 类型选择器 - 可点击切换，宽度与表头对齐
             div().w(px(60.0)).flex_shrink_0().child(
                 div()
+                    .id("add-ch-type-toggle")
                     .px_2()
                     .py_1()
                     .bg(rgb(0x1a1a1a))
@@ -1436,6 +1439,7 @@ fn render_add_channel_input_row_with_path(
                 .child(
                     // 确认按钮
                     div()
+                        .id("add-ch-confirm")
                         .w(px(20.))
                         .h(px(20.))
                         .cursor_pointer()
@@ -1461,6 +1465,7 @@ fn render_add_channel_input_row_with_path(
                 .child(
                     // 取消按钮
                     div()
+                        .id("add-ch-cancel")
                         .w(px(20.))
                         .h(px(20.))
                         .cursor_pointer()

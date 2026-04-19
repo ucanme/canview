@@ -128,6 +128,7 @@ pub fn start_server(
 pub async fn import_from_url(
     url: &str,
     existing_libraries: &[crate::models::SignalLibrary],
+    local_lib_dir: Option<std::path::PathBuf>,
 ) -> Result<Vec<crate::models::SignalLibrary>, String> {
     // Parse the URL to extract base and token
     let (base_url, token) = parse_share_url(url)?;
@@ -150,20 +151,92 @@ pub async fn import_from_url(
         .await
         .map_err(|e| format!("Failed to parse response: {}", e))?;
 
-    // Deduplicate names
+    // Determine local directory to store downloaded files
+    let save_dir = local_lib_dir.unwrap_or_else(|| std::path::PathBuf::from("libraries"));
+    std::fs::create_dir_all(&save_dir).ok();
+
+    // Deduplicate names and download files
     let mut imported = Vec::new();
     for mut lib in remote_libs {
         let original_name = lib.name.clone();
+        let original_id = lib.id.clone(); // preserve original ID for download URLs
         let deduped_name = deduplicate_name(&original_name, existing_libraries, &imported);
         if deduped_name != original_name {
             lib.name = deduped_name.clone();
-            // Regenerate ID based on new name
             lib.id = crate::library::generate_library_id(&deduped_name);
         }
+
+        // Download database files for each version
+        for version in &mut lib.versions {
+            for channel_db in &mut version.channel_databases {
+                // Try to download the file from the remote server
+                let download_url = format!(
+                    "{}/api/libraries/{}/versions/{}/files/{}?token={}",
+                    base_url,
+                    original_id, // use original remote ID for download
+                    urlencoding::encode(&version.name),
+                    channel_db.channel_id,
+                    token
+                );
+
+                match client.get(&download_url).send().await {
+                    Ok(file_resp) if file_resp.status().is_success() => {
+                        // Extract filename from Content-Disposition or URL
+                        let filename = extract_filename_from_response(&file_resp, &channel_db.database_path);
+
+                        // Save to local directory
+                        let local_path = save_dir.join(&filename);
+                        match file_resp.bytes().await {
+                            Ok(bytes) => {
+                                if let Ok(()) = std::fs::write(&local_path, &bytes) {
+                                    channel_db.database_path = local_path.to_string_lossy().to_string();
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("⚠ Failed to read file bytes for ch{}: {}", channel_db.channel_id, e);
+                            }
+                        }
+                    }
+                    Ok(resp) => {
+                        eprintln!("⚠ Server returned {} for file download (ch{})", resp.status(), channel_db.channel_id);
+                    }
+                    Err(e) => {
+                        eprintln!("⚠ Failed to download file for ch{}: {}", channel_db.channel_id, e);
+                    }
+                }
+            }
+        }
+
         imported.push(lib);
     }
 
     Ok(imported)
+}
+
+/// Extract a filename from a download response (Content-Disposition or fallback to original path)
+fn extract_filename_from_response(
+    response: &reqwest::Response,
+    fallback_path: &str,
+) -> String {
+    // Try Content-Disposition header first
+    if let Some(cd) = response.headers().get(reqwest::header::CONTENT_DISPOSITION) {
+        if let Ok(cd_str) = cd.to_str() {
+            // Parse filename from: attachment; filename="foo.dbc"
+            if let Some(fn_start) = cd_str.find("filename=\"") {
+                let rest = &cd_str[fn_start + 10..];
+                if let Some(fn_end) = rest.find('"') {
+                    return rest[..fn_end].to_string();
+                }
+            }
+        }
+    }
+
+    // Fallback: use the last component of the stored path
+    std::path::Path::new(fallback_path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("database.dbc")
+        .to_string()
 }
 
 /// Parse a share URL into (base_url, token)
