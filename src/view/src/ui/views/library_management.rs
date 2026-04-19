@@ -343,6 +343,9 @@ fn render_library_item(
                         this.selected_library_id = Some(library_id.clone());
                         // Reset selected version when library changes
                         this.selected_version_id = None;
+                        // Cancel any in-progress version rename when switching libraries
+                        this.renaming_version_name = None;
+                        this.rename_version_input = None;
                         // Reset add channel input when switching libraries
                         this.hide_add_channel_input(cx);
                         cx.notify();
