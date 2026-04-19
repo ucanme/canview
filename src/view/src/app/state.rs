@@ -194,6 +194,12 @@ pub struct CanViewApp {
     // File menu dropdown state
     pub show_file_menu: bool,
 
+    // Panel layout state (new unified layout)
+    pub show_library_sidebar: bool,
+    pub show_plot_panel: bool,
+    pub plot_panel_height: f32,
+    pub library_sidebar_width: f32,
+
     // Server state
     pub server_handle: Option<crate::server::ServerHandle>,
     pub show_share_dialog: bool,
@@ -323,6 +329,11 @@ impl CanViewApp {
             plot_width_px: gpui::px(0.0),
             // File menu dropdown state
             show_file_menu: false,
+            // Panel layout state
+            show_library_sidebar: false,
+            show_plot_panel: false,
+            plot_panel_height: 300.0,
+            library_sidebar_width: 320.0,
             // Server state
             server_handle: None,
             show_share_dialog: false,

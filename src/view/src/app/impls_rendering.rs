@@ -1884,7 +1884,7 @@ impl Render for CanViewApp {
                             Button::new("Library")
                                 .size(ButtonSize::Small)
                                 .variant(ButtonVariant::Ghost)
-                                .active(self.current_view == AppView::LibraryView)
+                                .active(self.show_library_sidebar)
                                 .build()
                                 .id("library_tab")
                                 .on_mouse_down(gpui::MouseButton::Left, {
@@ -1892,7 +1892,7 @@ impl Render for CanViewApp {
                                     move |_event, _, cx| {
                                         cx.stop_propagation();
                                         view.update(cx, |this, cx| {
-                                            this.current_view = AppView::LibraryView;
+                                            this.show_library_sidebar = !this.show_library_sidebar;
                                             cx.notify();
                                         });
                                     }
@@ -1902,7 +1902,7 @@ impl Render for CanViewApp {
                             Button::new("Plot")
                                 .size(ButtonSize::Small)
                                 .variant(ButtonVariant::Ghost)
-                                .active(self.current_view == AppView::PlotView)
+                                .active(self.show_plot_panel)
                                 .build()
                                 .id("plot_tab")
                                 .on_mouse_down(gpui::MouseButton::Left, {
@@ -1910,8 +1910,10 @@ impl Render for CanViewApp {
                                     move |_event, _, cx| {
                                         cx.stop_propagation();
                                         view.update(cx, |this, cx| {
-                                            this.current_view = AppView::PlotView;
-                                            crate::ui::views::chart_view::extract_and_update_series_data(this);
+                                            this.show_plot_panel = !this.show_plot_panel;
+                                            if this.show_plot_panel {
+                                                crate::ui::views::chart_view::extract_and_update_series_data(this);
+                                            }
                                             cx.notify();
                                         });
                                     }
@@ -2071,22 +2073,57 @@ impl Render for CanViewApp {
                 },
             )
             .child(
-                // Content area - Zed style
+                // Content area - Panel layout: [Library Sidebar | Log View]
+                //                              [        Plot Panel         ]
                 div()
                     .flex_1()
-                    .bg(rgb(0x0c0c0e)) // Zed's main background
+                    .bg(rgb(0x0c0c0e))
                     .overflow_hidden()
-                    .child(match self.current_view {
-                        AppView::LogView => {
-                            self.render_log_view(cx.entity().clone()).into_any_element()
-                        }
-                        AppView::ConfigView => self.render_config_view(cx).into_any_element(),
-                        AppView::LibraryView => self.render_library_view(cx).into_any_element(),
-                        AppView::PlotView => {
-                            crate::ui::views::chart_view::render_plot_view(window, self, cx.entity().clone(), cx)
-                                .into_any_element()
-                        }
-                    }),
+                    .flex()
+                    .flex_col()
+                    .child(
+                        // Top section: sidebar + log view
+                        div()
+                            .flex_1()
+                            .flex()
+                            .flex_row()
+                            .overflow_hidden()
+                            // Library sidebar (collapsible)
+                            .when(self.show_library_sidebar, |this| {
+                                this.child(
+                                    div()
+                                        .w(px(self.library_sidebar_width))
+                                        .h_full()
+                                        .border_r_1()
+                                        .border_color(rgb(0x27272a))
+                                        .overflow_hidden()
+                                        .flex()
+                                        .flex_col()
+                                        .child(self.render_library_view(cx))
+                                )
+                            })
+                            // Log view (always visible)
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .h_full()
+                                    .overflow_hidden()
+                                    .child(self.render_log_view(cx.entity().clone()))
+                            )
+                    )
+                    // Plot panel (collapsible, bottom)
+                    .when(self.show_plot_panel, |this| {
+                        this.child(
+                            div()
+                                .h(px(self.plot_panel_height))
+                                .border_t_1()
+                                .border_color(rgb(0x27272a))
+                                .overflow_hidden()
+                                .child(
+                                    crate::ui::views::chart_view::render_plot_view(window, self, cx.entity().clone(), cx)
+                                )
+                        )
+                    })
             )
             .child(
                 // Zed-style status bar at bottom
