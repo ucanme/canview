@@ -2199,6 +2199,7 @@ impl Render for CanViewApp {
             .child({
                 if self.show_share_dialog {
                     let url = self.share_url().unwrap_or("").to_string();
+                    let url_for_copy = url.clone();
                     let view_for_close = view.clone();
                     div()
                         .absolute()
@@ -2253,14 +2254,37 @@ impl Render for CanViewApp {
                         )
                         .child(
                             div()
-                                .bg(rgb(0x11111b))
-                                .rounded(px(4.))
-                                .px_3()
-                                .py_2()
-                                .text_xs()
-                                .text_color(rgb(0x89b4fa))
-                                .overflow_x_hidden()
-                                .child(url),
+                                .flex()
+                                .gap_2()
+                                .items_center()
+                                .child(
+                                    div()
+                                        .flex_1()
+                                        .bg(rgb(0x11111b))
+                                        .rounded(px(4.))
+                                        .px_3()
+                                        .py_2()
+                                        .text_xs()
+                                        .text_color(rgb(0x89b4fa))
+                                        .overflow_x_hidden()
+                                        .child(url),
+                                )
+                                .child(
+                                    div()
+                                        .px_3()
+                                        .py_2()
+                                        .bg(rgb(0x313244))
+                                        .rounded(px(4.))
+                                        .cursor_pointer()
+                                        .text_xs()
+                                        .text_color(rgb(0xcdd6f4))
+                                        .hover(|s| s.bg(rgb(0x45475a)))
+                                        .on_mouse_down(gpui::MouseButton::Left, move |_, window, cx| {
+                                            cx.stop_propagation();
+                                            cx.write_to_clipboard(gpui::ClipboardItem::new_string(url_for_copy.clone()));
+                                        })
+                                        .child("📋 Copy"),
+                                ),
                         )
                         .child(
                             div()
