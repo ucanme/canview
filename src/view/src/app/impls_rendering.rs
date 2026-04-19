@@ -172,6 +172,10 @@ impl CanViewApp {
                 &self.new_channel_db_path, // Add this parameter
                 self.new_channel_type,     // Add channel type parameter
                 self.server_handle.is_some(), // is_sharing
+                self.renaming_library_id.as_deref(),
+                self.rename_library_input.as_ref(),
+                self.renaming_version_name.as_deref(),
+                self.rename_version_input.as_ref(),
                 cx,
             ))
     }

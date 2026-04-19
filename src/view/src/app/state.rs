@@ -149,6 +149,14 @@ pub struct CanViewApp {
     pub library_search_query: String,
     pub library_filter_type: Option<DatabaseType>,
 
+    // Rename inline state
+    pub renaming_library_id: Option<String>,
+    pub renaming_version_name: Option<String>,
+    pub rename_library_input: Option<Entity<InputState>>,
+    pub rename_version_input: Option<Entity<InputState>>,
+    pub rename_library_text: String,
+    pub rename_version_text: String,
+
     // Channel configuration dialog state
     pub show_channel_config_dialog: bool,
     pub new_channel_id: String,
@@ -289,6 +297,13 @@ impl CanViewApp {
             // gpui-component input support
             library_name_input: None, // Will be initialized when cx is available
             version_name_input: None, // Will be initialized when cx is available
+            // Rename inline state
+            renaming_library_id: None,
+            renaming_version_name: None,
+            rename_library_input: None,
+            rename_version_input: None,
+            rename_library_text: String::new(),
+            rename_version_text: String::new(),
             // Channel configuration dialog
             show_channel_config_dialog: false,
             new_channel_id: String::new(),

@@ -10,32 +10,7 @@
           "path": "",
           "date": "2026-01-25",
           "description": "Created version '12' (database file to be added)",
-          "channel_databases": [
-            {
-              "channel_type": "CAN",
-              "channel_id": 3,
-              "channel_name": "4",
-              "database_path": "C:\\Users\\Administrator\\RustroverProjects\\canview\\test_can.dbc"
-            },
-            {
-              "channel_type": "CAN",
-              "channel_id": 4,
-              "channel_name": "5",
-              "database_path": "C:\\Users\\Administrator\\RustroverProjects\\canview\\test_can.dbc"
-            },
-            {
-              "channel_type": "CAN",
-              "channel_id": 5,
-              "channel_name": "6",
-              "database_path": "C:\\Users\\Administrator\\RustroverProjects\\canview\\sample.dbc"
-            },
-            {
-              "channel_type": "CAN",
-              "channel_id": 1,
-              "channel_name": "2",
-              "database_path": "C:\\Users\\Administrator\\RustroverProjects\\canview\\test_can.dbc"
-            }
-          ]
+          "channel_databases": []
         }
       ]
     }

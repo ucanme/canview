@@ -121,6 +121,64 @@ impl LibraryManager {
         Ok(self.find_library(&id).unwrap())
     }
 
+    /// 重命名库 — 返回新生成的 library ID
+    pub fn rename_library(&mut self, old_id: &str, new_name: String) -> Result<String, String> {
+        let new_name = new_name.trim().to_string();
+        if new_name.is_empty() {
+            return Err("Library name cannot be empty".to_string());
+        }
+
+        let new_id = generate_library_id(&new_name);
+
+        // Reject if new name collides with a different library
+        if new_id != old_id {
+            if self.find_library(&new_id).is_some() {
+                return Err(format!("Library '{}' already exists", new_name));
+            }
+        }
+
+        let library = self
+            .find_library_mut(old_id)
+            .ok_or("Library not found")?;
+
+        library.id = new_id.clone();
+        library.name = new_name;
+
+        Ok(new_id)
+    }
+
+    /// 重命名库版本
+    pub fn rename_version(
+        &mut self,
+        library_id: &str,
+        old_name: &str,
+        new_name: String,
+    ) -> Result<(), String> {
+        let new_name = new_name.trim().to_string();
+        if new_name.is_empty() {
+            return Err("Version name cannot be empty".to_string());
+        }
+
+        let library = self
+            .find_library_mut(library_id)
+            .ok_or("Library not found")?;
+
+        // Reject duplicate version name within the same library
+        if library.versions.iter().any(|v| v.name == new_name && v.name != old_name) {
+            return Err(format!("Version '{}' already exists", new_name));
+        }
+
+        let version = library
+            .versions
+            .iter_mut()
+            .find(|v| v.name == old_name)
+            .ok_or("Version not found")?;
+
+        version.name = new_name;
+
+        Ok(())
+    }
+
     /// 删除库
     pub fn delete_library(&mut self, id: &str, mappings: &[ChannelMapping]) -> Result<(), String> {
         let library = self.find_library(id).ok_or("Library not found")?;

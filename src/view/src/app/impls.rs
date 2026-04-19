@@ -83,6 +83,13 @@ impl CanViewApp {
             // gpui-component input support
             library_name_input: None,
             version_name_input: None,
+            // Rename inline state
+            renaming_library_id: None,
+            renaming_version_name: None,
+            rename_library_input: None,
+            rename_version_input: None,
+            rename_library_text: String::new(),
+            rename_version_text: String::new(),
             // Channel configuration dialog
             show_channel_config_dialog: false,
             new_channel_id: String::new(),
@@ -593,6 +600,13 @@ impl CanViewApp {
             // gpui-component input support
             library_name_input: None,
             version_name_input: None,
+            // Rename inline state
+            renaming_library_id: None,
+            renaming_version_name: None,
+            rename_library_input: None,
+            rename_version_input: None,
+            rename_library_text: String::new(),
+            rename_version_text: String::new(),
             // Channel configuration dialog
             show_channel_config_dialog: false,
             new_channel_id: String::new(),
@@ -830,6 +844,132 @@ impl CanViewApp {
                 cx.notify();
             }
         }
+    }
+
+    // ---------- Rename library ------------------------------------------------
+
+    pub fn start_rename_library(&mut self, library_id: String, current_name: String, window: &mut Window, cx: &mut Context<Self>) {
+        self.renaming_library_id = Some(library_id);
+        self.renaming_version_name = None;
+        self.rename_library_text = current_name.clone();
+        let input = cx.new(|cx| {
+            InputState::new(window, cx).default_value(current_name)
+        });
+        self.rename_library_input = Some(input);
+        cx.notify();
+    }
+
+    pub fn commit_rename_library(&mut self, cx: &mut Context<Self>) {
+        let old_id = match self.renaming_library_id.clone() {
+            Some(id) => id,
+            None => return,
+        };
+        let new_name = if let Some(input) = &self.rename_library_input {
+            input.read(cx).value().to_string()
+        } else {
+            self.rename_library_text.clone()
+        };
+        let new_name = new_name.trim().to_string();
+        if new_name.is_empty() {
+            self.status_msg = "Library name cannot be empty".into();
+            cx.notify();
+            return;
+        }
+
+        match self.library_manager.rename_library(&old_id, new_name.clone()) {
+            Ok(new_id) => {
+                // Update all mappings that reference old library id
+                for mapping in &mut self.app_config.mappings {
+                    if mapping.library_id.as_deref() == Some(&old_id) {
+                        mapping.library_id = Some(new_id.clone());
+                    }
+                }
+                // Keep the selected library pointing to the renamed library
+                if self.selected_library_id.as_deref() == Some(&old_id) {
+                    self.selected_library_id = Some(new_id.clone());
+                }
+                self.app_config.libraries = self.library_manager.libraries().to_vec();
+                self.save_config(cx);
+                self.status_msg = format!("Library renamed to '{}'", new_name).into();
+            }
+            Err(e) => {
+                self.status_msg = format!("Rename failed: {}", e).into();
+            }
+        }
+        self.cancel_rename_library(cx);
+    }
+
+    pub fn cancel_rename_library(&mut self, cx: &mut Context<Self>) {
+        self.renaming_library_id = None;
+        self.rename_library_input = None;
+        self.rename_library_text.clear();
+        cx.notify();
+    }
+
+    // ---------- Rename version ------------------------------------------------
+
+    pub fn start_rename_version(&mut self, version_name: String, window: &mut Window, cx: &mut Context<Self>) {
+        self.renaming_version_name = Some(version_name.clone());
+        self.renaming_library_id = None;
+        self.rename_version_text = version_name.clone();
+        let input = cx.new(|cx| {
+            InputState::new(window, cx).default_value(version_name)
+        });
+        self.rename_version_input = Some(input);
+        cx.notify();
+    }
+
+    pub fn commit_rename_version(&mut self, cx: &mut Context<Self>) {
+        let library_id = match &self.selected_library_id {
+            Some(id) => id.clone(),
+            None => return,
+        };
+        let old_name = match self.renaming_version_name.clone() {
+            Some(n) => n,
+            None => return,
+        };
+        let new_name = if let Some(input) = &self.rename_version_input {
+            input.read(cx).value().to_string()
+        } else {
+            self.rename_version_text.clone()
+        };
+        let new_name = new_name.trim().to_string();
+        if new_name.is_empty() {
+            self.status_msg = "Version name cannot be empty".into();
+            cx.notify();
+            return;
+        }
+
+        match self.library_manager.rename_version(&library_id, &old_name, new_name.clone()) {
+            Ok(()) => {
+                // Update all mappings that reference old version name within this library
+                for mapping in &mut self.app_config.mappings {
+                    if mapping.library_id.as_deref() == Some(&library_id)
+                        && mapping.version_name.as_deref() == Some(&old_name)
+                    {
+                        mapping.version_name = Some(new_name.clone());
+                    }
+                }
+                // Update selected_version_id if it points to the old name
+                if self.selected_version_id.as_deref() == Some(&old_name) {
+                    self.selected_version_id = Some(new_name.clone());
+                }
+                self.app_config.libraries = self.library_manager.libraries().to_vec();
+                self.save_config(cx);
+                self.status_msg = format!("Version renamed to '{}'", new_name).into();
+            }
+            Err(e) => {
+                self.status_msg = format!("Rename failed: {}", e).into();
+            }
+        }
+        self.cancel_rename_version(cx);
+    }
+
+    pub fn cancel_rename_version(&mut self, cx: &mut Context<Self>) {
+        self.renaming_version_name = None;
+        self.rename_version_input = None;
+        self.rename_version_text.clear();
+        cx.notify();
     }
 
     /// Load a library version

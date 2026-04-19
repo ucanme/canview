@@ -38,6 +38,10 @@ pub fn render_library_management_view(
     new_channel_db_path: &str, // Add this parameter to avoid reading entity in render
     new_channel_type: crate::models::ChannelType, // Add channel type parameter
     is_sharing: bool, // Whether the share server is currently running
+    renaming_library_id: Option<&str>,
+    rename_library_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
+    renaming_version_name: Option<&str>,
+    rename_version_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     div()
@@ -57,6 +61,8 @@ pub fn render_library_management_view(
             library_cursor_pos,
             library_name_input,
             is_sharing,
+            renaming_library_id,
+            rename_library_input,
             cx,
         ))
         // 垂直分割线 1 - Zed IDE subtle divider
@@ -78,6 +84,8 @@ pub fn render_library_management_view(
             focused_input,
             version_cursor_pos,
             version_name_input,
+            renaming_version_name,
+            rename_version_input,
             cx,
         ))
         // 垂直分割线 2 - Zed IDE subtle divider
@@ -115,6 +123,8 @@ fn render_left_column(
     _cursor_pos: usize,
     library_name_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     is_sharing: bool,
+    renaming_library_id: Option<&str>,
+    rename_library_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     div()
@@ -188,6 +198,8 @@ fn render_left_column(
                             library,
                             selected_library_id,
                             mappings,
+                            renaming_library_id,
+                            rename_library_input,
                             cx,
                         ));
                     }
@@ -294,6 +306,8 @@ fn render_library_item(
     library: &SignalLibrary,
     selected_library_id: &Option<String>,
     mappings: &[ChannelMapping],
+    renaming_library_id: Option<&str>,
+    rename_library_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     let is_selected = selected_library_id.as_ref() == Some(&library.id);
@@ -301,6 +315,7 @@ fn render_library_item(
     let db_type = library.database_type();
     let icon = db_type.icon();
     let library_id = library.id.clone();
+    let is_renaming = renaming_library_id == Some(library.id.as_str());
 
     div()
         .id(format!("lib-{}", library_id))
@@ -317,52 +332,140 @@ fn render_library_item(
         .flex()
         .items_center()
         .justify_between()
-        .on_mouse_down(
-            gpui::MouseButton::Left,
-            cx.listener({
-                let library_id = library_id.clone();
-                move |this, _event, _window, cx| {
-                    cx.stop_propagation();
-                    eprintln!("🖱️ Selected library: {}", library_id);
-                    this.selected_library_id = Some(library_id.clone());
-                    // Reset selected version when library changes
-                    this.selected_version_id = None;
-                    // Reset add channel input when switching libraries
-                    this.hide_add_channel_input(cx);
-                    cx.notify();
-                }
-            }),
-        )
-        .child(
-            div()
-                .flex()
-                .items_center()
-                .gap_2()
-                .child(
-                    div()
-                        .text_xs()
-                        .text_color(if is_selected {
-                            rgb(0x89b4fa) // Zed blue
-                        } else {
-                            rgb(0x6c7086) // Zed muted
-                        })
-                        .child(icon.to_string()),
-                )
-                .child(
-                    div().flex().flex_col().gap_0().child(
-                        div()
-                            .text_sm()
-                            .text_color(rgb(0xcdd6f4)) // Zed text
-                            .child(library.name.clone()),
-                    ),
-                ),
-        )
-        .when(is_used, |el| {
+        .when(!is_renaming, |el| {
+            el.on_mouse_down(
+                gpui::MouseButton::Left,
+                cx.listener({
+                    let library_id = library_id.clone();
+                    move |this, _event, _window, cx| {
+                        cx.stop_propagation();
+                        eprintln!("🖱️ Selected library: {}", library_id);
+                        this.selected_library_id = Some(library_id.clone());
+                        // Reset selected version when library changes
+                        this.selected_version_id = None;
+                        // Reset add channel input when switching libraries
+                        this.hide_add_channel_input(cx);
+                        cx.notify();
+                    }
+                }),
+            )
+        })
+        .when(is_renaming, |el| {
+            // Inline rename row: input + confirm + cancel
             el.child(
                 div()
-                    .text_xs()
-                    .text_color(rgb(0x6c7086)) // 使用文字标记
-                    .child(format!("{}", library.versions.len())),
+                    .flex()
+                    .flex_1()
+                    .items_center()
+                    .gap_1()
+                    .child(if let Some(input) = rename_library_input {
+                        div()
+                            .flex_1()
+                            .child(Input::new(input).appearance(true))
+                            .into_any_element()
+                    } else {
+                        div().flex_1().into_any_element()
+                    })
+                    .child(
+                        div()
+                            .id("lib-rename-ok")
+                            .px_1()
+                            .text_xs()
+                            .text_color(rgb(0xa6e3a1))
+                            .cursor_pointer()
+                            .hover(|s| s.text_color(rgb(0xcdd6f4)))
+                            .on_mouse_down(
+                                gpui::MouseButton::Left,
+                                cx.listener(|this, _, _, cx| {
+                                    cx.stop_propagation();
+                                    this.commit_rename_library(cx);
+                                }),
+                            )
+                            .child("✓"),
+                    )
+                    .child(
+                        div()
+                            .id("lib-rename-cancel")
+                            .px_1()
+                            .text_xs()
+                            .text_color(rgb(0xf38ba8))
+                            .cursor_pointer()
+                            .hover(|s| s.text_color(rgb(0xcdd6f4)))
+                            .on_mouse_down(
+                                gpui::MouseButton::Left,
+                                cx.listener(|this, _, _, cx| {
+                                    cx.stop_propagation();
+                                    this.cancel_rename_library(cx);
+                                }),
+                            )
+                            .child("✕"),
+                    ),
+            )
+        })
+        .when(!is_renaming, |el| {
+            el.child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(if is_selected {
+                                rgb(0x89b4fa) // Zed blue
+                            } else {
+                                rgb(0x6c7086) // Zed muted
+                            })
+                            .child(icon.to_string()),
+                    )
+                    .child(
+                        div().flex().flex_col().gap_0().child(
+                            div()
+                                .text_sm()
+                                .text_color(rgb(0xcdd6f4)) // Zed text
+                                .child(library.name.clone()),
+                        ),
+                    ),
+            )
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_1()
+                    .when(is_used, |el| {
+                        el.child(
+                            div()
+                                .text_xs()
+                                .text_color(rgb(0x6c7086))
+                                .child(format!("{}", library.versions.len())),
+                        )
+                    })
+                    .child(
+                        div()
+                            .id(format!("lib-rename-btn-{}", library_id))
+                            .px_1()
+                            .text_xs()
+                            .text_color(rgb(0x45475a))
+                            .cursor_pointer()
+                            .hover(|s| s.text_color(rgb(0x89b4fa)))
+                            .on_mouse_down(
+                                gpui::MouseButton::Left,
+                                cx.listener({
+                                    let library_id = library_id.clone();
+                                    let library_name = library.name.clone();
+                                    move |this, _, window, cx| {
+                                        cx.stop_propagation();
+                                        this.start_rename_library(
+                                            library_id.clone(),
+                                            library_name.clone(),
+                                            window,
+                                            cx,
+                                        );
+                                    }
+                                }),
+                            )
+                            .child("✎"),
+                    ),
             )
         })
 }
@@ -468,6 +571,8 @@ fn render_middle_column(
     _focused_input: &Option<String>,
     _cursor_pos: usize,
     version_name_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
+    renaming_version_name: Option<&str>,
+    rename_version_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     // 找到选中的库
@@ -532,8 +637,14 @@ fn render_middle_column(
                     for version in &library.versions {
                         let version_name = version.name.clone();
                         let is_selected = selected_version_id.as_ref() == Some(&version_name);
-                        list =
-                            list.child(render_version_item(version, version_name, is_selected, cx));
+                        list = list.child(render_version_item(
+                            version,
+                            version_name,
+                            is_selected,
+                            renaming_version_name,
+                            rename_version_input,
+                            cx,
+                        ));
                     }
                     // 添加内联版本输入行（当show_add_version_input为true时）
                     if show_add_version_input {
@@ -554,9 +665,12 @@ fn render_version_item(
     version: &LibraryVersion,
     version_name: String,
     is_selected: bool,
+    renaming_version_name: Option<&str>,
+    rename_version_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     let stats = version.get_stats();
+    let is_renaming = renaming_version_name == Some(version_name.as_str());
 
     div()
         .id(format!("ver-{}", version_name))
@@ -573,35 +687,120 @@ fn render_version_item(
         .flex()
         .items_center()
         .justify_between()
-        .on_mouse_down(
-            gpui::MouseButton::Left,
-            cx.listener({
-                let version_name = version_name.clone();
-                move |this, _event, _window, cx| {
-                    cx.stop_propagation();
-                    eprintln!("🖱️ Selected version: {}", version_name);
-                    this.selected_version_id = Some(version_name.clone());
-                    this.status_msg = format!("Selected version: {}", version_name).into();
-                    // Ensure add channel input is hidden when determining selection
-                    this.hide_add_channel_input(cx);
-                    cx.notify();
-                }
-            }),
-        )
-        .child(
-            div().flex().flex_col().gap_0().child(
+        .when(!is_renaming, |el| {
+            el.on_mouse_down(
+                gpui::MouseButton::Left,
+                cx.listener({
+                    let version_name = version_name.clone();
+                    move |this, _event, _window, cx| {
+                        cx.stop_propagation();
+                        eprintln!("🖱️ Selected version: {}", version_name);
+                        this.selected_version_id = Some(version_name.clone());
+                        this.status_msg = format!("Selected version: {}", version_name).into();
+                        // Ensure add channel input is hidden when determining selection
+                        this.hide_add_channel_input(cx);
+                        cx.notify();
+                    }
+                }),
+            )
+        })
+        .when(is_renaming, |el| {
+            el.child(
                 div()
-                    .text_sm()
-                    .text_color(rgb(0xcdd6f4))
-                    .child(version.name.clone()),
-            ),
-        )
-        .child(
-            div()
-                .text_xs()
-                .text_color(rgb(0x6c7086)) // Zed muted
-                .child(format!("{}", stats.total_channels)),
-        )
+                    .flex()
+                    .flex_1()
+                    .items_center()
+                    .gap_1()
+                    .child(if let Some(input) = rename_version_input {
+                        div()
+                            .flex_1()
+                            .child(Input::new(input).appearance(true))
+                            .into_any_element()
+                    } else {
+                        div().flex_1().into_any_element()
+                    })
+                    .child(
+                        div()
+                            .id("ver-rename-ok")
+                            .px_1()
+                            .text_xs()
+                            .text_color(rgb(0xa6e3a1))
+                            .cursor_pointer()
+                            .hover(|s| s.text_color(rgb(0xcdd6f4)))
+                            .on_mouse_down(
+                                gpui::MouseButton::Left,
+                                cx.listener(|this, _, _, cx| {
+                                    cx.stop_propagation();
+                                    this.commit_rename_version(cx);
+                                }),
+                            )
+                            .child("✓"),
+                    )
+                    .child(
+                        div()
+                            .id("ver-rename-cancel")
+                            .px_1()
+                            .text_xs()
+                            .text_color(rgb(0xf38ba8))
+                            .cursor_pointer()
+                            .hover(|s| s.text_color(rgb(0xcdd6f4)))
+                            .on_mouse_down(
+                                gpui::MouseButton::Left,
+                                cx.listener(|this, _, _, cx| {
+                                    cx.stop_propagation();
+                                    this.cancel_rename_version(cx);
+                                }),
+                            )
+                            .child("✕"),
+                    ),
+            )
+        })
+        .when(!is_renaming, |el| {
+            el.child(
+                div().flex().flex_col().gap_0().child(
+                    div()
+                        .text_sm()
+                        .text_color(rgb(0xcdd6f4))
+                        .child(version.name.clone()),
+                ),
+            )
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_1()
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(rgb(0x6c7086))
+                            .child(format!("{}", stats.total_channels)),
+                    )
+                    .child(
+                        div()
+                            .id(format!("ver-rename-btn-{}", version_name))
+                            .px_1()
+                            .text_xs()
+                            .text_color(rgb(0x45475a))
+                            .cursor_pointer()
+                            .hover(|s| s.text_color(rgb(0x89b4fa)))
+                            .on_mouse_down(
+                                gpui::MouseButton::Left,
+                                cx.listener({
+                                    let version_name = version_name.clone();
+                                    move |this, _, window, cx| {
+                                        cx.stop_propagation();
+                                        this.start_rename_version(
+                                            version_name.clone(),
+                                            window,
+                                            cx,
+                                        );
+                                    }
+                                }),
+                            )
+                            .child("✎"),
+                    ),
+            )
+        })
 }
 
 /// 右栏：通道配置 - Zed IDE 风格
