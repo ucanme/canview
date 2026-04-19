@@ -91,7 +91,7 @@ impl CanViewApp {
             editing_channel_index: None,
             channel_id_input: None,
             channel_name_input: None,
-            show_add_channel_input: true,
+            show_add_channel_input: false,
             channel_db_path_input: None,
             new_channel_type: ChannelType::CAN,
             pending_file_path: None,
@@ -1230,6 +1230,10 @@ impl CanViewApp {
         self.new_channel_id.clear();
         self.new_channel_name.clear();
         self.new_channel_db_path.clear();
+        // Drop the input entities so they are recreated fresh next time
+        self.channel_id_input = None;
+        self.channel_name_input = None;
+        self.channel_db_path_input = None;
         cx.notify();
     }
 

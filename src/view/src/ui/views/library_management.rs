@@ -946,20 +946,34 @@ fn render_add_channel_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoEl
         .gap_2()
         .on_mouse_down(
             gpui::MouseButton::Left,
-            cx.listener(|this, _event, _window, cx| {
+            cx.listener(|this, _event, window, cx| {
                 eprintln!("🖱️ Add Channel button clicked");
 
-                // 不在这里创建 InputState，而是在渲染时根据需要创建
-                // 这样可以避免借用冲突和生命周期问题
-
-                // Clear previous path selection
+                // Clear previous values
                 this.new_channel_db_path.clear();
-
-                // Clear previous input values
                 this.new_channel_id.clear();
                 this.new_channel_name.clear();
 
-                // 设置 flag 以显示输入框
+                // Create fresh InputState entities in the event handler (not in render)
+                let id_input = cx.new(|cx| InputState::new(window, cx).placeholder("Channel ID"));
+                cx.subscribe(&id_input, |this, input, event, cx| {
+                    if let gpui_component::input::InputEvent::Change = event {
+                        this.new_channel_id = input.read(cx).text().to_string();
+                    }
+                })
+                .detach();
+                this.channel_id_input = Some(id_input);
+
+                let name_input =
+                    cx.new(|cx| InputState::new(window, cx).placeholder("Channel name"));
+                cx.subscribe(&name_input, |this, input, event, cx| {
+                    if let gpui_component::input::InputEvent::Change = event {
+                        this.new_channel_name = input.read(cx).text().to_string();
+                    }
+                })
+                .detach();
+                this.channel_name_input = Some(name_input);
+
                 this.show_add_channel_input = true;
                 cx.notify();
                 eprintln!("✅ show_add_channel_input = true");
@@ -974,195 +988,6 @@ fn render_add_channel_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoEl
                     .child("+ Add Channel"),
             ),
         )
-}
-
-/// 渲染右侧栏中的通道项
-fn render_channel_item_in_right(
-    channel_db: &ChannelDatabase,
-    cx: &mut Context<crate::CanViewApp>,
-) -> impl IntoElement {
-    let path = channel_db.database_path.clone();
-    let filename = std::path::Path::new(&path)
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or(&path)
-        .to_string();
-
-    let channel_id = channel_db.channel_id;
-
-    div()
-        .px_3()
-        .py_1()
-        .mb_1()
-        .h(px(32.))
-        .bg(rgb(0x151515))
-        .border_1()
-        .border_color(rgb(0x1a1a1a))
-        .rounded(px(3.0))
-        .flex()
-        .items_center()
-        .justify_between()
-        .child(
-            div()
-                .flex()
-                .flex_col()
-                .gap_0p5()
-                .child(
-                    div()
-                        .text_xs()
-                        .font_weight(FontWeight::MEDIUM)
-                        .text_color(rgb(0xcdd6f4))
-                        .child(format!(
-                            "CH{}: {}",
-                            channel_db.channel_id, channel_db.channel_name
-                        )),
-                )
-                .child(div().text_xs().text_color(rgb(0x646473)).child(filename)),
-        )
-        .child(
-            div()
-                .w(px(16.))
-                .h(px(16.))
-                .cursor_pointer()
-                .hover(|style| style.bg(rgb(0x382828)))
-                .rounded(px(2.))
-                .flex()
-                .items_center()
-                .justify_center()
-                .on_mouse_down(
-                    gpui::MouseButton::Left,
-                    cx.listener(move |this, _event, _window, cx| {
-                        this.delete_channel(channel_id, cx);
-                    }),
-                )
-                .child(
-                    div()
-                        .text_xs()
-                        .font_weight(FontWeight::BOLD)
-                        .text_color(rgb(0xf38ba8))
-                        .child("×"),
-                ),
-        )
-}
-
-/// 渲染右侧栏中的添加通道按钮
-fn render_add_channel_button_in_right(cx: &mut Context<crate::CanViewApp>) -> impl IntoElement {
-    div()
-        .px_3()
-        .py_2()
-        .mt_1()
-        .border_1()
-        .border_dashed()
-        .border_color(rgb(0x1a1a1a))
-        .rounded(px(3.0))
-        .cursor_pointer()
-        .hover(|style| style.bg(rgb(0x151515)))
-        .flex()
-        .items_center()
-        .justify_center()
-        .gap_1()
-        .child({
-            // 文件选择按钮 - 直接添加到列表
-            let this = cx.entity().clone();
-            div()
-                .flex()
-                .items_center()
-                .gap_1()
-                .child(
-                    div()
-                        .text_xs()
-                        .font_weight(FontWeight::MEDIUM)
-                        .text_color(rgb(0x7dcfff))
-                        .child("+"),
-                )
-                .child(
-                    div()
-                        .text_xs()
-                        .font_weight(FontWeight::MEDIUM)
-                        .text_color(rgb(0x7dcfff))
-                        .child("Add Channel"),
-                )
-                .on_mouse_down(gpui::MouseButton::Left, {
-                    let this = this.clone();
-                    move |_, _, app| {
-                        let this = this.clone();
-                        app.spawn(async move |cx| {
-                            if let Some(file) = rfd::AsyncFileDialog::new()
-                                .add_filter("Database Files", &["dbc", "ldf"])
-                                .pick_file()
-                                .await
-                            {
-                                let path_str = file.path().to_string_lossy().to_string();
-                                let _ = cx.update(|cx| {
-                                    this.update(cx, |view, cx| {
-                                        // 从文件名提取channel名称
-                                        let file_name = std::path::Path::new(&path_str)
-                                            .file_stem()
-                                            .and_then(|s| s.to_str())
-                                            .unwrap_or("Unknown");
-
-                                        // 自动分配下一个可用的channel ID
-                                        let next_id =
-                                            if let Some(lib_id) = &view.selected_library_id {
-                                                view.library_manager
-                                                    .find_library(lib_id)
-                                                    .and_then(|lib| lib.latest_version())
-                                                    .map(|v| v.channel_databases.len() as u16 + 1)
-                                                    .unwrap_or(1)
-                                            } else {
-                                                1
-                                            };
-
-                                        // 设置临时值用于保存
-                                        view.new_channel_id = next_id.to_string();
-                                        view.new_channel_name = file_name.to_string();
-                                        view.new_channel_db_path = path_str.clone();
-
-                                        // 直接保存
-                                        view.save_channel_config(cx);
-                                    });
-                                });
-                            }
-                            Ok::<(), anyhow::Error>(())
-                        })
-                        .detach();
-                    }
-                })
-        })
-}
-
-/// 渲染内联添加通道输入行 - 完全融入列表（旧版本，保留以兼容）
-fn render_add_channel_input_row(
-    channel_id_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
-    channel_name_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
-    _channel_db_path_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
-    channel_type: crate::models::ChannelType,
-    cx: &mut Context<crate::CanViewApp>,
-) -> impl IntoElement {
-    // Read path and entity before calling the actual render function
-    let (path_text, path_is_empty) = {
-        let state = cx.entity().read(cx);
-        let is_empty = state.new_channel_db_path.is_empty();
-        let text = if is_empty {
-            "No file selected".to_string()
-        } else {
-            state.new_channel_db_path.clone()
-        };
-        (text, is_empty)
-    };
-
-    let entity_clone = cx.entity().clone();
-
-    render_add_channel_input_row_with_path(
-        channel_id_input,
-        channel_name_input,
-        _channel_db_path_input,
-        channel_type,
-        path_text,
-        path_is_empty,
-        Some(entity_clone),
-        cx,
-    )
 }
 
 /// 渲染内联添加通道输入行 - 带预读取的路径和entity（避免在渲染时读取entity）

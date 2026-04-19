@@ -1652,36 +1652,6 @@ impl Render for CanViewApp {
             self.import_url_input = Some(input);
         }
 
-        // Initialize channel input states if needed (when show_add_channel_input is true)
-        if self.show_add_channel_input {
-            if self.channel_id_input.is_none() {
-                eprintln!("📝 Creating channel_id_input in render...");
-                let input = cx.new(|cx| InputState::new(window, cx).placeholder("Channel ID"));
-                cx.subscribe(&input, |this, input, event, cx| {
-                    if let InputEvent::Change = event {
-                        this.new_channel_id = input.read(cx).text().to_string();
-                        eprintln!("DEBUG: ID change: {}", this.new_channel_id);
-                        // cx.notify(); // Optional, but let's keep it minimal to avoid flicker
-                    }
-                })
-                .detach();
-                self.channel_id_input = Some(input);
-            }
-
-            if self.channel_name_input.is_none() {
-                eprintln!("📝 Creating channel_name_input in render...");
-                let input = cx.new(|cx| InputState::new(window, cx).placeholder("Channel name"));
-                cx.subscribe(&input, |this, input, event, cx| {
-                    if let InputEvent::Change = event {
-                        this.new_channel_name = input.read(cx).text().to_string();
-                        eprintln!("DEBUG: Name change: {}", this.new_channel_name);
-                    }
-                })
-                .detach();
-                self.channel_name_input = Some(input);
-            }
-        }
-
         // Initialize signal search input if needed
         if self.signal_search_input.is_none() {
             let input = cx
