@@ -2171,6 +2171,7 @@ impl Render for CanViewApp {
                 if self.show_share_dialog {
                     let url = self.share_url().unwrap_or("").to_string();
                     let url_for_copy = url.clone();
+                    let url_for_open = url.clone();
                     let view_for_close = view.clone();
                     div()
                         .absolute()
@@ -2255,7 +2256,23 @@ impl Render for CanViewApp {
                                             cx.write_to_clipboard(gpui::ClipboardItem::new_string(url_for_copy.clone()));
                                         })
                                         .child("📋 Copy"),
-                                ),
+                                )
+                                .child({
+                                    div()
+                                        .px_3()
+                                        .py_2()
+                                        .bg(rgb(0x313244))
+                                        .rounded(px(4.))
+                                        .cursor_pointer()
+                                        .text_xs()
+                                        .text_color(rgb(0xcdd6f4))
+                                        .hover(|s| s.bg(rgb(0x45475a)))
+                                        .on_mouse_down(gpui::MouseButton::Left, move |_, _window, cx| {
+                                            cx.stop_propagation();
+                                            cx.open_url(&url_for_open);
+                                        })
+                                        .child("🌐 Open")
+                                }),
                         )
                         .child(
                             div()

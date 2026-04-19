@@ -699,15 +699,36 @@ impl CanViewApp {
 
     /// Delete a library
     pub fn delete_library(&mut self, library_id: &str, cx: &mut Context<Self>) {
+        // Collect channel IDs from this library BEFORE deleting it
+        let channel_ids_to_remove: Vec<u16> = self
+            .library_manager
+            .find_library(library_id)
+            .map(|lib| {
+                lib.versions
+                    .iter()
+                    .flat_map(|v| v.channel_databases.iter().map(|db| db.channel_id))
+                    .collect()
+            })
+            .unwrap_or_default();
+
         match self
             .library_manager
             .delete_library(library_id, &self.app_config.mappings)
         {
             Ok(_) => {
-                self.status_msg = format!("Library deleted").into();
+                self.status_msg = "Library deleted".into();
                 if self.selected_library_id.as_ref() == Some(&library_id.to_string()) {
                     self.selected_library_id = None;
+                    self.selected_version_id = None;
                 }
+                // Clear runtime channel caches so plot view no longer shows them
+                for ch_id in channel_ids_to_remove {
+                    self.dbc_channels.remove(&ch_id);
+                    self.ldf_channels.remove(&ch_id);
+                }
+                // Sync config
+                self.app_config.libraries = self.library_manager.libraries().to_vec();
+                self.save_config(cx);
                 cx.notify();
             }
             Err(e) => {
