@@ -1684,7 +1684,7 @@ impl Render for CanViewApp {
         self.handle_file_dialog_result(cx);
 
         // Poll for import completion
-        if self.poll_import() {
+        if self.poll_import(cx) {
             cx.notify();
         }
 

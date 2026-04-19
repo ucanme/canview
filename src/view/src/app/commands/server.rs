@@ -86,24 +86,29 @@ impl CanViewApp {
     }
 
     /// Poll for import completion (call from render or timer)
-    pub fn poll_import(&mut self) -> bool {
+    pub fn poll_import(&mut self, cx: &mut gpui::Context<Self>) -> bool {
         if let Some(ref rx) = self.pending_import {
             match rx.try_recv() {
                 Ok(Ok(imported)) => {
                     let count = imported.len();
                     for lib in imported {
-                        // Add to manager
+                        // Create library if it doesn't already exist
                         let _ = self.library_manager.create_library(
                             lib.name.clone(),
                             lib.channel_type,
                         );
-                        // If the lib has versions, add them too
+                        // Upsert versions: update existing or add new
                         if let Some(lib_ref) = self.library_manager.find_library_mut(&lib.id) {
                             for version in lib.versions {
+                                // Remove existing version with same name so we can replace it
+                                lib_ref.remove_version(&version.name);
                                 lib_ref.add_version(version);
                             }
                         }
                     }
+                    // Persist the updated libraries
+                    self.app_config.libraries = self.library_manager.libraries().to_vec();
+                    self.save_config(cx);
                     self.import_status = Some(format!("Imported {} libraries", count));
                     self.pending_import = None;
                     self.show_import_dialog = false;
