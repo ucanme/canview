@@ -468,6 +468,26 @@ fn render_library_item(
                                 }),
                             )
                             .child("✎"),
+                    )
+                    .child(
+                        div()
+                            .id(format!("lib-delete-btn-{}", library_id))
+                            .px_1()
+                            .text_xs()
+                            .text_color(rgb(0x45475a))
+                            .cursor_pointer()
+                            .hover(|s| s.text_color(rgb(0xf38ba8)))
+                            .on_mouse_down(
+                                gpui::MouseButton::Left,
+                                cx.listener({
+                                    let library_id = library_id.clone();
+                                    move |this, _, _window, cx| {
+                                        cx.stop_propagation();
+                                        this.delete_library(&library_id, cx);
+                                    }
+                                }),
+                            )
+                            .child("🗑"),
                     ),
             )
         })
@@ -801,6 +821,30 @@ fn render_version_item(
                                 }),
                             )
                             .child("✎"),
+                    )
+                    .child(
+                        div()
+                            .id(format!("ver-delete-btn-{}", version_name))
+                            .px_1()
+                            .text_xs()
+                            .text_color(rgb(0x45475a))
+                            .cursor_pointer()
+                            .hover(|s| s.text_color(rgb(0xf38ba8)))
+                            .on_mouse_down(
+                                gpui::MouseButton::Left,
+                                cx.listener({
+                                    let version_name = version_name.clone();
+                                    move |this, _, _window, cx| {
+                                        cx.stop_propagation();
+                                        let library_id = match &this.selected_library_id {
+                                            Some(id) => id.clone(),
+                                            None => return,
+                                        };
+                                        this.delete_library_version(&library_id, &version_name, cx);
+                                    }
+                                }),
+                            )
+                            .child("🗑"),
                     ),
             )
         })
