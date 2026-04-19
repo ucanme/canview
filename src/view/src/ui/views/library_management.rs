@@ -37,6 +37,7 @@ pub fn render_library_management_view(
     channel_db_path_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     new_channel_db_path: &str, // Add this parameter to avoid reading entity in render
     new_channel_type: crate::models::ChannelType, // Add channel type parameter
+    is_sharing: bool, // Whether the share server is currently running
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     div()
@@ -55,6 +56,7 @@ pub fn render_library_management_view(
             focused_input,
             library_cursor_pos,
             library_name_input,
+            is_sharing,
             cx,
         ))
         // 垂直分割线 1 - Zed IDE subtle divider
@@ -112,6 +114,7 @@ fn render_left_column(
     _focused_input: &Option<String>,
     _cursor_pos: usize,
     library_name_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
+    is_sharing: bool,
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     div()
@@ -203,7 +206,6 @@ fn render_left_column(
                 .border_t_1()
                 .border_color(rgb(0x252525))
                 .child({
-                    let is_sharing = cx.entity().read(cx).server_handle.is_some();
                     div()
                         .flex_1()
                         .px_2()

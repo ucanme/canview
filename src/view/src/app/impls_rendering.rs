@@ -171,6 +171,7 @@ impl CanViewApp {
                 self.channel_db_path_input.as_ref(),
                 &self.new_channel_db_path, // Add this parameter
                 self.new_channel_type,     // Add channel type parameter
+                self.server_handle.is_some(), // is_sharing
                 cx,
             ))
     }
