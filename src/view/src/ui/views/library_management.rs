@@ -913,14 +913,13 @@ fn render_channel_item(
                 .w(px(16.))
                 .h(px(16.))
                 .cursor_pointer()
-                .hover(|style| style.bg(rgb(0x382828)))
+                .hover(|style| style.bg(rgb(0x382828)).text_color(rgb(0xf38ba8)))
                 .rounded(px(2.))
                 .flex()
                 .items_center()
                 .justify_center()
                 .flex_shrink_0()
                 .text_color(rgb(0x646473)) // Zed muted
-                .hover(|style| style.text_color(rgb(0xf38ba8))) // Red on hover
                 .child("🗑")
                 .on_mouse_down(
                     gpui::MouseButton::Left,
