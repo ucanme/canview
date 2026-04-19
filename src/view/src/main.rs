@@ -9,6 +9,7 @@ mod library;
 mod models;
 mod platform;
 mod rendering;
+pub mod server;
 mod ui;
 
 // Import rendering utilities and app types

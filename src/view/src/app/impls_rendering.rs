@@ -1639,6 +1639,18 @@ impl Render for CanViewApp {
         // Update container height based on current window size
         self.update_container_height(window);
 
+        // Initialize import URL input if showing import dialog
+        if self.show_import_dialog && self.import_url_input.is_none() {
+            let input = cx.new(|cx| InputState::new(window, cx).placeholder("http://...?token=..."));
+            cx.subscribe(&input, |this, input, event, cx| {
+                if let InputEvent::Change = event {
+                    this.import_url = input.read(cx).text().to_string();
+                }
+            })
+            .detach();
+            self.import_url_input = Some(input);
+        }
+
         // Initialize channel input states if needed (when show_add_channel_input is true)
         if self.show_add_channel_input {
             if self.channel_id_input.is_none() {
@@ -1695,6 +1707,11 @@ impl Render for CanViewApp {
 
         // Check for file dialog result (non-blocking poll)
         self.handle_file_dialog_result(cx);
+
+        // Poll for import completion
+        if self.poll_import() {
+            cx.notify();
+        }
 
         let view = cx.entity().clone();
 
@@ -1895,6 +1912,54 @@ impl Render for CanViewApp {
                                         view.update(cx, |this, cx| {
                                             this.current_view = AppView::PlotView;
                                             crate::ui::views::chart_view::extract_and_update_series_data(this);
+                                            cx.notify();
+                                        });
+                                    }
+                                }),
+                        )
+                        .child(
+                            div().w(px(1.0)).h(px(16.0)).bg(rgb(0x333333)).mx_1(),
+                        )
+                        .child(
+                            Button::new(if self.server_handle.is_some() { "Stop Share" } else { "Share" })
+                                .size(ButtonSize::Small)
+                                .variant(ButtonVariant::Ghost)
+                                .active(self.server_handle.is_some())
+                                .build()
+                                .id("share_btn")
+                                .on_mouse_down(gpui::MouseButton::Left, {
+                                    let view = view.clone();
+                                    move |_event, _, cx| {
+                                        cx.stop_propagation();
+                                        view.update(cx, |this, cx| {
+                                            if this.server_handle.is_some() {
+                                                this.stop_share_server();
+                                            } else {
+                                                this.start_share_server();
+                                            }
+                                            cx.notify();
+                                        });
+                                    }
+                                }),
+                        )
+                        .child(
+                            Button::new("Import")
+                                .size(ButtonSize::Small)
+                                .variant(ButtonVariant::Ghost)
+                                .active(self.show_import_dialog)
+                                .build()
+                                .id("import_btn")
+                                .on_mouse_down(gpui::MouseButton::Left, {
+                                    let view = view.clone();
+                                    move |_event, _, cx| {
+                                        cx.stop_propagation();
+                                        view.update(cx, |this, cx| {
+                                            this.show_import_dialog = !this.show_import_dialog;
+                                            if this.show_import_dialog {
+                                                this.import_status = None;
+                                            } else {
+                                                this.import_url_input = None;
+                                            }
                                             cx.notify();
                                         });
                                     }
@@ -2174,6 +2239,203 @@ impl Render for CanViewApp {
                                 })
                                 .child("Open BLF..."),
                         )
+                } else {
+                    div().hidden()
+                }
+            })
+            // Share dialog overlay
+            .child({
+                if self.show_share_dialog {
+                    let url = self.share_url().unwrap_or("").to_string();
+                    let view_for_close = view.clone();
+                    div()
+                        .absolute()
+                        .top(px(60.))
+                        .right(px(20.))
+                        .w(px(420.))
+                        .bg(rgb(0x1e1e2e))
+                        .border_1()
+                        .border_color(rgb(0x45475a))
+                        .rounded(px(8.))
+                        .shadow_lg()
+                        .flex()
+                        .flex_col()
+                        .p_4()
+                        .gap_3()
+                        .on_mouse_down(gpui::MouseButton::Left, |_event, _window, cx| {
+                            cx.stop_propagation();
+                        })
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .justify_between()
+                                .child(
+                                    div()
+                                        .text_sm()
+                                        .font_weight(FontWeight::BOLD)
+                                        .text_color(rgb(0xcdd6f4))
+                                        .child("📡 Sharing Libraries"),
+                                )
+                                .child(
+                                    div()
+                                        .cursor_pointer()
+                                        .text_sm()
+                                        .text_color(rgb(0x6c7086))
+                                        .hover(|s| s.text_color(rgb(0xcdd6f4)))
+                                        .child("✕")
+                                        .on_mouse_down(gpui::MouseButton::Left, move |_, _, cx| {
+                                            cx.stop_propagation();
+                                            view_for_close.update(cx, |app, cx| {
+                                                app.show_share_dialog = false;
+                                                cx.notify();
+                                            });
+                                        }),
+                                ),
+                        )
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(rgb(0xa6adc8))
+                                .child("Share this URL with others to let them import your libraries:"),
+                        )
+                        .child(
+                            div()
+                                .bg(rgb(0x11111b))
+                                .rounded(px(4.))
+                                .px_3()
+                                .py_2()
+                                .text_xs()
+                                .text_color(rgb(0x89b4fa))
+                                .overflow_x_hidden()
+                                .child(url),
+                        )
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(rgb(0x6c7086))
+                                .child("The server will stop when you close the app or click 'Stop Share'."),
+                        )
+                } else {
+                    div().hidden()
+                }
+            })
+            // Import dialog overlay
+            .child({
+                if self.show_import_dialog {
+                    let view_for_close = view.clone();
+                    let view_for_import = view.clone();
+                    let status_msg = self.import_status.clone().unwrap_or_default();
+                    let has_status = !status_msg.is_empty();
+
+                    div()
+                        .absolute()
+                        .top(px(60.))
+                        .right(px(20.))
+                        .w(px(420.))
+                        .bg(rgb(0x1e1e2e))
+                        .border_1()
+                        .border_color(rgb(0x45475a))
+                        .rounded(px(8.))
+                        .shadow_lg()
+                        .flex()
+                        .flex_col()
+                        .p_4()
+                        .gap_3()
+                        .on_mouse_down(gpui::MouseButton::Left, |_event, _window, cx| {
+                            cx.stop_propagation();
+                        })
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .justify_between()
+                                .child(
+                                    div()
+                                        .text_sm()
+                                        .font_weight(FontWeight::BOLD)
+                                        .text_color(rgb(0xcdd6f4))
+                                        .child("📥 Import Libraries"),
+                                )
+                                .child(
+                                    div()
+                                        .cursor_pointer()
+                                        .text_sm()
+                                        .text_color(rgb(0x6c7086))
+                                        .hover(|s| s.text_color(rgb(0xcdd6f4)))
+                                        .child("✕")
+                                        .on_mouse_down(gpui::MouseButton::Left, move |_, _, cx| {
+                                            cx.stop_propagation();
+                                            view_for_close.update(cx, |app, cx| {
+                                                app.show_import_dialog = false;
+                                                app.import_url_input = None;
+                                                cx.notify();
+                                            });
+                                        }),
+                                ),
+                        )
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(rgb(0xa6adc8))
+                                .child("Paste the share URL from another CANVIEW instance:"),
+                        )
+                        .child(
+                            div()
+                                .flex()
+                                .gap_2()
+                                .items_center()
+                                .child(
+                                    div()
+                                        .flex_1()
+                                        .child(if let Some(ref input) = self.import_url_input {
+                                            gpui_component::input::Input::new(input)
+                                                .cleanable(true)
+                                                .into_any_element()
+                                        } else {
+                                            div()
+                                                .bg(rgb(0x11111b))
+                                                .rounded(px(4.))
+                                                .px_3()
+                                                .py_2()
+                                                .text_xs()
+                                                .text_color(rgb(0x6c7086))
+                                                .child("http://...?token=...")
+                                                .into_any_element()
+                                        }),
+                                )
+                                .child(
+                                    crate::ui::components::Button::new("Import")
+                                        .size(crate::ui::components::ButtonSize::Small)
+                                        .variant(crate::ui::components::ButtonVariant::Primary)
+                                        .build()
+                                        .id("do_import_btn")
+                                        .on_mouse_down(gpui::MouseButton::Left, move |_, _, cx| {
+                                            cx.stop_propagation();
+                                            view_for_import.update(cx, |app, cx| {
+                                                let url = app.import_url.clone();
+                                                if !url.is_empty() {
+                                                    app.start_import(url);
+                                                } else {
+                                                    app.import_status = Some("Please enter a URL".into());
+                                                }
+                                                cx.notify();
+                                            });
+                                        }),
+                                ),
+                        )
+                        .child(if has_status {
+                            div()
+                                .text_xs()
+                                .text_color(if status_msg.contains("failed") || status_msg.contains("Failed") {
+                                    rgb(0xf38ba8)
+                                } else {
+                                    rgb(0xa6e3a1)
+                                })
+                                .child(status_msg)
+                        } else {
+                            div().hidden()
+                        })
                 } else {
                     div().hidden()
                 }

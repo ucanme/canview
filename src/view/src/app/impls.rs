@@ -115,6 +115,14 @@ impl CanViewApp {
             plot_width_px: px(0.0),
             // File menu dropdown state
             show_file_menu: false,
+            // Server state
+            server_handle: None,
+            show_share_dialog: false,
+            show_import_dialog: false,
+            import_url: String::new(),
+            import_status: None,
+            import_url_input: None,
+            pending_import: None,
         };
 
         // 🔧 启动时加载配置
@@ -617,6 +625,14 @@ impl CanViewApp {
             plot_width_px: px(0.0),
             // File menu dropdown state
             show_file_menu: false,
+            // Server state
+            server_handle: None,
+            show_share_dialog: false,
+            show_import_dialog: false,
+            import_url: String::new(),
+            import_status: None,
+            import_url_input: None,
+            pending_import: None,
         };
 
         // Load startup config (this will reset some state, so do it carefully)

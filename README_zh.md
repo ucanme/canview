@@ -1,186 +1,244 @@
-# CanView: BLF 解析库与可视化工具
-软件完全开源，您的star是我持续迭代的动力，决定了我投入的精力
-
 <div align="center">
 
-![CANVIEW Icon](assets/svg/logo-256x256.svg)
+# CANVIEW
 
-*现代 CAN/LIN 总线数据分析工具*
+![CANVIEW Logo](assets/svg/logo-256x256.svg)
+
+**开源跨平台 CAN/LIN 总线数据分析工具**
+
+[![Build](https://img.shields.io/github/actions/workflow/status/ucanme/canview/build.yml?branch=main&style=flat-square)](https://github.com/ucanme/canview/actions)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE.txt)
+[![Rust](https://img.shields.io/badge/rust-nightly-orange?style=flat-square)](https://www.rust-lang.org/)
+[![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-lightgrey?style=flat-square)](https://github.com/ucanme/canview/releases)
+
+完全开源，你的 ⭐ 是我持续开发的动力！
+
+[English](README.md) | [中文文档](README_zh.md)
 
 </div>
 
-[English Version](README_en.md)
+---
 
-## 简介
+## 项目简介
 
-CanView 是一个高性能的 BLF (Binary Logging Format) 工具集，包含：
-1. **BLF 解析库** (`blf`): 用于解析 Vector Informatik 的 BLF 文件格式。
-2. **数据库解析库** (`parser`): 用于解析 DBC (CAN) 和 LDF (LIN) 数据库文件。
-3. **可视化工具** (`view`): 基于 GPUI 开发的现代化桌面应用，用于查看 CAN/LIN 等总线数据。
+CANVIEW 是一个使用 Rust 构建的高性能汽车总线数据分析工具。它集成了 BLF 日志解析、DBC/LDF 信号数据库解析和基于 [GPUI](https://gpui.rs/) 的 GPU 加速桌面界面，为汽车电子工程师提供流畅、现代的信号分析体验。
 
-BLF 是一种广泛应用于汽车工业中的二进制日志文件格式，用于存储 CAN、LIN、FlexRay 和 Ethernet 等总线通信数据。
+### 核心亮点
 
-## 📸 截图
-### BLF 日志查看器
-![BLF 日志截图](assets/blf_logs_screenshot.png)
+- 🚀 **Rust 原生** — 零拷贝解析，启动和加载速度快
+- 🖥️ **GPU 加速 UI** — 基于 Zed 编辑器的 GPUI 框架，渲染流畅
+- 📊 **信号绘图** — 交互式波形图，支持缩放、平移、悬停查看
+- 🔌 **多总线支持** — CAN / CAN FD / LIN / FlexRay / Ethernet
+- 🌐 **跨平台** — Windows、macOS、Linux 一套代码
 
-### 信号折线图
-![信号折线图](assets/plot_screen.png)
+---
+
+## 截图
+
+| 日志浏览 | 信号绘图 |
+|:---:|:---:|
+| ![BLF 日志查看器](assets/blf_logs_screenshot.png) | ![信号折线图](assets/plot_screen.png) |
+
+---
 
 ## 功能特性
 
-### BLF 解析库 (`blf`)
-- **完整的 BLF 格式支持**：支持解析多种类型的日志对象，包括 CAN、CAN FD、LIN、FlexRay、Ethernet 等总线消息
-- **高性能**：使用 Rust 的零成本抽象和内存安全特性，实现高性能解析
-- **内存安全**：利用 Rust 的所有权和借用检查机制，避免内存泄漏和缓冲区溢出
+### 日志解析
+- 解析 Vector BLF 格式日志文件
+- 支持 CAN、CAN FD、LIN、FlexRay、Ethernet 等消息类型
+- 支持压缩日志容器，高效处理大文件
 
-### 数据库解析库 (`parser`)
-- **DBC 支持**：解析 Vector DBC 文件，获取 CAN 信号定义和注释
-- **LDF 支持**：解析 LIN 描述文件 (LDF)，获取 LIN 信号定义
-- **注释解析**：从数据库文件中提取注释和描述信息，提供更好的上下文
+### 信号数据库
+- 解析 DBC（CAN 信号定义）和 LDF（LIN 信号定义）文件
+- 多版本数据库管理，支持库分组与通道映射
+- 加载后自动解码信号值
 
-### 桌面可视化工具 (`view`)
-- **现代化 UI**：基于 GPUI 框架开发，GPU 加速，提供流畅的用户体验
-- **日志可视化**：清晰的消息列表视图，显示时间戳、通道、ID 和数据负载
-- **多通道解码**：
-    - 为不同通道 (CAN/LIN) 映射特定的 DBC 或 LDF 文件
-    - 支持在不同通道上同时激活多个数据库
-- **信号解码**：基于加载的数据库实时解码 CAN 和 LIN 信号
-- **高级过滤**：
-    - 通过点击界面按消息 ID 过滤
-    - 按通道过滤
-    - 在十六进制和十进制 ID 显示之间切换
-- **配置管理**：
-    - **信号库**：将 DBC/LDF 文件组织到带有版本控制的库中
-    - **活动版本**：即时切换不同的解码配置
-    - **JSON 配置**：保存和加载通道映射和库配置
-- **自定义滚动条**：为大型日志文件提供流畅的滚动和拖动支持
-- **交互式界面**：点击 ID 和通道列进行过滤
-- **信号折线图**：
-    - 交互式可视化折线图，支持缩放和鼠标悬停
-    - **智能工具提示**：悬停时实时显示信号值、单位以及基于测量起始时间的**绝对墙钟时间**
-    - **缩放功能**：支持在图表上拖动选择区域进行局部放大查看细节
+### 桌面界面
+- 深色主题，Zed 风格的现代 UI
+- 按 ID、通道、消息类型过滤
+- HEX / DEC ID 显示切换
+- 交互式信号波形图（缩放、拖拽、悬停提示、绝对时间显示）
+- 自定义滚动条，流畅滚动
+- 状态栏实时显示文件统计
 
+### 支持的消息类型
+
+| 总线 | 类型 |
+|------|------|
+| CAN | CanMessage, CanMessage2, CanFdMessage, CanFdMessage64 |
+| CAN 错误 | CanErrorFrame, CanDriverError, CanDriverStatistic |
+| LIN | LinMessage, LinMessage2 |
+| FlexRay | 消息、状态、周期事件 |
+| Ethernet | Ethernet 帧 |
+| 系统 | 应用触发器、注释标记、全局标记 |
+
+---
 
 ## 快速开始
 
-### 运行可视化工具
+### 环境要求
 
-确保你已经安装了 Rust 环境。
+- Rust nightly（项目使用 edition 2024）
+- Git
+
+#### Linux 额外依赖
 
 ```bash
-# 运行桌面查看器
-cargo run -p view
+sudo apt-get install libxkbcommon-dev libx11-dev libegl1-mesa-dev
 ```
 
-### 在项目中使用解析库
+### 从源码构建
 
-在你的 `Cargo.toml` 文件中添加依赖：
-
-```toml
-[dependencies]
-blf = { path = "src/blf" }
-parser = { path = "src/parser" }
+```bash
+git clone https://github.com/ucanme/canview.git
+cd canview
+cargo run --release --bin view
 ```
 
-### 使用示例 (解析库)
+### 下载预编译包
 
-```rust
-use blf::{read_blf_from_file, LogObject};
+前往 [Releases](https://github.com/ucanme/canview/releases) 下载：
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 读取 BLF 文件
-    let result = read_blf_from_file("example.blf")?;
+| 平台 | 架构 |
+|------|------|
+| Windows | x86_64 |
+| macOS | Apple Silicon / Intel |
+| Linux | x86_64 |
 
-    // 遍历解析出的对象
-    for object in result.objects {
-        match object {
-            LogObject::CanMessage(msg) => {
-                println!("CAN Message: ID={:x}, DLC={}, Data={:?}",
-                         msg.id, msg.dlc, msg.data);
-            }
-            LogObject::CanFdMessage(msg) => {
-                println!("CAN FD Message: ID={:x}, Len={}, Data={:?}",
-                         msg.id, msg.valid_payload_length, msg.data);
-            }
-            LogObject::LinMessage(msg) => {
-                println!("LIN Message: ID={:x}, DLC={}, Data={:?}",
-                         msg.id, msg.dlc, msg.data);
-            }
-            _ => {}
-        }
-    }
+---
 
-    Ok(())
-}
-```
+## 使用指南
+
+1. **打开日志** — 点击 "Open BLF File" 选择 `.blf` 文件
+2. **加载数据库** — 切换到 Config 标签页，添加 DBC 或 LDF 文件并映射通道
+3. **浏览信号** — 回到 Log 标签页查看解码后的信号值
+4. **筛选消息** — 点击列表中的 ID 或通道列快速过滤
+5. **绘制波形** — 选择信号进入 Chart 视图，支持缩放和悬停查看
+
+配置自动保存至 `canview_config.json`。
+
+---
 
 ## 项目结构
 
 ```
 canview/
 ├── src/
-│   ├── blf/           # BLF 解析库核心代码
-│   │   ├── src/
-│   │   │   ├── objects/      # 各种对象类型的实现
-│   │   │   │   ├── can/      # CAN 消息对象
-│   │   │   │   ├── lin/      # LIN 消息对象
-│   │   │   │   ├── flexray/  # FlexRay 对象
-│   │   │   │   └── ethernet/ # Ethernet 对象
-│   │   │   ├── parser.rs     # 主解析器实现
-│   │   │   └── lib.rs        # 库导出
-│   │   └── Cargo.toml
+│   ├── blf/                # BLF 解析库
+│   │   └── src/
+│   │       ├── objects/    # 消息对象（CAN/LIN/FlexRay/Ethernet/MOST/WLAN）
+│   │       ├── parser.rs   # 文件解析器
+│   │       └── lib.rs
 │   │
-│   ├── parser/        # 数据库解析库
-│   │   ├── src/
-│   │   │   ├── dbc/          # DBC 解析逻辑
-│   │   │   ├── ldf/          # LDF 解析逻辑
-│   │   │   └── lib.rs
-│   │   └── Cargo.toml
+│   ├── parser/             # 信号数据库解析库
+│   │   └── src/
+│   │       ├── dbc.rs      # DBC 解析
+│   │       └── ldf.rs      # LDF 解析
 │   │
-│   └── view/          # 桌面可视化应用
-│       ├── src/
-│       │   └── main.rs       # UI 逻辑与渲染
-│       ├── build.rs          # 资源脚本 (Windows 图标)
-│       └── Cargo.toml
+│   └── view/               # 桌面应用
+│       └── src/
+│           ├── main.rs     # 入口
+│           ├── views/      # 页面（日志/配置/图表/状态栏）
+│           ├── ui/         # UI 组件与主题
+│           ├── models/     # 数据模型
+│           ├── controllers/# 控制器
+│           └── handlers/   # 事件处理
 │
-├── assets/             # 应用资源
-│   ├── ico/            # Windows 图标
-│   ├── png/            # PNG 图标
-│   └── *.svg           # Logo 源文件
-│
-├── .github/
-│   └── workflows/
-│       └── build.yml   # CI/CD 流水线
-│
-├── Cargo.toml          # 工作空间配置
-├── README.md           # 项目文档
-└── LICENSE             # MIT 许可证
+├── assets/                 # 图标与品牌资源
+├── tests/                  # 集成测试
+├── .github/workflows/      # CI/CD（构建 + 发布）
+├── Cargo.toml              # Workspace 配置
+└── LICENSE.txt              # MIT 许可证
 ```
 
-## 支持的消息类型
+---
 
-- **CAN**: CanMessage, CanMessage2, CanFdMessage, CanFdMessage64
-- **CAN 错误与统计**: CanErrorFrame, CanDriverError, CanDriverStatistic
-- **LIN**: LinMessage, LinMessage2 等
-- **FlexRay**: 消息、状态、周期事件
-- **Ethernet**: Ethernet 帧
-- **系统事件**: 应用触发器、注释
-- **应用触发器和事件注释**
+## 作为库使用
 
-## 跨平台支持
+BLF 解析器和信号数据库解析器可以独立使用：
 
-CanView 通过 GitHub Actions 自动构建支持多个平台：
+```toml
+[dependencies]
+blf = { git = "https://github.com/ucanme/canview.git" }
+parser = { git = "https://github.com/ucanme/canview.git" }
+```
 
-- ✅ **Windows** (x86_64)
-- ✅ **macOS** (Apple Silicon 和 Intel)
-- ✅ **Linux** (x86_64)
+```rust
+// 解析 BLF 文件
+let result = blf::read_blf_from_file("example.blf")?;
+for obj in &result.objects {
+    // 处理 CAN/LIN/FlexRay 消息 ...
+}
 
-详细的构建说明请参阅 [BUILD.md](BUILD.md)。
-## 说明
- 1. 目前支持多版本信号库管理、多文件回放、交互式信号折线图（含绝对时间悬停、缩放）等功能。
- 2. 实时模式、诊断规则 DSL 等功能正在持续迭代中。
- 3. 后续计划集成大模型预测，基于大模型做智能诊断。
+// 解析 DBC 数据库
+let db = parser::dbc::DbcParser::parse_file("example.dbc")?;
+for msg in &db.messages {
+    println!("{} (0x{:X})", msg.name, msg.id);
+}
+```
+
+---
+
+## 开发
+
+```bash
+cargo test --workspace        # 运行测试
+cargo fmt --all               # 格式化
+cargo clippy --workspace      # 静态检查
+RUST_LOG=debug cargo run --bin view  # 调试运行
+```
+
+跨平台构建详见 [BUILD.md](BUILD.md)。
+
+---
+
+## 路线图
+
+- [x] BLF 解析核心功能
+- [x] DBC/LDF 数据库解析
+- [x] GPUI 桌面 UI
+- [x] 消息过滤与信号解码
+- [x] 配置管理与跨平台构建
+- [x] 信号折线图（缩放、悬停、绝对时间）
+- [ ] 实时流模式（开发中）
+- [ ] 导出 CSV / JSON
+- [ ] 搜索功能
+- [ ] 诊断规则 DSL
+- [ ] 基于大模型的智能诊断
+
+---
+
+## 贡献
+
+欢迎贡献！请遵循以下流程：
+
+1. Fork 本仓库
+2. 创建特性分支：`git checkout -b feature/your-feature`
+3. 提交更改并推送
+4. 发起 Pull Request
+
+请确保代码通过 `cargo fmt` 和 `cargo clippy` 检查。
+
+---
+
 ## 许可证
 
-本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件。
+[MIT License](LICENSE.txt) © 2026 CANVIEW
+
+---
+
+## 致谢
+
+- [Zed Editor](https://zed.dev/) — GPUI 框架
+- [Vector Informatik](https://www.vector.com/) — BLF 格式规范
+- Rust 社区 — 优秀的工具链和生态
+
+---
+
+<div align="center">
+
+**使用 Rust 用 ❤️ 构建**
+
+[Issues](https://github.com/ucanme/canview/issues) · [Discussions](https://github.com/ucanme/canview/discussions) · admin@ucan.me
+
+</div>

@@ -193,6 +193,15 @@ pub struct CanViewApp {
 
     // File menu dropdown state
     pub show_file_menu: bool,
+
+    // Server state
+    pub server_handle: Option<crate::server::ServerHandle>,
+    pub show_share_dialog: bool,
+    pub show_import_dialog: bool,
+    pub import_url: String,
+    pub import_status: Option<String>,
+    pub import_url_input: Option<Entity<InputState>>,
+    pub pending_import: Option<std::sync::mpsc::Receiver<Result<Vec<crate::models::SignalLibrary>, String>>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -314,6 +323,14 @@ impl CanViewApp {
             plot_width_px: gpui::px(0.0),
             // File menu dropdown state
             show_file_menu: false,
+            // Server state
+            server_handle: None,
+            show_share_dialog: false,
+            show_import_dialog: false,
+            import_url: String::new(),
+            import_status: None,
+            import_url_input: None,
+            pending_import: None,
         }
     }
 
