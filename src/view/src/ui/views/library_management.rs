@@ -391,8 +391,9 @@ fn render_add_library_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoEl
 
                     this.library_name_input = Some(input.clone());
 
-                    // Subscribe to input events - store subscription to keep it alive
-                    let _subscription = cx.subscribe(
+                    // Subscribe to input events - detach so the subscription lives
+                    // until the input entity is dropped (when library_name_input = None)
+                    cx.subscribe(
                         &input,
                         |this: &mut crate::CanViewApp,
                          _input_entity,
@@ -432,7 +433,8 @@ fn render_add_library_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoEl
                                 _ => {}
                             }
                         },
-                    );
+                    )
+                    .detach();
 
                     eprintln!("✅ Created input and subscribed to events");
                 }
