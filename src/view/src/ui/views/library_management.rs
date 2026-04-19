@@ -192,6 +192,63 @@ fn render_left_column(
                     list.child(render_add_library_button(cx))
                 }),
         )
+        // Bottom action bar: Share & Import
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap_2()
+                .px_3()
+                .py_2()
+                .border_t_1()
+                .border_color(rgb(0x252525))
+                .child({
+                    let is_sharing = cx.entity().read(cx).server_handle.is_some();
+                    div()
+                        .flex_1()
+                        .px_2()
+                        .py_1()
+                        .text_xs()
+                        .text_color(if is_sharing { rgb(0xa6e3a1) } else { rgb(0xcdd6f4) })
+                        .bg(rgb(0x1e1e2e))
+                        .rounded(px(4.0))
+                        .cursor_pointer()
+                        .text_center()
+                        .hover(|s| s.bg(rgb(0x313244)))
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
+                            if this.server_handle.is_some() {
+                                this.stop_share_server();
+                            } else {
+                                this.start_share_server();
+                            }
+                            cx.notify();
+                        }))
+                        .child(if is_sharing { "📡 Stop Share" } else { "📡 Share" })
+                })
+                .child(
+                    div()
+                        .flex_1()
+                        .px_2()
+                        .py_1()
+                        .text_xs()
+                        .text_color(rgb(0xcdd6f4))
+                        .bg(rgb(0x1e1e2e))
+                        .rounded(px(4.0))
+                        .cursor_pointer()
+                        .text_center()
+                        .hover(|s| s.bg(rgb(0x313244)))
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
+                            this.show_import_dialog = !this.show_import_dialog;
+                            if this.show_import_dialog {
+                                this.import_status = None;
+                            } else {
+                                this.import_url_input = None;
+                            }
+                            cx.notify();
+                        }))
+                        .child("📥 Import"),
+                ),
+        )
 }
 
 /// 渲染内联添加库输入行 - 完全融入列表

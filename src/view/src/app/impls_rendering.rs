@@ -1916,54 +1916,6 @@ impl Render for CanViewApp {
                                         });
                                     }
                                 }),
-                        )
-                        .child(
-                            div().w(px(1.0)).h(px(16.0)).bg(rgb(0x333333)).mx_1(),
-                        )
-                        .child(
-                            Button::new(if self.server_handle.is_some() { "Stop Share" } else { "Share" })
-                                .size(ButtonSize::Small)
-                                .variant(ButtonVariant::Ghost)
-                                .active(self.server_handle.is_some())
-                                .build()
-                                .id("share_btn")
-                                .on_mouse_down(gpui::MouseButton::Left, {
-                                    let view = view.clone();
-                                    move |_event, _, cx| {
-                                        cx.stop_propagation();
-                                        view.update(cx, |this, cx| {
-                                            if this.server_handle.is_some() {
-                                                this.stop_share_server();
-                                            } else {
-                                                this.start_share_server();
-                                            }
-                                            cx.notify();
-                                        });
-                                    }
-                                }),
-                        )
-                        .child(
-                            Button::new("Import")
-                                .size(ButtonSize::Small)
-                                .variant(ButtonVariant::Ghost)
-                                .active(self.show_import_dialog)
-                                .build()
-                                .id("import_btn")
-                                .on_mouse_down(gpui::MouseButton::Left, {
-                                    let view = view.clone();
-                                    move |_event, _, cx| {
-                                        cx.stop_propagation();
-                                        view.update(cx, |this, cx| {
-                                            this.show_import_dialog = !this.show_import_dialog;
-                                            if this.show_import_dialog {
-                                                this.import_status = None;
-                                            } else {
-                                                this.import_url_input = None;
-                                            }
-                                            cx.notify();
-                                        });
-                                    }
-                                }),
                         );
 
                     div()
