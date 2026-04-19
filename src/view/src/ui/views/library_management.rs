@@ -10,7 +10,6 @@ use crate::models::{ChannelDatabase, ChannelMapping, LibraryVersion, SignalLibra
 use gpui::prelude::*;
 use gpui::*;
 use gpui_component::input::{Input, InputState};
-
 /// 渲染三栏布局的库管理界面 - Zed IDE 风格
 ///
 /// 严格的三栏布局，中间用控制线隔开：
@@ -38,6 +37,7 @@ pub fn render_library_management_view(
     new_channel_db_path: &str, // Add this parameter to avoid reading entity in render
     new_channel_type: crate::models::ChannelType, // Add channel type parameter
     is_sharing: bool, // Whether the share server is currently running
+    server_info: Option<(&str, &str)>, // (base_url, token) for constructing download URLs
     renaming_library_id: Option<&str>,
     rename_library_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     renaming_version_name: Option<&str>,
@@ -108,6 +108,7 @@ pub fn render_library_management_view(
             channel_db_path_input,
             new_channel_db_path,
             new_channel_type,
+            server_info,
             cx,
         ))
 }
@@ -862,6 +863,7 @@ fn render_right_column(
     channel_db_path_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     new_channel_db_path: &str, // Add this parameter to avoid reading entity in render
     new_channel_type: crate::models::ChannelType, // Use the new channel type being added
+    server_info: Option<(&str, &str)>, // (base_url, token) for download URL display
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     // 找到选中的库和版本
@@ -1053,7 +1055,19 @@ fn render_right_column(
                             let mut list = this;
                             // 显示现有通道列表
                             for channel_db in &version.channel_databases {
-                                list = list.child(render_channel_item(channel_db, cx));
+                                // Build download URL if server is running
+                                let download_url = server_info.as_ref().map(|(base, token)| {
+                                    let lib_id = selected_library_id.as_deref().unwrap_or("");
+                                    format!(
+                                        "{}/api/libraries/{}/versions/{}/files/{}?token={}",
+                                        base,
+                                        lib_id,
+                                        urlencoding::encode(&version.name),
+                                        channel_db.channel_id,
+                                        token
+                                    )
+                                });
+                                list = list.child(render_channel_item(channel_db, download_url.as_deref(), cx));
                             }
                             // 显示输入框（如果show_add_channel_input为true）
                             if show_add_channel_input {
@@ -1078,6 +1092,7 @@ fn render_right_column(
 /// 渲染单个通道项 - 完整的单行列表显示
 fn render_channel_item(
     channel_db: &ChannelDatabase,
+    download_url: Option<&str>,
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     let path = channel_db.database_path.clone();
@@ -1142,9 +1157,15 @@ fn render_channel_item(
             div().flex_1().min_w_0().child(
                 div()
                     .text_sm()
-                    .text_color(rgb(0x646473)) // Zed muted
+                    .text_color(if download_url.is_some() {
+                        rgb(0x7dcfff) // Cyan/blue for HTTP URLs
+                    } else {
+                        rgb(0x646473) // Muted gray for local paths
+                    })
                     .truncate()
-                    .child({
+                    .child(if let Some(url) = download_url {
+                        url.to_string()
+                    } else {
                         let normalized = path.replace('\\', "/");
                         if let Some(idx) = normalized.find("libraries/") {
                             normalized[idx..].to_string()

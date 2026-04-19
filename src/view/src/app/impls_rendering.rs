@@ -147,6 +147,20 @@ impl CanViewApp {
         // Note: We can't create InputState here without window, so we'll handle it differently
         // The Input components will be created lazily when needed
 
+        // Extract server base_url and token for download URL display
+        let server_info_owned: Option<(String, String)> = self.server_handle.as_ref().map(|h| {
+            // share_url format: http://IP:PORT/api/libraries?token=TOKEN
+            let share_url = h.share_url.clone();
+            let token = h.token.clone();
+            let base_url = if let Some(api_pos) = share_url.find("/api/") {
+                share_url[..api_pos].to_string()
+            } else {
+                format!("http://127.0.0.1:{}", h.addr.port())
+            };
+            (base_url, token)
+        });
+        let server_info = server_info_owned.as_ref().map(|(b, t)| (b.as_str(), t.as_str()));
+
         gpui::div()
             .flex_1()
             .size_full()
@@ -172,6 +186,7 @@ impl CanViewApp {
                 &self.new_channel_db_path, // Add this parameter
                 self.new_channel_type,     // Add channel type parameter
                 self.server_handle.is_some(), // is_sharing
+                server_info,
                 self.renaming_library_id.as_deref(),
                 self.rename_library_input.as_ref(),
                 self.renaming_version_name.as_deref(),
