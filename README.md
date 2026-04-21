@@ -27,6 +27,7 @@ CANVIEW is a high-performance automotive bus analysis tool built in Rust. It int
 - 🖥️ **GPU-accelerated UI** — built on GPUI, smooth rendering
 - 📊 **Interactive waveform plot** — zoom, pan, hover to inspect
 - 📚 **Signal library management** — multi-version DBC/LDF libraries, one-click activation, auto-load
+- 🔗 **LAN sharing** — share signal libraries within your local network via HTTP
 - 🔌 **Multi-bus support** — CAN / CAN FD / LIN / FlexRay / Ethernet
 - 🌐 **Cross-platform** — Windows, macOS, Linux
 
@@ -80,7 +81,7 @@ Configuration is auto-saved to `multi_channel_config.json`.
 - [x] GPUI desktop UI
 - [x] Message filtering and signal decoding
 - [x] Signal waveform plot (zoom, hover, absolute time)
-- [x] Multi-version signal library management (create / activate / share)
+- [x] Multi-version signal library management (create / activate / share via LAN)
 - [ ] Live streaming mode
 - [ ] Export CSV / JSON
 - [ ] Diagnostic rule DSL
