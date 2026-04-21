@@ -9,7 +9,12 @@ use std::path::PathBuf;
 
 /// Load configuration at startup
 pub fn load_startup_config(app: &mut CanViewApp) {
-    let path = PathBuf::from("multi_channel_config.json");
+    let exe_config = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.join("multi_channel_config.json")));
+    let path = exe_config
+        .filter(|p| p.exists())
+        .unwrap_or_else(|| PathBuf::from("multi_channel_config.json"));
     if path.exists() {
         app.status_msg = "Found saved config, loading...".into();
         if let Ok(content) = std::fs::read_to_string(&path) {
@@ -117,17 +122,19 @@ pub fn load_config(app: &mut CanViewApp, _cx: &mut Context<CanViewApp>) {
 
 /// Save configuration to file
 pub fn save_config(app: &CanViewApp, _cx: &mut Context<CanViewApp>) {
-    if let Some(config_path) = &app.config_file_path {
-        if let Ok(content) = serde_json::to_string_pretty(&app.app_config) {
-            if std::fs::write(config_path, content).is_ok() {
-                eprintln!("✅ Configuration saved to: {}", config_path.display());
-                return;
-            }
+    let config_path = app.config_file_path.clone().unwrap_or_else(|| {
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|d| d.join("multi_channel_config.json")))
+            .unwrap_or_else(|| PathBuf::from("multi_channel_config.json"))
+    });
+    if let Ok(content) = serde_json::to_string_pretty(&app.app_config) {
+        if std::fs::write(&config_path, content).is_ok() {
+            eprintln!("✅ Configuration saved to: {}", config_path.display());
+            return;
         }
-        eprintln!("❌ Failed to save configuration");
-    } else {
-        eprintln!("⚠️  No configuration file path set");
     }
+    eprintln!("❌ Failed to save configuration");
 }
 
 /// Import database file

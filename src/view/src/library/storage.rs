@@ -3,10 +3,17 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 pub fn libraries_base_path(config_file_path: Option<&Path>) -> PathBuf {
-    config_file_path
-        .and_then(|path| path.parent())
-        .map(|dir| dir.join("libraries"))
-        .unwrap_or_else(|| PathBuf::from("libraries"))
+    if let Some(dir) = config_file_path.and_then(|p| p.parent()) {
+        return dir.join("libraries");
+    }
+    // Fall back to a path relative to the executable directory so that
+    // the libraries folder is always found regardless of the working directory.
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            return exe_dir.join("libraries");
+        }
+    }
+    PathBuf::from("libraries")
 }
 
 pub fn build_library_file_subdir(

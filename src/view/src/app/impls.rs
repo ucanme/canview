@@ -143,7 +143,14 @@ impl CanViewApp {
     }
 
     fn load_startup_config(&mut self) {
-        let path = PathBuf::from("multi_channel_config.json");
+        // Prefer a config file next to the executable so it is always found
+        // regardless of the working directory.
+        let exe_config = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|d| d.join("multi_channel_config.json")));
+        let path = exe_config
+            .filter(|p| p.exists())
+            .unwrap_or_else(|| PathBuf::from("multi_channel_config.json"));
         if path.exists() {
             self.status_msg = "Found saved config, loading...".into();
             if let Ok(content) = std::fs::read_to_string(&path) {
@@ -403,12 +410,17 @@ impl CanViewApp {
     }
 
     /// Import a database file
-    /// Save the current configuration to file
+    /// Save the current configuration to file.
+    ///
+    /// Uses the existing config file path when available. On first save, stores
+    /// the config next to the executable so it is location-independent.
     pub(crate) fn save_config(&self, cx: &mut Context<Self>) {
-        let config_path = self
-            .config_file_path
-            .clone()
-            .unwrap_or_else(|| PathBuf::from("multi_channel_config.json"));
+        let config_path = self.config_file_path.clone().unwrap_or_else(|| {
+            std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|d| d.join("multi_channel_config.json")))
+                .unwrap_or_else(|| PathBuf::from("multi_channel_config.json"))
+        });
         if let Ok(content) = serde_json::to_string_pretty(&self.app_config) {
             if std::fs::write(&config_path, content).is_ok() {
                 cx.notify();
