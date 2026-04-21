@@ -27,6 +27,8 @@ pub struct RuntimeState {
     pub ldf_channels: HashMap<u16, LdfDatabase>,
     pub start_time: Option<chrono::NaiveDateTime>,
     pub is_streaming_mode: bool,
+    pub active_library_id: Option<String>,
+    pub active_version_name: Option<String>,
 }
 
 use blf::LogObject;
@@ -134,6 +136,9 @@ pub struct CanViewApp {
     pub library_manager: LibraryManager,
     pub selected_library_id: Option<String>,
     pub selected_version_id: Option<String>, // Add selected version ID
+    /// The currently "activated" library version used for log decoding and plot
+    pub active_library_id: Option<String>,
+    pub active_version_name: Option<String>,
     pub new_library_name: String,
     pub library_cursor_position: usize,
     pub library_versions_expanded: bool,
@@ -205,6 +210,8 @@ pub struct CanViewApp {
     // Server state
     pub server_handle: Option<crate::server::ServerHandle>,
     pub show_share_dialog: bool,
+    pub share_url_copied: bool,
+    pub copied_channel_id: Option<u16>,
     pub show_import_dialog: bool,
     pub import_url: String,
     pub import_status: Option<String>,
@@ -282,6 +289,8 @@ impl CanViewApp {
             library_manager: LibraryManager::new(),
             selected_library_id: None,
             selected_version_id: None, // Initialize selected version ID
+            active_library_id: None,
+            active_version_name: None,
             new_library_name: String::new(),
             library_cursor_position: 0,
             library_versions_expanded: true,
@@ -341,6 +350,8 @@ impl CanViewApp {
             // Server state
             server_handle: None,
             show_share_dialog: false,
+            share_url_copied: false,
+            copied_channel_id: None,
             show_import_dialog: false,
             import_url: String::new(),
             import_status: None,
@@ -372,6 +383,8 @@ impl CanViewApp {
             ldf_channels: self.ldf_channels.clone(),
             start_time: self.start_time,
             is_streaming_mode: self.is_streaming_mode,
+            active_library_id: self.active_library_id.clone(),
+            active_version_name: self.active_version_name.clone(),
         }
     }
 
@@ -401,6 +414,8 @@ impl CanViewApp {
         self.ldf_channels = state.ldf_channels;
         self.start_time = state.start_time;
         self.is_streaming_mode = state.is_streaming_mode;
+        self.active_library_id = state.active_library_id;
+        self.active_version_name = state.active_version_name;
         eprintln!("✅ State restored. Now have: {:?} view, {} messages, {} plot series, zoom: {:?}-{:?}, {} signals, {} DBC, {} LDF",
             self.current_view,
             self.messages.len(),

@@ -4,14 +4,14 @@
 
 ![CANVIEW Logo](assets/svg/logo-256x256.svg)
 
-**开源跨平台 CAN/LIN 总线数据分析工具**
+**Open-source cross-platform CAN/LIN bus data analysis tool**
 
 [![Build](https://img.shields.io/github/actions/workflow/status/ucanme/canview/build.yml?branch=main&style=flat-square)](https://github.com/ucanme/canview/actions)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE.txt)
 [![Rust](https://img.shields.io/badge/rust-nightly-orange?style=flat-square)](https://www.rust-lang.org/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-lightgrey?style=flat-square)](https://github.com/ucanme/canview/releases)
 
-完全开源，你的 ⭐ 是我持续开发的动力！
+Fully open source — your ⭐ keeps development going!
 
 [English](README.md) | [中文文档](README_zh.md)
 
@@ -19,198 +19,101 @@
 
 ---
 
-## 项目简介
+## Overview
 
-CANVIEW 是一个使用 Rust 构建的高性能汽车总线数据分析工具。它集成了 BLF 日志解析、DBC/LDF 信号数据库解析和基于 [GPUI](https://gpui.rs/) 的 GPU 加速桌面界面，为汽车电子工程师提供流畅、现代的信号分析体验。
+CANVIEW is a high-performance automotive bus analysis tool built in Rust. It integrates BLF log parsing, DBC/LDF signal library management, and a [GPUI](https://gpui.rs/)-powered GPU-accelerated desktop UI.
 
-### 核心亮点
-
-- 🚀 **Rust 原生** — 零拷贝解析，启动和加载速度快
-- 🖥️ **GPU 加速 UI** — 基于 Zed 编辑器的 GPUI 框架，渲染流畅
-- 📊 **信号绘图** — 交互式波形图，支持缩放、平移、悬停查看
-- 🔌 **多总线支持** — CAN / CAN FD / LIN / FlexRay / Ethernet
-- 🌐 **跨平台** — Windows、macOS、Linux 一套代码
+- 🚀 **Rust native** — zero-copy parsing, fast startup
+- 🖥️ **GPU-accelerated UI** — built on GPUI, smooth rendering
+- 📊 **Interactive waveform plot** — zoom, pan, hover to inspect
+- 📚 **Signal library management** — multi-version DBC/LDF libraries, one-click activation, auto-load
+- 🔌 **Multi-bus support** — CAN / CAN FD / LIN / FlexRay / Ethernet
+- 🌐 **Cross-platform** — Windows, macOS, Linux
 
 ---
 
-## 截图
+## Screenshots
 
-| 日志浏览 | 信号绘图 |
+| Log Viewer | Signal Plot |
 |:---:|:---:|
 | ![BLF Logs Viewer](assets/blf_logs_screenshot.png) | ![Signal Plotter](assets/plot_screen.png) |
 
----
-
-## 功能特性
-
-### 日志解析
-- 解析 Vector BLF 格式日志文件
-- 支持 CAN、CAN FD、LIN、FlexRay、Ethernet 等消息类型
-- 支持压缩日志容器，高效处理大文件
-
-### 信号数据库
-- 解析 DBC（CAN 信号定义）和 LDF（LIN 信号定义）文件
-- 多版本数据库管理，支持库分组与通道映射
-- 加载后自动解码信号值
-
-### 桌面界面
-- 深色主题，Zed 风格的现代 UI
-- 按 ID、通道、消息类型过滤
-- HEX / DEC ID 显示切换
-- 交互式信号波形图（缩放、拖拽、悬停提示、绝对时间显示）
-- 自定义滚动条，流畅滚动
-- 状态栏实时显示文件统计
+| Signal Library Management |
+|:---:|
+| ![Signal Library](assets/dbc_library.png) |
 
 ---
 
-## 快速开始
+## Quick Start
 
-### 环境要求
-
-- Rust nightly（项目使用 edition 2024）
-- Git
-
-#### Linux 额外依赖
+**Requirements:** Rust nightly, Git
 
 ```bash
+# Linux additional dependencies
 sudo apt-get install libxkbcommon-dev libx11-dev libegl1-mesa-dev
-```
 
-### 从源码构建
-
-```bash
+# Build and run
 git clone https://github.com/ucanme/canview.git
 cd canview
 cargo run --release --bin view
 ```
 
-### 下载预编译包
-
-前往 [Releases](https://github.com/ucanme/canview/releases) 下载：
-
-| 平台 | 架构 |
-|------|------|
-| Windows | x86_64 |
-| macOS | Apple Silicon / Intel |
-| Linux | x86_64 |
+Pre-built binaries: [Releases](https://github.com/ucanme/canview/releases) (Windows / macOS / Linux)
 
 ---
 
-## 使用指南
+## Usage
 
-1. **打开日志** — 点击 "Open BLF File" 选择 `.blf` 文件
-2. **加载数据库** — 切换到 Config 标签页，添加 DBC 或 LDF 文件并映射通道
-3. **浏览信号** — 回到 Log 标签页查看解码后的信号值
-4. **筛选消息** — 点击列表中的 ID 或通道列快速过滤
-5. **绘制波形** — 选择信号进入 Chart 视图，支持缩放和悬停查看
+1. **Open log** — click File, select a `.blf` file
+2. **Manage signal libraries** — switch to the Library tab, add DBC/LDF files, activate a version
+3. **Browse log** — switch to the Log tab to view decoded signal values
+4. **Plot waveforms** — switch to Signal Plot, select signals; supports zoom and hover
 
-配置自动保存至 `canview_config.json`。
-
----
-
-## 项目结构
-
-```
-canview/
-├── src/
-│   ├── blf/                # BLF 解析库
-│   │   └── src/
-│   │       ├── objects/    # 消息对象（CAN/LIN/FlexRay/Ethernet/MOST/WLAN）
-│   │       ├── parser.rs   # 文件解析器
-│   │       └── lib.rs
-│   │
-│   ├── parser/             # 信号数据库解析库
-│   │   └── src/
-│   │       ├── dbc.rs      # DBC 解析
-│   │       └── ldf.rs      # LDF 解析
-│   │
-│   └── view/               # 桌面应用
-│       └── src/
-│           ├── main.rs     # 入口
-│           ├── views/      # 页面（日志/配置/图表/状态栏）
-│           ├── ui/         # UI 组件与主题
-│           ├── models/     # 数据模型
-│           ├── controllers/# 控制器
-│           └── handlers/   # 事件处理
-│
-├── assets/                 # 图标与品牌资源
-├── tests/                  # 集成测试
-├── .github/workflows/      # CI/CD（构建 + 发布）
-├── Cargo.toml              # Workspace 配置
-└── LICENSE.txt              # MIT 许可证
-```
+Configuration is auto-saved to `multi_channel_config.json`.
 
 ---
 
-## 作为库使用
+## Roadmap
 
-BLF 解析器和信号数据库解析器可以独立使用：
-
-```toml
-[dependencies]
-blf = { git = "https://github.com/ucanme/canview.git" }
-parser = { git = "https://github.com/ucanme/canview.git" }
-```
-
-```rust
-// 解析 BLF 文件
-let result = blf::read_blf_from_file("example.blf")?;
-for obj in &result.objects {
-    // 处理 CAN/LIN/FlexRay 消息 ...
-}
-
-// 解析 DBC 数据库
-let db = parser::dbc::DbcParser::parse_file("example.dbc")?;
-for msg in &db.messages {
-    println!("{} (0x{:X})", msg.name, msg.id);
-}
-```
+- [x] BLF parsing core
+- [x] DBC/LDF database parsing
+- [x] GPUI desktop UI
+- [x] Message filtering and signal decoding
+- [x] Signal waveform plot (zoom, hover, absolute time)
+- [x] Multi-version signal library management (create / activate / share)
+- [ ] Live streaming mode
+- [ ] Export CSV / JSON
+- [ ] Diagnostic rule DSL
 
 ---
 
-## 开发
+## Development
 
 ```bash
-cargo test --workspace        # 运行测试
-cargo fmt --all               # 格式化
-cargo clippy --workspace      # 静态检查
-RUST_LOG=debug cargo run --bin view  # 调试运行
+cargo test --workspace   # Run tests
+cargo fmt --all          # Format
+cargo clippy --workspace # Lint
 ```
 
-跨平台构建详见 [BUILD.md](BUILD.md)。
+For cross-platform builds, see [BUILD.md](BUILD.md).
 
 ---
 
-## 贡献
+## Contributing
 
-欢迎贡献！请遵循以下流程：
-
-1. Fork 本仓库
-2. 创建特性分支：`git checkout -b feature/your-feature`
-3. 提交更改并推送
-4. 发起 Pull Request
-
-请确保代码通过 `cargo fmt` 和 `cargo clippy` 检查。
+Fork and submit a Pull Request. Please ensure your code passes `cargo fmt` and `cargo clippy`.
 
 ---
 
-## 许可证
+## License
 
 [MIT License](LICENSE.txt) © 2026 CANVIEW
 
 ---
 
-## 致谢
-
-- [Zed Editor](https://zed.dev/) — GPUI 框架
-- [Vector Informatik](https://www.vector.com/) — BLF 格式规范
-- Rust 社区 — 优秀的工具链和生态
-
----
-
 <div align="center">
 
-**使用 Rust 用 ❤️ 构建**
+**Built with ❤️ in Rust**
 
 [Issues](https://github.com/ucanme/canview/issues) · [Discussions](https://github.com/ucanme/canview/discussions) · admin@ucan.me
 

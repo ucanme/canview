@@ -21,6 +21,7 @@ tower-http = { version = "0.6", features = ["cors"] }
 uuid = { version = "1.0", features = ["v4"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 urlencoding = "2.1"
+smol = "2"
 
 # Platform-specific file dialog backend
 [target.'cfg(windows)'.dependencies]

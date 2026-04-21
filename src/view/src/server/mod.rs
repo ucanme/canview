@@ -161,27 +161,31 @@ pub async fn import_from_url(
 
     // Determine local directory to store downloaded files
     let save_dir = local_lib_dir.unwrap_or_else(|| std::path::PathBuf::from("libraries"));
-    std::fs::create_dir_all(&save_dir).ok();
+    std::fs::create_dir_all(&save_dir)
+        .map_err(|e| format!("Failed to create import directory '{}': {}", save_dir.display(), e))?;
 
     // Deduplicate names and download files
     let mut imported = Vec::new();
     for mut lib in remote_libs {
         let original_name = lib.name.clone();
-        let original_id = lib.id.clone(); // preserve original ID for download URLs
+        let original_id = lib.id.clone();
         let deduped_name = deduplicate_name(&original_name, existing_libraries, &imported);
         if deduped_name != original_name {
             lib.name = deduped_name.clone();
             lib.id = crate::library::generate_library_id(&deduped_name);
         }
 
-        // Download database files for each version
+        // Download database files for each version and persist local paths.
         for version in &mut lib.versions {
+            let mut first_local_path: Option<String> = None;
+
             for channel_db in &mut version.channel_databases {
-                // The server now returns HTTP download URLs directly in database_path.
-                // Fall back to constructing the URL if database_path isn't already an HTTP URL.
-                let download_url = if channel_db.database_path.starts_with("http://")
-                    || channel_db.database_path.starts_with("https://")
-                {
+                let channel_dir_name = if channel_db.channel_name.trim().is_empty() {
+                    format!("channel_{}", channel_db.channel_id)
+                } else {
+                    channel_db.channel_name.clone()
+                };
+                let download_url = if is_http_url(&channel_db.database_path) {
                     channel_db.database_path.clone()
                 } else {
                     format!(
@@ -194,31 +198,35 @@ pub async fn import_from_url(
                     )
                 };
 
-                match client.get(&download_url).send().await {
-                    Ok(file_resp) if file_resp.status().is_success() => {
-                        // Extract filename from Content-Disposition or URL
-                        let filename = extract_filename_from_response(&file_resp, &channel_db.database_path);
+                let local_path = download_file_to_local_path(
+                    &client,
+                    &download_url,
+                    &save_dir,
+                    &crate::library::build_library_file_subdir(&lib.name, &version.name, &channel_dir_name),
+                    &channel_db.database_path,
+                    &format!("channel {} in version '{}'", channel_db.channel_id, version.name),
+                )
+                .await?;
 
-                        // Save to local directory
-                        let local_path = save_dir.join(&filename);
-                        match file_resp.bytes().await {
-                            Ok(bytes) => {
-                                if let Ok(()) = std::fs::write(&local_path, &bytes) {
-                                    channel_db.database_path = local_path.to_string_lossy().to_string();
-                                }
-                            }
-                            Err(e) => {
-                                eprintln!("⚠ Failed to read file bytes for ch{}: {}", channel_db.channel_id, e);
-                            }
-                        }
-                    }
-                    Ok(resp) => {
-                        eprintln!("⚠ Server returned {} for file download (ch{})", resp.status(), channel_db.channel_id);
-                    }
-                    Err(e) => {
-                        eprintln!("⚠ Failed to download file for ch{}: {}", channel_db.channel_id, e);
-                    }
+                if first_local_path.is_none() {
+                    first_local_path = Some(local_path.clone());
                 }
+
+                channel_db.database_path = local_path;
+            }
+
+            if let Some(first_local_path) = first_local_path {
+                version.path = first_local_path;
+            } else if is_http_url(&version.path) {
+                version.path = download_file_to_local_path(
+                    &client,
+                    &version.path,
+                    &save_dir,
+                    &crate::library::build_library_file_subdir(&lib.name, &version.name, "default"),
+                    &version.path,
+                    &format!("version '{}'", version.name),
+                )
+                .await?;
             }
         }
 
@@ -252,6 +260,61 @@ fn extract_filename_from_response(
         .and_then(|n| n.to_str())
         .unwrap_or("database.dbc")
         .to_string()
+}
+
+fn is_http_url(path: &str) -> bool {
+    path.starts_with("http://") || path.starts_with("https://")
+}
+
+async fn download_file_to_local_path(
+    client: &reqwest::Client,
+    download_url: &str,
+    save_dir: &std::path::Path,
+    relative_dir: &std::path::Path,
+    fallback_path: &str,
+    context: &str,
+) -> Result<String, String> {
+    let response = client
+        .get(download_url)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to download {} from '{}': {}", context, download_url, e))?;
+
+    if !response.status().is_success() {
+        return Err(format!(
+            "Server returned {} while downloading {} from '{}'",
+            response.status(),
+            context,
+            download_url
+        ));
+    }
+
+    let filename = extract_filename_from_response(&response, fallback_path);
+    let target_dir = save_dir.join(relative_dir);
+    std::fs::create_dir_all(&target_dir).map_err(|e| {
+        format!(
+            "Failed to create import subdirectory '{}' for {}: {}",
+            target_dir.display(),
+            context,
+            e
+        )
+    })?;
+    let local_path = target_dir.join(&filename);
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read downloaded bytes for {}: {}", context, e))?;
+
+    std::fs::write(&local_path, &bytes).map_err(|e| {
+        format!(
+            "Failed to save {} to '{}': {}",
+            context,
+            local_path.display(),
+            e
+        )
+    })?;
+
+    Ok(local_path.to_string_lossy().to_string())
 }
 
 /// Parse a share URL into (base_url, token)

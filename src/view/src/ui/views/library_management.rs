@@ -37,7 +37,9 @@ pub fn render_library_management_view(
     new_channel_db_path: &str, // Add this parameter to avoid reading entity in render
     new_channel_type: crate::models::ChannelType, // Add channel type parameter
     is_sharing: bool, // Whether the share server is currently running
-    server_info: Option<(&str, &str)>, // (base_url, token) for constructing download URLs
+    copied_channel_id: Option<u16>,
+    active_library_id: Option<&str>,
+    active_version_name: Option<&str>,
     renaming_library_id: Option<&str>,
     rename_library_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     renaming_version_name: Option<&str>,
@@ -63,6 +65,8 @@ pub fn render_library_management_view(
             is_sharing,
             renaming_library_id,
             rename_library_input,
+            active_library_id,
+            active_version_name,
             cx,
         ))
         // 垂直分割线 1 - Zed IDE subtle divider
@@ -86,6 +90,8 @@ pub fn render_library_management_view(
             version_name_input,
             renaming_version_name,
             rename_version_input,
+            active_library_id,
+            active_version_name,
             cx,
         ))
         // 垂直分割线 2 - Zed IDE subtle divider
@@ -108,7 +114,8 @@ pub fn render_library_management_view(
             channel_db_path_input,
             new_channel_db_path,
             new_channel_type,
-            server_info,
+            is_sharing,
+            copied_channel_id,
             cx,
         ))
 }
@@ -126,6 +133,8 @@ fn render_left_column(
     is_sharing: bool,
     renaming_library_id: Option<&str>,
     rename_library_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
+    active_library_id: Option<&str>,
+    active_version_name: Option<&str>,
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     div()
@@ -201,6 +210,8 @@ fn render_left_column(
                             mappings,
                             renaming_library_id,
                             rename_library_input,
+                            active_library_id,
+                            active_version_name,
                             cx,
                         ));
                     }
@@ -309,6 +320,8 @@ fn render_library_item(
     mappings: &[ChannelMapping],
     renaming_library_id: Option<&str>,
     rename_library_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
+    active_library_id: Option<&str>,
+    active_version_name: Option<&str>,
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     let is_selected = selected_library_id.as_ref() == Some(&library.id);
@@ -317,6 +330,8 @@ fn render_library_item(
     let icon = db_type.icon();
     let library_id = library.id.clone();
     let is_renaming = renaming_library_id == Some(library.id.as_str());
+    let is_active = active_library_id == Some(library.id.as_str());
+    let active_ver = if is_active { active_version_name } else { None };
 
     div()
         .id(format!("lib-{}", library_id))
@@ -414,21 +429,33 @@ fn render_library_item(
                     .gap_2()
                     .child(
                         div()
-                            .text_xs()
-                            .text_color(if is_selected {
-                                rgb(0x89b4fa) // Zed blue
-                            } else {
-                                rgb(0x6c7086) // Zed muted
-                            })
-                            .child(icon.to_string()),
+                            .flex()
+                            .items_center()
+                            .gap_1()
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(if is_selected {
+                                        rgb(0x89b4fa) // Zed blue
+                                    } else {
+                                        rgb(0x6c7086) // Zed muted
+                                    })
+                                    .child(icon.to_string()),
+                            )
+                            .when_some(active_ver, |el, ver| {
+                                el.child(
+                                    div()
+                                        .text_xs()
+                                        .text_color(rgb(0xa6e3a1)) // green
+                                        .child(format!("({})", ver)),
+                                )
+                            }),
                     )
                     .child(
-                        div().flex().flex_col().gap_0().child(
-                            div()
-                                .text_sm()
-                                .text_color(rgb(0xcdd6f4)) // Zed text
-                                .child(library.name.clone()),
-                        ),
+                        div()
+                            .text_sm()
+                            .text_color(rgb(0xcdd6f4)) // Zed text
+                            .child(library.name.clone()),
                     ),
             )
             .child(
@@ -597,6 +624,8 @@ fn render_middle_column(
     version_name_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     renaming_version_name: Option<&str>,
     rename_version_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
+    active_library_id: Option<&str>,
+    active_version_name: Option<&str>,
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     // 找到选中的库
@@ -657,14 +686,19 @@ fn render_middle_column(
                 })
                 .when_some(selected_library, |this, library| {
                     let mut list = this;
+                    let lib_id = library.id.clone();
                     // 显示现有版本列表
                     for version in &library.versions {
                         let version_name = version.name.clone();
                         let is_selected = selected_version_id.as_ref() == Some(&version_name);
+                        let is_active = active_library_id == Some(lib_id.as_str())
+                            && active_version_name == Some(version_name.as_str());
                         list = list.child(render_version_item(
                             version,
                             version_name,
+                            lib_id.clone(),
                             is_selected,
+                            is_active,
                             renaming_version_name,
                             rename_version_input,
                             cx,
@@ -688,7 +722,9 @@ fn render_middle_column(
 fn render_version_item(
     version: &LibraryVersion,
     version_name: String,
+    library_id: String,
     is_selected: bool,
+    is_active: bool,
     renaming_version_name: Option<&str>,
     rename_version_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     cx: &mut Context<crate::CanViewApp>,
@@ -783,9 +819,24 @@ fn render_version_item(
             el.child(
                 div().flex().flex_col().gap_0().child(
                     div()
-                        .text_sm()
-                        .text_color(rgb(0xcdd6f4))
-                        .child(version.name.clone()),
+                        .flex()
+                        .items_center()
+                        .gap_1()
+                        .child(
+                            div()
+                                .text_sm()
+                                .text_color(rgb(0xcdd6f4))
+                                .child(version.name.clone()),
+                        )
+                        .when(is_active, |s| {
+                            s.child(
+                                div()
+                                    .px_1()
+                                    .text_xs()
+                                    .text_color(rgb(0xa6e3a1))
+                                    .child("● active"),
+                            )
+                        }),
                 ),
             )
             .child(
@@ -798,6 +849,28 @@ fn render_version_item(
                             .text_xs()
                             .text_color(rgb(0x6c7086))
                             .child(format!("{}", stats.total_channels)),
+                    )
+                    .child(
+                        // Activate button
+                        div()
+                            .id(format!("ver-activate-btn-{}", version_name))
+                            .px_1()
+                            .text_xs()
+                            .text_color(if is_active { rgb(0xa6e3a1) } else { rgb(0x45475a) })
+                            .cursor_pointer()
+                            .hover(|s| s.text_color(rgb(0xa6e3a1)))
+                            .on_mouse_down(
+                                gpui::MouseButton::Left,
+                                cx.listener({
+                                    let version_name = version_name.clone();
+                                    let library_id = library_id.clone();
+                                    move |this, _, _window, cx| {
+                                        cx.stop_propagation();
+                                        this.activate_library_version(&library_id, &version_name, cx);
+                                    }
+                                }),
+                            )
+                            .child(if is_active { "▶" } else { "▷" }),
                     )
                     .child(
                         div()
@@ -835,12 +908,9 @@ fn render_version_item(
                                 gpui::MouseButton::Left,
                                 cx.listener({
                                     let version_name = version_name.clone();
+                                    let library_id = library_id.clone();
                                     move |this, _, _window, cx| {
                                         cx.stop_propagation();
-                                        let library_id = match &this.selected_library_id {
-                                            Some(id) => id.clone(),
-                                            None => return,
-                                        };
                                         this.delete_library_version(&library_id, &version_name, cx);
                                     }
                                 }),
@@ -863,7 +933,8 @@ fn render_right_column(
     channel_db_path_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     new_channel_db_path: &str, // Add this parameter to avoid reading entity in render
     new_channel_type: crate::models::ChannelType, // Use the new channel type being added
-    server_info: Option<(&str, &str)>, // (base_url, token) for download URL display
+    is_sharing: bool,
+    copied_channel_id: Option<u16>,
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     // 找到选中的库和版本
@@ -1055,19 +1126,7 @@ fn render_right_column(
                             let mut list = this;
                             // 显示现有通道列表
                             for channel_db in &version.channel_databases {
-                                // Build download URL if server is running
-                                let download_url = server_info.as_ref().map(|(base, token)| {
-                                    let lib_id = selected_library_id.as_deref().unwrap_or("");
-                                    format!(
-                                        "{}/api/libraries/{}/versions/{}/files/{}?token={}",
-                                        base,
-                                        lib_id,
-                                        urlencoding::encode(&version.name),
-                                        channel_db.channel_id,
-                                        token
-                                    )
-                                });
-                                list = list.child(render_channel_item(channel_db, download_url.as_deref(), cx));
+                                list = list.child(render_channel_item(channel_db, is_sharing, copied_channel_id, cx));
                             }
                             // 显示输入框（如果show_add_channel_input为true）
                             if show_add_channel_input {
@@ -1092,7 +1151,8 @@ fn render_right_column(
 /// 渲染单个通道项 - 完整的单行列表显示
 fn render_channel_item(
     channel_db: &ChannelDatabase,
-    download_url: Option<&str>,
+    is_sharing: bool,
+    copied_channel_id: Option<u16>,
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     let path = channel_db.database_path.clone();
@@ -1101,6 +1161,9 @@ fn render_channel_item(
 
     // Copy channel_id to avoid borrow issues in closure
     let channel_id = channel_db.channel_id;
+    let is_http = path.starts_with("http://") || path.starts_with("https://");
+    let show_copy = is_sharing && is_http;
+    let is_copied = copied_channel_id == Some(channel_id);
 
     div()
         .id(format!("ch-item-{}", channel_id))
@@ -1157,24 +1220,55 @@ fn render_channel_item(
             div().flex_1().min_w_0().child(
                 div()
                     .text_sm()
-                    .text_color(if download_url.is_some() {
-                        rgb(0x7dcfff) // Cyan/blue for HTTP URLs
-                    } else {
-                        rgb(0x646473) // Muted gray for local paths
-                    })
+                    .text_color(if is_http { rgb(0x89b4fa) } else { rgb(0x646473) })
                     .truncate()
-                    .child(if let Some(url) = download_url {
-                        url.to_string()
-                    } else {
+                    .child({
                         let normalized = path.replace('\\', "/");
                         if let Some(idx) = normalized.find("libraries/") {
                             normalized[idx..].to_string()
                         } else {
-                            path
+                            path.clone()
                         }
                     }),
             ),
         )
+        .when(show_copy, |this| {
+            let url_for_copy = path.clone();
+            this.child(
+                div()
+                    .id(format!("ch-copy-{}", channel_id))
+                    .px_2()
+                    .py_1()
+                    .bg(if is_copied { rgb(0x3a5a40) } else { rgb(0x252535) })
+                    .rounded(px(3.))
+                    .cursor_pointer()
+                    .text_xs()
+                    .text_color(if is_copied { rgb(0xa6e3a1) } else { rgb(0x6c7086) })
+                    .hover(|s| s.bg(rgb(0x313244)).text_color(rgb(0xcdd6f4)))
+                    .flex_shrink_0()
+                    .child(if is_copied { "✓" } else { "📋" })
+                    .on_mouse_down(
+                        gpui::MouseButton::Left,
+                        cx.listener(move |this, _event, _window, cx| {
+                            cx.write_to_clipboard(gpui::ClipboardItem::new_string(url_for_copy.clone()));
+                            this.copied_channel_id = Some(channel_id);
+                            cx.notify();
+                            cx.spawn(async move |this, cx| {
+                                smol::Timer::after(std::time::Duration::from_secs(2)).await;
+                                if let Some(entity) = this.upgrade() {
+                                    entity.update(cx, |app, cx| {
+                                        if app.copied_channel_id == Some(channel_id) {
+                                            app.copied_channel_id = None;
+                                            cx.notify();
+                                        }
+                                    });
+                                }
+                            })
+                            .detach();
+                        }),
+                    ),
+            )
+        })
         .child(
             // 删除按钮
             div()

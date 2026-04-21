@@ -4,7 +4,11 @@
 
 mod storage;
 
-pub use storage::SignalLibraryStorage;
+pub use storage::{
+    SignalLibraryStorage, build_library_file_subdir, copy_database_to_libraries,
+    delete_channel_from_libraries, delete_library_from_libraries,
+    delete_version_from_libraries, libraries_base_path, sanitize_filename,
+};
 
 use crate::models::{
     ChannelDatabase, ChannelMapping, ChannelType, DatabaseType, LibraryVersion, SignalLibrary,

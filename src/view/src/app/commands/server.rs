@@ -25,6 +25,7 @@ impl CanViewApp {
                 self.import_status = Some(format!("Server started! URL copied."));
                 self.server_handle = Some(handle);
                 self.show_share_dialog = true;
+                self.share_url_copied = false;
             }
             Err(e) => {
                 log::error!("Failed to start server: {}", e);
@@ -40,6 +41,7 @@ impl CanViewApp {
             log::info!("Share server stopped");
             self.import_status = Some("Server stopped".into());
             self.show_share_dialog = false;
+            self.share_url_copied = false;
         }
     }
 
@@ -59,11 +61,7 @@ impl CanViewApp {
         self.import_status = Some("Importing...".into());
 
         // Determine local directory for saving downloaded files
-        let local_lib_dir = self
-            .config_file_path
-            .as_ref()
-            .and_then(|p| p.parent().map(|d| d.join("libraries")))
-            .unwrap_or_else(|| std::path::PathBuf::from("libraries"));
+        let local_lib_dir = crate::library::libraries_base_path(self.config_file_path.as_deref());
 
         let (tx, rx) = std::sync::mpsc::channel();
 
