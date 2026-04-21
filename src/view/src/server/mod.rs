@@ -377,6 +377,22 @@ fn deduplicate_name(
 
 /// Get local IP address for LAN access
 fn get_local_ip() -> Option<std::net::IpAddr> {
+    // First try: enumerate network interfaces for a private LAN IP
+    if let Ok(ifaces) = if_addrs::get_if_addrs() {
+        // Prefer 192.168.x.x, then 10.x.x.x, then 172.16-31.x.x
+        let preferred = ifaces.iter()
+            .filter(|i| !i.is_loopback())
+            .filter_map(|i| match i.ip() {
+                std::net::IpAddr::V4(v4) => Some(std::net::IpAddr::V4(v4)),
+                _ => None,
+            })
+            .find(|ip| is_preferred_lan_ip(ip));
+        if preferred.is_some() {
+            return preferred;
+        }
+    }
+
+    // Fallback: routing trick (requires internet/default gateway)
     let socket = std::net::UdpSocket::bind("0.0.0.0:0").ok()?;
     socket.connect("8.8.8.8:80").ok()?;
     socket.local_addr().ok().map(|a| a.ip())
