@@ -55,7 +55,6 @@ Source: "sample.dbc"; DestDir: "{app}\samples"; Flags: ignoreversion; Check: Fil
 
 ; 文档
 Source: "README.md"; DestDir: "{app}\docs"; Flags: ignoreversion isreadme; Check: FileExists('README.md')
-Source: "BUILD.md"; DestDir: "{app}\docs"; Flags: ignoreversion; Check: FileExists('BUILD.md')
 
 
 ; 资源文件
