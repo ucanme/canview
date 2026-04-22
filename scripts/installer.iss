@@ -51,7 +51,7 @@ Source: "config\*"; DestDir: "{app}\config"; Flags: ignoreversion recursesubdirs
 
 ; 示例文件
 Source: "sample.dbc"; DestDir: "{app}\samples"; Flags: ignoreversion; Check: FileExists('sample.dbc')
-Source: "sample.blf"; DestDir: "{app}\samples"; Flags: ignoreversion; Check: FileExists('sample.blf')
+; sample.blf is not included in the repository
 
 ; 文档
 Source: "README.md"; DestDir: "{app}\docs"; Flags: ignoreversion isreadme; Check: FileExists('README.md')
