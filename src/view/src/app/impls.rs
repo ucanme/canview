@@ -70,6 +70,8 @@ impl CanViewApp {
             library_manager: LibraryManager::new(),
             selected_library_id: None,
             selected_version_id: None,
+            active_library_id: None,
+            active_version_name: None,
             new_library_name: String::new(),
             library_cursor_position: 0,
             library_versions_expanded: true,
@@ -83,6 +85,13 @@ impl CanViewApp {
             // gpui-component input support
             library_name_input: None,
             version_name_input: None,
+            // Rename inline state
+            renaming_library_id: None,
+            renaming_version_name: None,
+            rename_library_input: None,
+            rename_version_input: None,
+            rename_library_text: String::new(),
+            rename_version_text: String::new(),
             // Channel configuration dialog
             show_channel_config_dialog: false,
             new_channel_id: String::new(),
@@ -91,7 +100,7 @@ impl CanViewApp {
             editing_channel_index: None,
             channel_id_input: None,
             channel_name_input: None,
-            show_add_channel_input: true,
+            show_add_channel_input: false,
             channel_db_path_input: None,
             new_channel_type: ChannelType::CAN,
             pending_file_path: None,
@@ -115,6 +124,16 @@ impl CanViewApp {
             plot_width_px: px(0.0),
             // File menu dropdown state
             show_file_menu: false,
+            // Server state
+            server_handle: None,
+            show_share_dialog: false,
+            share_url_copied: false,
+            copied_channel_id: None,
+            show_import_dialog: false,
+            import_url: String::new(),
+            import_status: None,
+            import_url_input: None,
+            pending_import: None,
         };
 
         // 🔧 启动时加载配置
@@ -124,7 +143,14 @@ impl CanViewApp {
     }
 
     fn load_startup_config(&mut self) {
-        let path = PathBuf::from("multi_channel_config.json");
+        // Prefer a config file next to the executable so it is always found
+        // regardless of the working directory.
+        let exe_config = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|d| d.join("multi_channel_config.json")));
+        let path = exe_config
+            .filter(|p| p.exists())
+            .unwrap_or_else(|| PathBuf::from("multi_channel_config.json"));
         if path.exists() {
             self.status_msg = "Found saved config, loading...".into();
             if let Ok(content) = std::fs::read_to_string(&path) {
@@ -178,6 +204,11 @@ impl CanViewApp {
                         } else {
                             self.status_msg =
                                 "Configuration loaded (no libraries configured).".into();
+                        }
+                        // Restore active library/version state
+                        if let Some(ref lib_id) = config.active_library_id.clone() {
+                            self.active_library_id = Some(lib_id.clone());
+                            self.active_version_name = config.active_version_name.clone();
                         }
                     }
                     Err(e) => {
@@ -379,9 +410,17 @@ impl CanViewApp {
     }
 
     /// Import a database file
-    /// Save the current configuration to file
+    /// Save the current configuration to file.
+    ///
+    /// Uses the existing config file path when available. On first save, stores
+    /// the config next to the executable so it is location-independent.
     pub(crate) fn save_config(&self, cx: &mut Context<Self>) {
-        let config_path = PathBuf::from("multi_channel_config.json");
+        let config_path = self.config_file_path.clone().unwrap_or_else(|| {
+            std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|d| d.join("multi_channel_config.json")))
+                .unwrap_or_else(|| PathBuf::from("multi_channel_config.json"))
+        });
         if let Ok(content) = serde_json::to_string_pretty(&self.app_config) {
             if std::fs::write(&config_path, content).is_ok() {
                 cx.notify();
@@ -572,6 +611,8 @@ impl CanViewApp {
             library_manager,
             selected_library_id: None,
             selected_version_id: None,
+            active_library_id: None,
+            active_version_name: None,
             new_library_name: String::new(),
             library_cursor_position: 0,
             library_versions_expanded: true,
@@ -585,6 +626,13 @@ impl CanViewApp {
             // gpui-component input support
             library_name_input: None,
             version_name_input: None,
+            // Rename inline state
+            renaming_library_id: None,
+            renaming_version_name: None,
+            rename_library_input: None,
+            rename_version_input: None,
+            rename_library_text: String::new(),
+            rename_version_text: String::new(),
             // Channel configuration dialog
             show_channel_config_dialog: false,
             new_channel_id: String::new(),
@@ -617,6 +665,16 @@ impl CanViewApp {
             plot_width_px: px(0.0),
             // File menu dropdown state
             show_file_menu: false,
+            // Server state
+            server_handle: None,
+            show_share_dialog: false,
+            share_url_copied: false,
+            copied_channel_id: None,
+            show_import_dialog: false,
+            import_url: String::new(),
+            import_status: None,
+            import_url_input: None,
+            pending_import: None,
         };
 
         // Load startup config (this will reset some state, so do it carefully)
@@ -683,15 +741,65 @@ impl CanViewApp {
 
     /// Delete a library
     pub fn delete_library(&mut self, library_id: &str, cx: &mut Context<Self>) {
+        // Collect cleanup info BEFORE deleting it
+        let (library_name, channel_ids_to_remove): (Option<String>, Vec<u16>) = self
+            .library_manager
+            .find_library(library_id)
+            .map(|lib| (
+                Some(lib.name.clone()),
+                lib.versions
+                    .iter()
+                    .flat_map(|v| v.channel_databases.iter().map(|db| db.channel_id))
+                    .collect(),
+            ))
+            .unwrap_or((None, Vec::new()));
+
+        // Remove any channel mappings that reference this library before deletion
+        // so the is_used check doesn't block it
+        for mapping in self.app_config.mappings.iter_mut() {
+            if mapping.library_id.as_deref() == Some(library_id) {
+                mapping.library_id = None;
+                mapping.version_name = None;
+            }
+        }
+        // Clear active library state if it references this library
+        if self.active_library_id.as_deref() == Some(library_id) {
+            self.active_library_id = None;
+            self.active_version_name = None;
+            self.app_config.active_library_id = None;
+            self.app_config.active_version_name = None;
+        }
+
         match self
             .library_manager
             .delete_library(library_id, &self.app_config.mappings)
         {
             Ok(_) => {
-                self.status_msg = format!("Library deleted").into();
+                let cleanup_result = if let Some(library_name) = library_name {
+                    let libraries_dir =
+                        crate::library::libraries_base_path(self.config_file_path.as_deref());
+                    crate::library::delete_library_from_libraries(&libraries_dir, &library_name)
+                        .map_err(|e| e.to_string())
+                } else {
+                    Ok(())
+                };
+
+                self.status_msg = match cleanup_result {
+                    Ok(()) => "Library deleted".into(),
+                    Err(e) => format!("Library deleted, but local files cleanup failed: {}", e).into(),
+                };
                 if self.selected_library_id.as_ref() == Some(&library_id.to_string()) {
                     self.selected_library_id = None;
+                    self.selected_version_id = None;
                 }
+                // Clear runtime channel caches so plot view no longer shows them
+                for ch_id in channel_ids_to_remove {
+                    self.dbc_channels.remove(&ch_id);
+                    self.ldf_channels.remove(&ch_id);
+                }
+                // Sync config
+                self.app_config.libraries = self.library_manager.libraries().to_vec();
+                self.save_config(cx);
                 cx.notify();
             }
             Err(e) => {
@@ -779,13 +887,86 @@ impl CanViewApp {
         version_name: &str,
         cx: &mut Context<Self>,
     ) {
+        let cleanup_info = self
+            .library_manager
+            .find_library(library_id)
+            .and_then(|library| {
+                library
+                    .versions
+                    .iter()
+                    .find(|version| version.name == version_name)
+                    .map(|version| {
+                        (
+                            library.name.clone(),
+                            version
+                                .channel_databases
+                                .iter()
+                                .map(|db| db.channel_id)
+                                .collect::<Vec<_>>(),
+                        )
+                    })
+            });
+
+        // Clean up mappings referencing this version before deletion
+        for mapping in self.app_config.mappings.iter_mut() {
+            if mapping.library_id.as_deref() == Some(library_id)
+                && mapping.version_name.as_deref() == Some(version_name)
+            {
+                mapping.library_id = None;
+                mapping.version_name = None;
+            }
+        }
+        // Clear active state if this version was active
+        if self.active_library_id.as_deref() == Some(library_id)
+            && self.active_version_name.as_deref() == Some(version_name)
+        {
+            self.active_library_id = None;
+            self.active_version_name = None;
+            self.app_config.active_library_id = None;
+            self.app_config.active_version_name = None;
+        }
+
         match self.library_manager.remove_version(
             library_id,
             version_name,
             &self.app_config.mappings,
         ) {
             Ok(_) => {
-                self.status_msg = format!("Version '{}' deleted", version_name).into();
+                if self.selected_library_id.as_deref() == Some(library_id)
+                    && self.selected_version_id.as_deref() == Some(version_name)
+                {
+                    self.selected_version_id = None;
+                }
+
+                if let Some((library_name, channel_ids)) = cleanup_info {
+                    let libraries_dir =
+                        crate::library::libraries_base_path(self.config_file_path.as_deref());
+                    let cleanup_result = crate::library::delete_version_from_libraries(
+                        &libraries_dir,
+                        &library_name,
+                        version_name,
+                    )
+                    .map_err(|e| e.to_string());
+
+                    for ch_id in channel_ids {
+                        self.dbc_channels.remove(&ch_id);
+                        self.ldf_channels.remove(&ch_id);
+                    }
+
+                    self.status_msg = match cleanup_result {
+                        Ok(()) => format!("Version '{}' deleted", version_name).into(),
+                        Err(e) => format!(
+                            "Version '{}' deleted, but local files cleanup failed: {}",
+                            version_name, e
+                        )
+                        .into(),
+                    };
+                } else {
+                    self.status_msg = format!("Version '{}' deleted", version_name).into();
+                }
+
+                self.app_config.libraries = self.library_manager.libraries().to_vec();
+                self.save_config(cx);
                 cx.notify();
             }
             Err(e) => {
@@ -793,6 +974,132 @@ impl CanViewApp {
                 cx.notify();
             }
         }
+    }
+
+    // ---------- Rename library ------------------------------------------------
+
+    pub fn start_rename_library(&mut self, library_id: String, current_name: String, window: &mut Window, cx: &mut Context<Self>) {
+        self.renaming_library_id = Some(library_id);
+        self.renaming_version_name = None;
+        self.rename_library_text = current_name.clone();
+        let input = cx.new(|cx| {
+            InputState::new(window, cx).default_value(current_name)
+        });
+        self.rename_library_input = Some(input);
+        cx.notify();
+    }
+
+    pub fn commit_rename_library(&mut self, cx: &mut Context<Self>) {
+        let old_id = match self.renaming_library_id.clone() {
+            Some(id) => id,
+            None => return,
+        };
+        let new_name = if let Some(input) = &self.rename_library_input {
+            input.read(cx).value().to_string()
+        } else {
+            self.rename_library_text.clone()
+        };
+        let new_name = new_name.trim().to_string();
+        if new_name.is_empty() {
+            self.status_msg = "Library name cannot be empty".into();
+            cx.notify();
+            return;
+        }
+
+        match self.library_manager.rename_library(&old_id, new_name.clone()) {
+            Ok(new_id) => {
+                // Update all mappings that reference old library id
+                for mapping in &mut self.app_config.mappings {
+                    if mapping.library_id.as_deref() == Some(&old_id) {
+                        mapping.library_id = Some(new_id.clone());
+                    }
+                }
+                // Keep the selected library pointing to the renamed library
+                if self.selected_library_id.as_deref() == Some(&old_id) {
+                    self.selected_library_id = Some(new_id.clone());
+                }
+                self.app_config.libraries = self.library_manager.libraries().to_vec();
+                self.save_config(cx);
+                self.status_msg = format!("Library renamed to '{}'", new_name).into();
+            }
+            Err(e) => {
+                self.status_msg = format!("Rename failed: {}", e).into();
+            }
+        }
+        self.cancel_rename_library(cx);
+    }
+
+    pub fn cancel_rename_library(&mut self, cx: &mut Context<Self>) {
+        self.renaming_library_id = None;
+        self.rename_library_input = None;
+        self.rename_library_text.clear();
+        cx.notify();
+    }
+
+    // ---------- Rename version ------------------------------------------------
+
+    pub fn start_rename_version(&mut self, version_name: String, window: &mut Window, cx: &mut Context<Self>) {
+        self.renaming_version_name = Some(version_name.clone());
+        self.renaming_library_id = None;
+        self.rename_version_text = version_name.clone();
+        let input = cx.new(|cx| {
+            InputState::new(window, cx).default_value(version_name)
+        });
+        self.rename_version_input = Some(input);
+        cx.notify();
+    }
+
+    pub fn commit_rename_version(&mut self, cx: &mut Context<Self>) {
+        let library_id = match &self.selected_library_id {
+            Some(id) => id.clone(),
+            None => return,
+        };
+        let old_name = match self.renaming_version_name.clone() {
+            Some(n) => n,
+            None => return,
+        };
+        let new_name = if let Some(input) = &self.rename_version_input {
+            input.read(cx).value().to_string()
+        } else {
+            self.rename_version_text.clone()
+        };
+        let new_name = new_name.trim().to_string();
+        if new_name.is_empty() {
+            self.status_msg = "Version name cannot be empty".into();
+            cx.notify();
+            return;
+        }
+
+        match self.library_manager.rename_version(&library_id, &old_name, new_name.clone()) {
+            Ok(()) => {
+                // Update all mappings that reference old version name within this library
+                for mapping in &mut self.app_config.mappings {
+                    if mapping.library_id.as_deref() == Some(&library_id)
+                        && mapping.version_name.as_deref() == Some(&old_name)
+                    {
+                        mapping.version_name = Some(new_name.clone());
+                    }
+                }
+                // Update selected_version_id if it points to the old name
+                if self.selected_version_id.as_deref() == Some(&old_name) {
+                    self.selected_version_id = Some(new_name.clone());
+                }
+                self.app_config.libraries = self.library_manager.libraries().to_vec();
+                self.save_config(cx);
+                self.status_msg = format!("Version renamed to '{}'", new_name).into();
+            }
+            Err(e) => {
+                self.status_msg = format!("Rename failed: {}", e).into();
+            }
+        }
+        self.cancel_rename_version(cx);
+    }
+
+    pub fn cancel_rename_version(&mut self, cx: &mut Context<Self>) {
+        self.renaming_version_name = None;
+        self.rename_version_input = None;
+        self.rename_version_text.clear();
+        cx.notify();
     }
 
     /// Load a library version
@@ -873,6 +1180,29 @@ impl CanViewApp {
 
         self.status_msg =
             format!("✅ Applied version {} to all plot channels", version_name).into();
+        cx.notify();
+    }
+
+    /// Activate a library version for use in log decoding and plot
+    pub fn activate_library_version(
+        &mut self,
+        library_id: &str,
+        version_name: &str,
+        cx: &mut Context<Self>,
+    ) {
+        self.apply_version_to_mappings(library_id, version_name, cx);
+        self.active_library_id = Some(library_id.to_string());
+        self.active_version_name = Some(version_name.to_string());
+        // Persist active state so it survives restarts
+        self.app_config.active_library_id = Some(library_id.to_string());
+        self.app_config.active_version_name = Some(version_name.to_string());
+        let lib_name = self
+            .library_manager
+            .find_library(library_id)
+            .map(|l| l.name.clone())
+            .unwrap_or_else(|| library_id.to_string());
+        self.status_msg = format!("✅ Activated: {} / {}", lib_name, version_name).into();
+        self.save_config(cx);
         cx.notify();
     }
 
@@ -1214,6 +1544,10 @@ impl CanViewApp {
         self.new_channel_id.clear();
         self.new_channel_name.clear();
         self.new_channel_db_path.clear();
+        // Drop the input entities so they are recreated fresh next time
+        self.channel_id_input = None;
+        self.channel_name_input = None;
+        self.channel_db_path_input = None;
         cx.notify();
     }
 
@@ -1354,30 +1688,37 @@ impl CanViewApp {
             self.new_channel_db_path.trim().to_string(),
         );
 
-        // 🔧 自动复制文件到本地存储
-        if let Some(ref storage) = self.signal_storage {
-            // 获取库名用于存储路径
-            let library_name = {
-                let library = self.library_manager.find_library(&library_id).unwrap();
-                library.name.clone()
-            };
-
-            // 复制文件到本地存储
-            let source_path = std::path::Path::new(&self.new_channel_db_path);
-            match storage.copy_database(&library_name, &version_name, source_path) {
-                Ok(local_path) => {
-                    // 使用本地路径更新 channel_db
-                    channel_db.database_path = local_path.to_string_lossy().to_string();
-                    eprintln!("✅ Database file copied to local storage: {:?}", local_path);
-                }
-                Err(e) => {
-                    self.status_msg = format!("Failed to copy database file: {}", e).into();
+        // 🔧 自动复制文件到 libraries/{library}/{version}/{channel}/
+        let library_name = {
+            let library = match self.library_manager.find_library(&library_id) {
+                Some(lib) => lib,
+                None => {
+                    self.status_msg = "Error: Library not found during file copy".into();
                     cx.notify();
                     return;
                 }
+            };
+            library.name.clone()
+        };
+
+        let source_path = std::path::Path::new(&self.new_channel_db_path);
+        let libraries_dir = crate::library::libraries_base_path(self.config_file_path.as_deref());
+        match crate::library::copy_database_to_libraries(
+            &libraries_dir,
+            &library_name,
+            &version_name,
+            self.new_channel_name.trim(),
+            source_path,
+        ) {
+            Ok(local_path) => {
+                channel_db.database_path = local_path.to_string_lossy().to_string();
+                eprintln!("✅ Database file copied to local storage: {:?}", local_path);
             }
-        } else {
-            eprintln!("⚠️  Signal storage not available, using original path");
+            Err(e) => {
+                self.status_msg = format!("Failed to copy database file: {}", e).into();
+                cx.notify();
+                return;
+            }
         }
 
         // Validate the channel config
@@ -1390,23 +1731,23 @@ impl CanViewApp {
         }
 
         // Add to the version (we need mutable access)
-        let library = self.library_manager.find_library_mut(&library_id).unwrap();
+        let library = match self.library_manager.find_library_mut(&library_id) {
+            Some(lib) => lib,
+            None => {
+                self.status_msg = "Error: Library not found".into();
+                cx.notify();
+                return;
+            }
+        };
         if let Some(version) = library.versions.iter_mut().find(|v| v.name == version_name) {
             match version.add_channel_database(channel_db) {
                 Ok(_) => {
                     self.status_msg = format!("Channel {} added successfully", channel_id).into();
-                    // Keep input row open for continuous adding
-                    self.show_add_channel_input = true;
 
-                    // Clear input fields
-                    self.new_channel_id.clear();
-                    self.new_channel_name.clear();
-                    self.new_channel_db_path.clear();
-
-                    // Reset input entities so they can be recreated next time
-                    self.channel_id_input = None;
-                    self.channel_name_input = None;
-                    self.channel_db_path_input = None;
+                    // Close input form cleanly — prevents inconsistent state
+                    // where show_add_channel_input=true but all input entities are None.
+                    // User can click "Add Channel" again to add more channels.
+                    self.hide_add_channel_input(cx);
 
                     // Reset type to CAN
                     self.new_channel_type = crate::models::ChannelType::CAN;
@@ -1417,6 +1758,13 @@ impl CanViewApp {
                     // 💾 自动保存配置
                     self.save_config(cx);
                     eprintln!("✅ Configuration saved automatically");
+
+                    // Auto-reload if this version is currently active
+                    let is_active_version = self.active_library_id.as_deref() == Some(library_id.as_str())
+                        && self.active_version_name.as_deref() == Some(version_name.as_str());
+                    if is_active_version {
+                        self.apply_version_to_mappings(&library_id.clone(), &version_name.clone(), cx);
+                    }
 
                     cx.notify();
                 }
@@ -1445,15 +1793,41 @@ impl CanViewApp {
             None => return,
         };
 
+        let library_name = library.name.clone();
         if let Some(version) = library.versions.iter_mut().find(|v| v.name == version_name) {
+            let channel_name = version
+                .channel_databases
+                .iter()
+                .find(|db| db.channel_id == channel_id)
+                .map(|db| db.channel_name.clone());
+
             // Remove from configuration
             version
                 .channel_databases
                 .retain(|db| db.channel_id != channel_id);
+            version.path = version
+                .channel_databases
+                .first()
+                .map(|db| db.database_path.clone())
+                .unwrap_or_default();
 
             // Remove from runtime cache
             self.dbc_channels.remove(&channel_id);
             self.ldf_channels.remove(&channel_id);
+
+            // Clean up any mapping entry for this channel if it referenced the active version
+            let is_active_version = self.active_library_id.as_deref() == Some(library_id.as_str())
+                && self.active_version_name.as_deref() == Some(version_name.as_str());
+            if is_active_version {
+                for mapping in self.app_config.mappings.iter_mut() {
+                    if mapping.channel_id == channel_id
+                        && mapping.library_id.as_deref() == Some(library_id.as_str())
+                    {
+                        mapping.library_id = None;
+                        mapping.version_name = None;
+                    }
+                }
+            }
 
             // Sync to app config
             self.app_config.libraries = self.library_manager.libraries().to_vec();
@@ -1461,7 +1835,28 @@ impl CanViewApp {
             // Save to disk
             self.save_config(cx);
 
-            self.status_msg = format!("Channel {} deleted", channel_id).into();
+            let cleanup_result = if let Some(channel_name) = channel_name {
+                let libraries_dir =
+                    crate::library::libraries_base_path(self.config_file_path.as_deref());
+                crate::library::delete_channel_from_libraries(
+                    &libraries_dir,
+                    &library_name,
+                    &version_name,
+                    &channel_name,
+                )
+                .map_err(|e| e.to_string())
+            } else {
+                Ok(())
+            };
+
+            self.status_msg = match cleanup_result {
+                Ok(()) => format!("Channel {} deleted", channel_id).into(),
+                Err(e) => format!(
+                    "Channel {} deleted, but local files cleanup failed: {}",
+                    channel_id, e
+                )
+                .into(),
+            };
             cx.notify();
         }
     }

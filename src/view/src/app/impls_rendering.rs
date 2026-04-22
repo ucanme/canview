@@ -8,6 +8,7 @@ use crate::ChannelType;
 use crate::rendering::{calculate_column_widths, render_message_row_static_with_widths};
 use blf::{LogObject, read_blf_from_file};
 use gpui::{prelude::*, *};
+use smol::Timer;
 use gpui_component::input::{InputEvent, InputState};
 
 impl CanViewApp {
@@ -171,6 +172,14 @@ impl CanViewApp {
                 self.channel_db_path_input.as_ref(),
                 &self.new_channel_db_path, // Add this parameter
                 self.new_channel_type,     // Add channel type parameter
+                self.server_handle.is_some(), // is_sharing
+                self.copied_channel_id,       // copied_channel_id
+                self.active_library_id.as_deref(),
+                self.active_version_name.as_deref(),
+                self.renaming_library_id.as_deref(),
+                self.rename_library_input.as_ref(),
+                self.renaming_version_name.as_deref(),
+                self.rename_version_input.as_ref(),
                 cx,
             ))
     }
@@ -1639,34 +1648,16 @@ impl Render for CanViewApp {
         // Update container height based on current window size
         self.update_container_height(window);
 
-        // Initialize channel input states if needed (when show_add_channel_input is true)
-        if self.show_add_channel_input {
-            if self.channel_id_input.is_none() {
-                eprintln!("📝 Creating channel_id_input in render...");
-                let input = cx.new(|cx| InputState::new(window, cx).placeholder("Channel ID"));
-                cx.subscribe(&input, |this, input, event, cx| {
-                    if let InputEvent::Change = event {
-                        this.new_channel_id = input.read(cx).text().to_string();
-                        eprintln!("DEBUG: ID change: {}", this.new_channel_id);
-                        // cx.notify(); // Optional, but let's keep it minimal to avoid flicker
-                    }
-                })
-                .detach();
-                self.channel_id_input = Some(input);
-            }
-
-            if self.channel_name_input.is_none() {
-                eprintln!("📝 Creating channel_name_input in render...");
-                let input = cx.new(|cx| InputState::new(window, cx).placeholder("Channel name"));
-                cx.subscribe(&input, |this, input, event, cx| {
-                    if let InputEvent::Change = event {
-                        this.new_channel_name = input.read(cx).text().to_string();
-                        eprintln!("DEBUG: Name change: {}", this.new_channel_name);
-                    }
-                })
-                .detach();
-                self.channel_name_input = Some(input);
-            }
+        // Initialize import URL input if showing import dialog
+        if self.show_import_dialog && self.import_url_input.is_none() {
+            let input = cx.new(|cx| InputState::new(window, cx).placeholder("http://...?token=..."));
+            cx.subscribe(&input, |this, input, event, cx| {
+                if let InputEvent::Change = event {
+                    this.import_url = input.read(cx).text().to_string();
+                }
+            })
+            .detach();
+            self.import_url_input = Some(input);
         }
 
         // Initialize signal search input if needed
@@ -1695,6 +1686,11 @@ impl Render for CanViewApp {
 
         // Check for file dialog result (non-blocking poll)
         self.handle_file_dialog_result(cx);
+
+        // Poll for import completion
+        if self.poll_import(cx) {
+            cx.notify();
+        }
 
         let view = cx.entity().clone();
 
@@ -1840,6 +1836,20 @@ impl Render for CanViewApp {
                 {
                     use crate::ui::components::{Button, ButtonSize, ButtonVariant};
 
+                    // Precompute active library display string for the badge
+                    let active_lib_badge = if let (Some(lib_id), Some(ver)) =
+                        (&self.active_library_id, &self.active_version_name)
+                    {
+                        let lib_name = self
+                            .library_manager
+                            .find_library(lib_id)
+                            .map(|l| l.name.clone())
+                            .unwrap_or_else(|| lib_id.clone());
+                        Some(format!("📚 {} / {}", lib_name, ver))
+                    } else {
+                        None
+                    };
+
                     let app_buttons = div()
                         .flex()
                         .items_center()
@@ -1864,6 +1874,44 @@ impl Render for CanViewApp {
                                 }),
                         )
                         .child(
+                            // Log tab
+                            Button::new("Log")
+                                .size(ButtonSize::Small)
+                                .variant(ButtonVariant::Ghost)
+                                .active(self.current_view == AppView::LogView)
+                                .build()
+                                .id("log_tab")
+                                .on_mouse_down(gpui::MouseButton::Left, {
+                                    let view = view.clone();
+                                    move |_event, _, cx| {
+                                        cx.stop_propagation();
+                                        view.update(cx, |this, cx| {
+                                            this.current_view = AppView::LogView;
+                                            cx.notify();
+                                        });
+                                    }
+                                }),
+                        )
+                        .child(
+                            Button::new("Signal Plot")
+                                .size(ButtonSize::Small)
+                                .variant(ButtonVariant::Ghost)
+                                .active(self.current_view == AppView::PlotView)
+                                .build()
+                                .id("plot_tab")
+                                .on_mouse_down(gpui::MouseButton::Left, {
+                                    let view = view.clone();
+                                    move |_event, _, cx| {
+                                        cx.stop_propagation();
+                                        view.update(cx, |this, cx| {
+                                            this.current_view = AppView::PlotView;
+                                            crate::ui::views::chart_view::extract_and_update_series_data(this);
+                                            cx.notify();
+                                        });
+                                    }
+                                }),
+                        )
+                        .child(
                             Button::new("Library")
                                 .size(ButtonSize::Small)
                                 .variant(ButtonVariant::Ghost)
@@ -1881,25 +1929,33 @@ impl Render for CanViewApp {
                                     }
                                 }),
                         )
-                        .child(
-                            Button::new("Plot")
-                                .size(ButtonSize::Small)
-                                .variant(ButtonVariant::Ghost)
-                                .active(self.current_view == AppView::PlotView)
-                                .build()
-                                .id("plot_tab")
-                                .on_mouse_down(gpui::MouseButton::Left, {
-                                    let view = view.clone();
-                                    move |_event, _, cx| {
-                                        cx.stop_propagation();
-                                        view.update(cx, |this, cx| {
-                                            this.current_view = AppView::PlotView;
-                                            crate::ui::views::chart_view::extract_and_update_series_data(this);
-                                            cx.notify();
-                                        });
-                                    }
-                                }),
-                        );
+                        .when_some(active_lib_badge, |el, badge| {
+                            // Active library badge — click to jump to Library view
+                            el.child(
+                                div()
+                                    .px_2()
+                                    .py_0p5()
+                                    .bg(rgb(0x1a2e1a))
+                                    .border_1()
+                                    .border_color(rgb(0x2d5a2d))
+                                    .rounded(px(4.))
+                                    .text_xs()
+                                    .text_color(rgb(0xa6e3a1))
+                                    .cursor_pointer()
+                                    .hover(|s| s.bg(rgb(0x253525)))
+                                    .child(badge)
+                                    .on_mouse_down(gpui::MouseButton::Left, {
+                                        let view = view.clone();
+                                        move |_event, _, cx| {
+                                            cx.stop_propagation();
+                                            view.update(cx, |this, cx| {
+                                                this.current_view = AppView::LibraryView;
+                                                cx.notify();
+                                            });
+                                        }
+                                    }),
+                            )
+                        });
 
                     div()
                         .h(px(36.)) // Height reduced
@@ -2174,6 +2230,264 @@ impl Render for CanViewApp {
                                 })
                                 .child("Open BLF..."),
                         )
+                } else {
+                    div().hidden()
+                }
+            })
+            // Share dialog overlay
+            .child({
+                if self.show_share_dialog {
+                    let url = self.share_url().unwrap_or("").to_string();
+                    let url_for_copy = url.clone();
+                    let url_for_open = url.clone();
+                    let view_for_close = view.clone();
+                    let view_for_copy = view.clone();
+                    let copied = self.share_url_copied;
+                    div()
+                        .absolute()
+                        .top(px(60.))
+                        .right(px(20.))
+                        .w(px(420.))
+                        .bg(rgb(0x1e1e2e))
+                        .border_1()
+                        .border_color(rgb(0x45475a))
+                        .rounded(px(8.))
+                        .shadow_lg()
+                        .flex()
+                        .flex_col()
+                        .p_4()
+                        .gap_3()
+                        .on_mouse_down(gpui::MouseButton::Left, |_event, _window, cx| {
+                            cx.stop_propagation();
+                        })
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .justify_between()
+                                .child(
+                                    div()
+                                        .text_sm()
+                                        .font_weight(FontWeight::BOLD)
+                                        .text_color(rgb(0xcdd6f4))
+                                        .child("📡 Sharing Libraries"),
+                                )
+                                .child(
+                                    div()
+                                        .cursor_pointer()
+                                        .text_sm()
+                                        .text_color(rgb(0x6c7086))
+                                        .hover(|s| s.text_color(rgb(0xcdd6f4)))
+                                        .child("✕")
+                                        .on_mouse_down(gpui::MouseButton::Left, move |_, _, cx| {
+                                            cx.stop_propagation();
+                                            view_for_close.update(cx, |app, cx| {
+                                                app.show_share_dialog = false;
+                                                app.share_url_copied = false;
+                                                cx.notify();
+                                            });
+                                        }),
+                                ),
+                        )
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(rgb(0xa6adc8))
+                                .child("🌐 LAN Share URL (for other devices on the same network):"),
+                        )
+                        .child(
+                            div()
+                                .flex()
+                                .gap_2()
+                                .items_center()
+                                .child(
+                                    div()
+                                        .flex_1()
+                                        .bg(rgb(0x11111b))
+                                        .rounded(px(4.))
+                                        .px_3()
+                                        .py_2()
+                                        .text_xs()
+                                        .text_color(rgb(0x89b4fa))
+                                        .overflow_x_hidden()
+                                        .child(url),
+                                )
+                                .child(
+                                    div()
+                                        .px_3()
+                                        .py_2()
+                                        .bg(if copied { rgb(0x3a5a40) } else { rgb(0x313244) })
+                                        .rounded(px(4.))
+                                        .cursor_pointer()
+                                        .text_xs()
+                                        .text_color(rgb(0xcdd6f4))
+                                        .hover(|s| s.bg(if copied { rgb(0x4b7a52) } else { rgb(0x45475a) }))
+                                        .on_mouse_down(gpui::MouseButton::Left, move |_, _window, cx| {
+                                            cx.stop_propagation();
+                                            cx.write_to_clipboard(gpui::ClipboardItem::new_string(url_for_copy.clone()));
+                                            let reset_view = view_for_copy.clone();
+                                            view_for_copy.update(cx, |app, cx| {
+                                                app.share_url_copied = true;
+                                                cx.notify();
+                                            });
+                                            cx.spawn(async move |cx| {
+                                                Timer::after(std::time::Duration::from_secs(2)).await;
+                                                let _ = cx.update(|cx| {
+                                                    reset_view.update(cx, |app, cx| {
+                                                        if app.show_share_dialog {
+                                                            app.share_url_copied = false;
+                                                            cx.notify();
+                                                        }
+                                                    })
+                                                });
+                                            })
+                                            .detach();
+                                        })
+                                        .child(if copied { "✓ Copied" } else { "📋 Copy" }),
+                                )
+                                .child({
+                                    div()
+                                        .px_3()
+                                        .py_2()
+                                        .bg(rgb(0x313244))
+                                        .rounded(px(4.))
+                                        .cursor_pointer()
+                                        .text_xs()
+                                        .text_color(rgb(0xcdd6f4))
+                                        .hover(|s| s.bg(rgb(0x45475a)))
+                                        .on_mouse_down(gpui::MouseButton::Left, move |_, _window, cx| {
+                                            cx.stop_propagation();
+                                            cx.open_url(&url_for_open);
+                                        })
+                                        .child("🌐 Open")
+                                }),
+                        )
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(rgb(0x6c7086))
+                                .child("The server will stop when you close the app or click 'Stop Share'."),
+                        )
+                } else {
+                    div().hidden()
+                }
+            })
+            // Import dialog overlay
+            .child({
+                if self.show_import_dialog {
+                    let view_for_close = view.clone();
+                    let view_for_import = view.clone();
+                    let status_msg = self.import_status.clone().unwrap_or_default();
+                    let has_status = !status_msg.is_empty();
+
+                    div()
+                        .absolute()
+                        .top(px(60.))
+                        .right(px(20.))
+                        .w(px(420.))
+                        .bg(rgb(0x1e1e2e))
+                        .border_1()
+                        .border_color(rgb(0x45475a))
+                        .rounded(px(8.))
+                        .shadow_lg()
+                        .flex()
+                        .flex_col()
+                        .p_4()
+                        .gap_3()
+                        .on_mouse_down(gpui::MouseButton::Left, |_event, _window, cx| {
+                            cx.stop_propagation();
+                        })
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .justify_between()
+                                .child(
+                                    div()
+                                        .text_sm()
+                                        .font_weight(FontWeight::BOLD)
+                                        .text_color(rgb(0xcdd6f4))
+                                        .child("📥 Import Libraries"),
+                                )
+                                .child(
+                                    div()
+                                        .cursor_pointer()
+                                        .text_sm()
+                                        .text_color(rgb(0x6c7086))
+                                        .hover(|s| s.text_color(rgb(0xcdd6f4)))
+                                        .child("✕")
+                                        .on_mouse_down(gpui::MouseButton::Left, move |_, _, cx| {
+                                            cx.stop_propagation();
+                                            view_for_close.update(cx, |app, cx| {
+                                                app.show_import_dialog = false;
+                                                app.import_url_input = None;
+                                                cx.notify();
+                                            });
+                                        }),
+                                ),
+                        )
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(rgb(0xa6adc8))
+                                .child("Paste the share URL from another CANVIEW instance:"),
+                        )
+                        .child(
+                            div()
+                                .flex()
+                                .gap_2()
+                                .items_center()
+                                .child(
+                                    div()
+                                        .flex_1()
+                                        .child(if let Some(ref input) = self.import_url_input {
+                                            gpui_component::input::Input::new(input)
+                                                .cleanable(true)
+                                                .into_any_element()
+                                        } else {
+                                            div()
+                                                .bg(rgb(0x11111b))
+                                                .rounded(px(4.))
+                                                .px_3()
+                                                .py_2()
+                                                .text_xs()
+                                                .text_color(rgb(0x6c7086))
+                                                .child("http://...?token=...")
+                                                .into_any_element()
+                                        }),
+                                )
+                                .child(
+                                    crate::ui::components::Button::new("Import")
+                                        .size(crate::ui::components::ButtonSize::Small)
+                                        .variant(crate::ui::components::ButtonVariant::Primary)
+                                        .build()
+                                        .id("do_import_btn")
+                                        .on_mouse_down(gpui::MouseButton::Left, move |_, _, cx| {
+                                            cx.stop_propagation();
+                                            view_for_import.update(cx, |app, cx| {
+                                                let url = app.import_url.clone();
+                                                if !url.is_empty() {
+                                                    app.start_import(url);
+                                                } else {
+                                                    app.import_status = Some("Please enter a URL".into());
+                                                }
+                                                cx.notify();
+                                            });
+                                        }),
+                                ),
+                        )
+                        .child(if has_status {
+                            div()
+                                .text_xs()
+                                .text_color(if status_msg.contains("failed") || status_msg.contains("Failed") {
+                                    rgb(0xf38ba8)
+                                } else {
+                                    rgb(0xa6e3a1)
+                                })
+                                .child(status_msg)
+                        } else {
+                            div().hidden()
+                        })
                 } else {
                     div().hidden()
                 }

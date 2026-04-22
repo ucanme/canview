@@ -1,2 +1,8 @@
 /target
 ./c++/*
+crash.log
+multi_channel_config.json
+*.blf
+.idea/
+.agent/
+.claude/

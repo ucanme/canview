@@ -27,6 +27,8 @@ pub struct RuntimeState {
     pub ldf_channels: HashMap<u16, LdfDatabase>,
     pub start_time: Option<chrono::NaiveDateTime>,
     pub is_streaming_mode: bool,
+    pub active_library_id: Option<String>,
+    pub active_version_name: Option<String>,
 }
 
 use blf::LogObject;
@@ -134,6 +136,9 @@ pub struct CanViewApp {
     pub library_manager: LibraryManager,
     pub selected_library_id: Option<String>,
     pub selected_version_id: Option<String>, // Add selected version ID
+    /// The currently "activated" library version used for log decoding and plot
+    pub active_library_id: Option<String>,
+    pub active_version_name: Option<String>,
     pub new_library_name: String,
     pub library_cursor_position: usize,
     pub library_versions_expanded: bool,
@@ -148,6 +153,14 @@ pub struct CanViewApp {
     pub library_dialog_type: LibraryDialogType,
     pub library_search_query: String,
     pub library_filter_type: Option<DatabaseType>,
+
+    // Rename inline state
+    pub renaming_library_id: Option<String>,
+    pub renaming_version_name: Option<String>,
+    pub rename_library_input: Option<Entity<InputState>>,
+    pub rename_version_input: Option<Entity<InputState>>,
+    pub rename_library_text: String,
+    pub rename_version_text: String,
 
     // Channel configuration dialog state
     pub show_channel_config_dialog: bool,
@@ -193,6 +206,17 @@ pub struct CanViewApp {
 
     // File menu dropdown state
     pub show_file_menu: bool,
+
+    // Server state
+    pub server_handle: Option<crate::server::ServerHandle>,
+    pub show_share_dialog: bool,
+    pub share_url_copied: bool,
+    pub copied_channel_id: Option<u16>,
+    pub show_import_dialog: bool,
+    pub import_url: String,
+    pub import_status: Option<String>,
+    pub import_url_input: Option<Entity<InputState>>,
+    pub pending_import: Option<std::sync::mpsc::Receiver<Result<Vec<crate::models::SignalLibrary>, String>>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -265,6 +289,8 @@ impl CanViewApp {
             library_manager: LibraryManager::new(),
             selected_library_id: None,
             selected_version_id: None, // Initialize selected version ID
+            active_library_id: None,
+            active_version_name: None,
             new_library_name: String::new(),
             library_cursor_position: 0,
             library_versions_expanded: true,
@@ -280,6 +306,13 @@ impl CanViewApp {
             // gpui-component input support
             library_name_input: None, // Will be initialized when cx is available
             version_name_input: None, // Will be initialized when cx is available
+            // Rename inline state
+            renaming_library_id: None,
+            renaming_version_name: None,
+            rename_library_input: None,
+            rename_version_input: None,
+            rename_library_text: String::new(),
+            rename_version_text: String::new(),
             // Channel configuration dialog
             show_channel_config_dialog: false,
             new_channel_id: String::new(),
@@ -314,6 +347,16 @@ impl CanViewApp {
             plot_width_px: gpui::px(0.0),
             // File menu dropdown state
             show_file_menu: false,
+            // Server state
+            server_handle: None,
+            show_share_dialog: false,
+            share_url_copied: false,
+            copied_channel_id: None,
+            show_import_dialog: false,
+            import_url: String::new(),
+            import_status: None,
+            import_url_input: None,
+            pending_import: None,
         }
     }
 
@@ -340,6 +383,8 @@ impl CanViewApp {
             ldf_channels: self.ldf_channels.clone(),
             start_time: self.start_time,
             is_streaming_mode: self.is_streaming_mode,
+            active_library_id: self.active_library_id.clone(),
+            active_version_name: self.active_version_name.clone(),
         }
     }
 
@@ -369,6 +414,8 @@ impl CanViewApp {
         self.ldf_channels = state.ldf_channels;
         self.start_time = state.start_time;
         self.is_streaming_mode = state.is_streaming_mode;
+        self.active_library_id = state.active_library_id;
+        self.active_version_name = state.active_version_name;
         eprintln!("✅ State restored. Now have: {:?} view, {} messages, {} plot series, zoom: {:?}-{:?}, {} signals, {} DBC, {} LDF",
             self.current_view,
             self.messages.len(),

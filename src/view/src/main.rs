@@ -9,6 +9,7 @@ mod library;
 mod models;
 mod platform;
 mod rendering;
+pub mod server;
 mod ui;
 
 // Import rendering utilities and app types
@@ -18,6 +19,13 @@ use app::CanViewApp;
 pub use models::{AppConfig, ChannelMapping, ChannelType};
 
 fn main() {
+    // Capture panics with a full backtrace so crashes can be diagnosed.
+    // Set RUST_BACKTRACE=1 (or =full) in the environment for symbol names.
+    std::panic::set_hook(Box::new(|info| {
+        eprintln!("PANIC: {info}");
+        eprintln!("{}", std::backtrace::Backtrace::capture());
+    }));
+
     // Initialize logger with debug level enabled
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).init();
 

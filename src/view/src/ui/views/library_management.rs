@@ -10,7 +10,6 @@ use crate::models::{ChannelDatabase, ChannelMapping, LibraryVersion, SignalLibra
 use gpui::prelude::*;
 use gpui::*;
 use gpui_component::input::{Input, InputState};
-
 /// 渲染三栏布局的库管理界面 - Zed IDE 风格
 ///
 /// 严格的三栏布局，中间用控制线隔开：
@@ -37,6 +36,14 @@ pub fn render_library_management_view(
     channel_db_path_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     new_channel_db_path: &str, // Add this parameter to avoid reading entity in render
     new_channel_type: crate::models::ChannelType, // Add channel type parameter
+    is_sharing: bool, // Whether the share server is currently running
+    copied_channel_id: Option<u16>,
+    active_library_id: Option<&str>,
+    active_version_name: Option<&str>,
+    renaming_library_id: Option<&str>,
+    rename_library_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
+    renaming_version_name: Option<&str>,
+    rename_version_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     div()
@@ -55,6 +62,11 @@ pub fn render_library_management_view(
             focused_input,
             library_cursor_pos,
             library_name_input,
+            is_sharing,
+            renaming_library_id,
+            rename_library_input,
+            active_library_id,
+            active_version_name,
             cx,
         ))
         // 垂直分割线 1 - Zed IDE subtle divider
@@ -76,6 +88,10 @@ pub fn render_library_management_view(
             focused_input,
             version_cursor_pos,
             version_name_input,
+            renaming_version_name,
+            rename_version_input,
+            active_library_id,
+            active_version_name,
             cx,
         ))
         // 垂直分割线 2 - Zed IDE subtle divider
@@ -98,6 +114,8 @@ pub fn render_library_management_view(
             channel_db_path_input,
             new_channel_db_path,
             new_channel_type,
+            is_sharing,
+            copied_channel_id,
             cx,
         ))
 }
@@ -112,6 +130,11 @@ fn render_left_column(
     _focused_input: &Option<String>,
     _cursor_pos: usize,
     library_name_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
+    is_sharing: bool,
+    renaming_library_id: Option<&str>,
+    rename_library_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
+    active_library_id: Option<&str>,
+    active_version_name: Option<&str>,
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     div()
@@ -185,12 +208,72 @@ fn render_left_column(
                             library,
                             selected_library_id,
                             mappings,
+                            renaming_library_id,
+                            rename_library_input,
+                            active_library_id,
+                            active_version_name,
                             cx,
                         ));
                     }
                     // 最后显示添加按钮
                     list.child(render_add_library_button(cx))
                 }),
+        )
+        // Bottom action bar: Share & Import
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap_2()
+                .px_3()
+                .py_2()
+                .border_t_1()
+                .border_color(rgb(0x252525))
+                .child({
+                    div()
+                        .flex_1()
+                        .px_2()
+                        .py_1()
+                        .text_xs()
+                        .text_color(if is_sharing { rgb(0xa6e3a1) } else { rgb(0xcdd6f4) })
+                        .bg(rgb(0x1e1e2e))
+                        .rounded(px(4.0))
+                        .cursor_pointer()
+                        .text_center()
+                        .hover(|s| s.bg(rgb(0x313244)))
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
+                            if this.server_handle.is_some() {
+                                this.stop_share_server();
+                            } else {
+                                this.start_share_server();
+                            }
+                            cx.notify();
+                        }))
+                        .child(if is_sharing { "📡 Stop Share" } else { "📡 Share" })
+                })
+                .child(
+                    div()
+                        .flex_1()
+                        .px_2()
+                        .py_1()
+                        .text_xs()
+                        .text_color(rgb(0xcdd6f4))
+                        .bg(rgb(0x1e1e2e))
+                        .rounded(px(4.0))
+                        .cursor_pointer()
+                        .text_center()
+                        .hover(|s| s.bg(rgb(0x313244)))
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this, _, _, cx| {
+                            this.show_import_dialog = !this.show_import_dialog;
+                            if this.show_import_dialog {
+                                this.import_status = None;
+                            } else {
+                                this.import_url_input = None;
+                            }
+                            cx.notify();
+                        }))
+                        .child("📥 Import"),
+                ),
         )
 }
 
@@ -235,6 +318,10 @@ fn render_library_item(
     library: &SignalLibrary,
     selected_library_id: &Option<String>,
     mappings: &[ChannelMapping],
+    renaming_library_id: Option<&str>,
+    rename_library_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
+    active_library_id: Option<&str>,
+    active_version_name: Option<&str>,
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     let is_selected = selected_library_id.as_ref() == Some(&library.id);
@@ -242,6 +329,9 @@ fn render_library_item(
     let db_type = library.database_type();
     let icon = db_type.icon();
     let library_id = library.id.clone();
+    let is_renaming = renaming_library_id == Some(library.id.as_str());
+    let is_active = active_library_id == Some(library.id.as_str());
+    let active_ver = if is_active { active_version_name } else { None };
 
     div()
         .id(format!("lib-{}", library_id))
@@ -258,52 +348,175 @@ fn render_library_item(
         .flex()
         .items_center()
         .justify_between()
-        .on_mouse_down(
-            gpui::MouseButton::Left,
-            cx.listener({
-                let library_id = library_id.clone();
-                move |this, _event, _window, cx| {
-                    cx.stop_propagation();
-                    eprintln!("🖱️ Selected library: {}", library_id);
-                    this.selected_library_id = Some(library_id.clone());
-                    // Reset selected version when library changes
-                    this.selected_version_id = None;
-                    // Reset add channel input when switching libraries
-                    this.hide_add_channel_input(cx);
-                    cx.notify();
-                }
-            }),
-        )
-        .child(
-            div()
-                .flex()
-                .items_center()
-                .gap_2()
-                .child(
-                    div()
-                        .text_xs()
-                        .text_color(if is_selected {
-                            rgb(0x89b4fa) // Zed blue
-                        } else {
-                            rgb(0x6c7086) // Zed muted
-                        })
-                        .child(icon.to_string()),
-                )
-                .child(
-                    div().flex().flex_col().gap_0().child(
+        .when(!is_renaming, |el| {
+            el.on_mouse_down(
+                gpui::MouseButton::Left,
+                cx.listener({
+                    let library_id = library_id.clone();
+                    move |this, _event, _window, cx| {
+                        cx.stop_propagation();
+                        eprintln!("🖱️ Selected library: {}", library_id);
+                        this.selected_library_id = Some(library_id.clone());
+                        // Reset selected version when library changes
+                        this.selected_version_id = None;
+                        // Cancel any in-progress version rename when switching libraries
+                        this.renaming_version_name = None;
+                        this.rename_version_input = None;
+                        // Reset add channel input when switching libraries
+                        this.hide_add_channel_input(cx);
+                        cx.notify();
+                    }
+                }),
+            )
+        })
+        .when(is_renaming, |el| {
+            // Inline rename row: input + confirm + cancel
+            el.child(
+                div()
+                    .flex()
+                    .flex_1()
+                    .items_center()
+                    .gap_1()
+                    .child(if let Some(input) = rename_library_input {
+                        div()
+                            .flex_1()
+                            .child(Input::new(input).appearance(true))
+                            .into_any_element()
+                    } else {
+                        div().flex_1().into_any_element()
+                    })
+                    .child(
+                        div()
+                            .id("lib-rename-ok")
+                            .px_1()
+                            .text_xs()
+                            .text_color(rgb(0xa6e3a1))
+                            .cursor_pointer()
+                            .hover(|s| s.text_color(rgb(0xcdd6f4)))
+                            .on_mouse_down(
+                                gpui::MouseButton::Left,
+                                cx.listener(|this, _, _, cx| {
+                                    cx.stop_propagation();
+                                    this.commit_rename_library(cx);
+                                }),
+                            )
+                            .child("✓"),
+                    )
+                    .child(
+                        div()
+                            .id("lib-rename-cancel")
+                            .px_1()
+                            .text_xs()
+                            .text_color(rgb(0xf38ba8))
+                            .cursor_pointer()
+                            .hover(|s| s.text_color(rgb(0xcdd6f4)))
+                            .on_mouse_down(
+                                gpui::MouseButton::Left,
+                                cx.listener(|this, _, _, cx| {
+                                    cx.stop_propagation();
+                                    this.cancel_rename_library(cx);
+                                }),
+                            )
+                            .child("✕"),
+                    ),
+            )
+        })
+        .when(!is_renaming, |el| {
+            el.child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_1()
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(if is_selected {
+                                        rgb(0x89b4fa) // Zed blue
+                                    } else {
+                                        rgb(0x6c7086) // Zed muted
+                                    })
+                                    .child(icon.to_string()),
+                            )
+                            .when_some(active_ver, |el, ver| {
+                                el.child(
+                                    div()
+                                        .text_xs()
+                                        .text_color(rgb(0xa6e3a1)) // green
+                                        .child(format!("({})", ver)),
+                                )
+                            }),
+                    )
+                    .child(
                         div()
                             .text_sm()
                             .text_color(rgb(0xcdd6f4)) // Zed text
                             .child(library.name.clone()),
                     ),
-                ),
-        )
-        .when(is_used, |el| {
-            el.child(
+            )
+            .child(
                 div()
-                    .text_xs()
-                    .text_color(rgb(0x6c7086)) // 使用文字标记
-                    .child(format!("{}", library.versions.len())),
+                    .flex()
+                    .items_center()
+                    .gap_1()
+                    .when(is_used, |el| {
+                        el.child(
+                            div()
+                                .text_xs()
+                                .text_color(rgb(0x6c7086))
+                                .child(format!("{}", library.versions.len())),
+                        )
+                    })
+                    .child(
+                        div()
+                            .id(format!("lib-rename-btn-{}", library_id))
+                            .px_1()
+                            .text_xs()
+                            .text_color(rgb(0x45475a))
+                            .cursor_pointer()
+                            .hover(|s| s.text_color(rgb(0x89b4fa)))
+                            .on_mouse_down(
+                                gpui::MouseButton::Left,
+                                cx.listener({
+                                    let library_id = library_id.clone();
+                                    let library_name = library.name.clone();
+                                    move |this, _, window, cx| {
+                                        cx.stop_propagation();
+                                        this.start_rename_library(
+                                            library_id.clone(),
+                                            library_name.clone(),
+                                            window,
+                                            cx,
+                                        );
+                                    }
+                                }),
+                            )
+                            .child("✎"),
+                    )
+                    .child(
+                        div()
+                            .id(format!("lib-delete-btn-{}", library_id))
+                            .px_1()
+                            .text_xs()
+                            .text_color(rgb(0x45475a))
+                            .cursor_pointer()
+                            .hover(|s| s.text_color(rgb(0xf38ba8)))
+                            .on_mouse_down(
+                                gpui::MouseButton::Left,
+                                cx.listener({
+                                    let library_id = library_id.clone();
+                                    move |this, _, _window, cx| {
+                                        cx.stop_propagation();
+                                        this.delete_library(&library_id, cx);
+                                    }
+                                }),
+                            )
+                            .child("🗑"),
+                    ),
             )
         })
 }
@@ -332,8 +545,9 @@ fn render_add_library_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoEl
 
                     this.library_name_input = Some(input.clone());
 
-                    // Subscribe to input events - store subscription to keep it alive
-                    let _subscription = cx.subscribe(
+                    // Subscribe to input events - detach so the subscription lives
+                    // until the input entity is dropped (when library_name_input = None)
+                    cx.subscribe(
                         &input,
                         |this: &mut crate::CanViewApp,
                          _input_entity,
@@ -373,7 +587,8 @@ fn render_add_library_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoEl
                                 _ => {}
                             }
                         },
-                    );
+                    )
+                    .detach();
 
                     eprintln!("✅ Created input and subscribed to events");
                 }
@@ -407,6 +622,10 @@ fn render_middle_column(
     _focused_input: &Option<String>,
     _cursor_pos: usize,
     version_name_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
+    renaming_version_name: Option<&str>,
+    rename_version_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
+    active_library_id: Option<&str>,
+    active_version_name: Option<&str>,
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     // 找到选中的库
@@ -467,12 +686,23 @@ fn render_middle_column(
                 })
                 .when_some(selected_library, |this, library| {
                     let mut list = this;
+                    let lib_id = library.id.clone();
                     // 显示现有版本列表
                     for version in &library.versions {
                         let version_name = version.name.clone();
                         let is_selected = selected_version_id.as_ref() == Some(&version_name);
-                        list =
-                            list.child(render_version_item(version, version_name, is_selected, cx));
+                        let is_active = active_library_id == Some(lib_id.as_str())
+                            && active_version_name == Some(version_name.as_str());
+                        list = list.child(render_version_item(
+                            version,
+                            version_name,
+                            lib_id.clone(),
+                            is_selected,
+                            is_active,
+                            renaming_version_name,
+                            rename_version_input,
+                            cx,
+                        ));
                     }
                     // 添加内联版本输入行（当show_add_version_input为true时）
                     if show_add_version_input {
@@ -492,10 +722,15 @@ fn render_middle_column(
 fn render_version_item(
     version: &LibraryVersion,
     version_name: String,
+    library_id: String,
     is_selected: bool,
+    is_active: bool,
+    renaming_version_name: Option<&str>,
+    rename_version_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     let stats = version.get_stats();
+    let is_renaming = renaming_version_name == Some(version_name.as_str());
 
     div()
         .id(format!("ver-{}", version_name))
@@ -512,35 +747,178 @@ fn render_version_item(
         .flex()
         .items_center()
         .justify_between()
-        .on_mouse_down(
-            gpui::MouseButton::Left,
-            cx.listener({
-                let version_name = version_name.clone();
-                move |this, _event, _window, cx| {
-                    cx.stop_propagation();
-                    eprintln!("🖱️ Selected version: {}", version_name);
-                    this.selected_version_id = Some(version_name.clone());
-                    this.status_msg = format!("Selected version: {}", version_name).into();
-                    // Ensure add channel input is hidden when determining selection
-                    this.hide_add_channel_input(cx);
-                    cx.notify();
-                }
-            }),
-        )
-        .child(
-            div().flex().flex_col().gap_0().child(
+        .when(!is_renaming, |el| {
+            el.on_mouse_down(
+                gpui::MouseButton::Left,
+                cx.listener({
+                    let version_name = version_name.clone();
+                    move |this, _event, _window, cx| {
+                        cx.stop_propagation();
+                        eprintln!("🖱️ Selected version: {}", version_name);
+                        this.selected_version_id = Some(version_name.clone());
+                        this.status_msg = format!("Selected version: {}", version_name).into();
+                        // Ensure add channel input is hidden when determining selection
+                        this.hide_add_channel_input(cx);
+                        cx.notify();
+                    }
+                }),
+            )
+        })
+        .when(is_renaming, |el| {
+            el.child(
                 div()
-                    .text_sm()
-                    .text_color(rgb(0xcdd6f4))
-                    .child(version.name.clone()),
-            ),
-        )
-        .child(
-            div()
-                .text_xs()
-                .text_color(rgb(0x6c7086)) // Zed muted
-                .child(format!("{}", stats.total_channels)),
-        )
+                    .flex()
+                    .flex_1()
+                    .items_center()
+                    .gap_1()
+                    .child(if let Some(input) = rename_version_input {
+                        div()
+                            .flex_1()
+                            .child(Input::new(input).appearance(true))
+                            .into_any_element()
+                    } else {
+                        div().flex_1().into_any_element()
+                    })
+                    .child(
+                        div()
+                            .id("ver-rename-ok")
+                            .px_1()
+                            .text_xs()
+                            .text_color(rgb(0xa6e3a1))
+                            .cursor_pointer()
+                            .hover(|s| s.text_color(rgb(0xcdd6f4)))
+                            .on_mouse_down(
+                                gpui::MouseButton::Left,
+                                cx.listener(|this, _, _, cx| {
+                                    cx.stop_propagation();
+                                    this.commit_rename_version(cx);
+                                }),
+                            )
+                            .child("✓"),
+                    )
+                    .child(
+                        div()
+                            .id("ver-rename-cancel")
+                            .px_1()
+                            .text_xs()
+                            .text_color(rgb(0xf38ba8))
+                            .cursor_pointer()
+                            .hover(|s| s.text_color(rgb(0xcdd6f4)))
+                            .on_mouse_down(
+                                gpui::MouseButton::Left,
+                                cx.listener(|this, _, _, cx| {
+                                    cx.stop_propagation();
+                                    this.cancel_rename_version(cx);
+                                }),
+                            )
+                            .child("✕"),
+                    ),
+            )
+        })
+        .when(!is_renaming, |el| {
+            el.child(
+                div().flex().flex_col().gap_0().child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_1()
+                        .child(
+                            div()
+                                .text_sm()
+                                .text_color(rgb(0xcdd6f4))
+                                .child(version.name.clone()),
+                        )
+                        .when(is_active, |s| {
+                            s.child(
+                                div()
+                                    .px_1()
+                                    .text_xs()
+                                    .text_color(rgb(0xa6e3a1))
+                                    .child("● active"),
+                            )
+                        }),
+                ),
+            )
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_1()
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(rgb(0x6c7086))
+                            .child(format!("{}", stats.total_channels)),
+                    )
+                    .child(
+                        // Activate button
+                        div()
+                            .id(format!("ver-activate-btn-{}", version_name))
+                            .px_1()
+                            .text_xs()
+                            .text_color(if is_active { rgb(0xa6e3a1) } else { rgb(0x45475a) })
+                            .cursor_pointer()
+                            .hover(|s| s.text_color(rgb(0xa6e3a1)))
+                            .on_mouse_down(
+                                gpui::MouseButton::Left,
+                                cx.listener({
+                                    let version_name = version_name.clone();
+                                    let library_id = library_id.clone();
+                                    move |this, _, _window, cx| {
+                                        cx.stop_propagation();
+                                        this.activate_library_version(&library_id, &version_name, cx);
+                                    }
+                                }),
+                            )
+                            .child(if is_active { "▶" } else { "▷" }),
+                    )
+                    .child(
+                        div()
+                            .id(format!("ver-rename-btn-{}", version_name))
+                            .px_1()
+                            .text_xs()
+                            .text_color(rgb(0x45475a))
+                            .cursor_pointer()
+                            .hover(|s| s.text_color(rgb(0x89b4fa)))
+                            .on_mouse_down(
+                                gpui::MouseButton::Left,
+                                cx.listener({
+                                    let version_name = version_name.clone();
+                                    move |this, _, window, cx| {
+                                        cx.stop_propagation();
+                                        this.start_rename_version(
+                                            version_name.clone(),
+                                            window,
+                                            cx,
+                                        );
+                                    }
+                                }),
+                            )
+                            .child("✎"),
+                    )
+                    .child(
+                        div()
+                            .id(format!("ver-delete-btn-{}", version_name))
+                            .px_1()
+                            .text_xs()
+                            .text_color(rgb(0x45475a))
+                            .cursor_pointer()
+                            .hover(|s| s.text_color(rgb(0xf38ba8)))
+                            .on_mouse_down(
+                                gpui::MouseButton::Left,
+                                cx.listener({
+                                    let version_name = version_name.clone();
+                                    let library_id = library_id.clone();
+                                    move |this, _, _window, cx| {
+                                        cx.stop_propagation();
+                                        this.delete_library_version(&library_id, &version_name, cx);
+                                    }
+                                }),
+                            )
+                            .child("🗑"),
+                    ),
+            )
+        })
 }
 
 /// 右栏：通道配置 - Zed IDE 风格
@@ -555,6 +933,8 @@ fn render_right_column(
     channel_db_path_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     new_channel_db_path: &str, // Add this parameter to avoid reading entity in render
     new_channel_type: crate::models::ChannelType, // Use the new channel type being added
+    is_sharing: bool,
+    copied_channel_id: Option<u16>,
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     // 找到选中的库和版本
@@ -746,7 +1126,7 @@ fn render_right_column(
                             let mut list = this;
                             // 显示现有通道列表
                             for channel_db in &version.channel_databases {
-                                list = list.child(render_channel_item(channel_db, cx));
+                                list = list.child(render_channel_item(channel_db, is_sharing, copied_channel_id, cx));
                             }
                             // 显示输入框（如果show_add_channel_input为true）
                             if show_add_channel_input {
@@ -771,6 +1151,8 @@ fn render_right_column(
 /// 渲染单个通道项 - 完整的单行列表显示
 fn render_channel_item(
     channel_db: &ChannelDatabase,
+    is_sharing: bool,
+    copied_channel_id: Option<u16>,
     cx: &mut Context<crate::CanViewApp>,
 ) -> impl IntoElement {
     let path = channel_db.database_path.clone();
@@ -779,8 +1161,12 @@ fn render_channel_item(
 
     // Copy channel_id to avoid borrow issues in closure
     let channel_id = channel_db.channel_id;
+    let is_http = path.starts_with("http://") || path.starts_with("https://");
+    let show_copy = is_sharing && is_http;
+    let is_copied = copied_channel_id == Some(channel_id);
 
     div()
+        .id(format!("ch-item-{}", channel_id))
         .px_3()
         .py_1()
         .mb_1()
@@ -834,32 +1220,69 @@ fn render_channel_item(
             div().flex_1().min_w_0().child(
                 div()
                     .text_sm()
-                    .text_color(rgb(0x646473)) // Zed muted
+                    .text_color(if is_http { rgb(0x89b4fa) } else { rgb(0x646473) })
                     .truncate()
                     .child({
                         let normalized = path.replace('\\', "/");
                         if let Some(idx) = normalized.find("libraries/") {
                             normalized[idx..].to_string()
                         } else {
-                            path
+                            path.clone()
                         }
                     }),
             ),
         )
+        .when(show_copy, |this| {
+            let url_for_copy = path.clone();
+            this.child(
+                div()
+                    .id(format!("ch-copy-{}", channel_id))
+                    .px_2()
+                    .py_1()
+                    .bg(if is_copied { rgb(0x3a5a40) } else { rgb(0x252535) })
+                    .rounded(px(3.))
+                    .cursor_pointer()
+                    .text_xs()
+                    .text_color(if is_copied { rgb(0xa6e3a1) } else { rgb(0x6c7086) })
+                    .hover(|s| s.bg(rgb(0x313244)).text_color(rgb(0xcdd6f4)))
+                    .flex_shrink_0()
+                    .child(if is_copied { "✓" } else { "📋" })
+                    .on_mouse_down(
+                        gpui::MouseButton::Left,
+                        cx.listener(move |this, _event, _window, cx| {
+                            cx.write_to_clipboard(gpui::ClipboardItem::new_string(url_for_copy.clone()));
+                            this.copied_channel_id = Some(channel_id);
+                            cx.notify();
+                            cx.spawn(async move |this, cx| {
+                                smol::Timer::after(std::time::Duration::from_secs(2)).await;
+                                if let Some(entity) = this.upgrade() {
+                                    entity.update(cx, |app, cx| {
+                                        if app.copied_channel_id == Some(channel_id) {
+                                            app.copied_channel_id = None;
+                                            cx.notify();
+                                        }
+                                    });
+                                }
+                            })
+                            .detach();
+                        }),
+                    ),
+            )
+        })
         .child(
             // 删除按钮
             div()
+                .id(format!("ch-del-{}", channel_id))
                 .w(px(16.))
                 .h(px(16.))
                 .cursor_pointer()
-                .hover(|style| style.bg(rgb(0x382828)))
+                .hover(|style| style.bg(rgb(0x382828)).text_color(rgb(0xf38ba8)))
                 .rounded(px(2.))
                 .flex()
                 .items_center()
                 .justify_center()
                 .flex_shrink_0()
                 .text_color(rgb(0x646473)) // Zed muted
-                .hover(|style| style.text_color(rgb(0xf38ba8))) // Red on hover
                 .child("🗑")
                 .on_mouse_down(
                     gpui::MouseButton::Left,
@@ -887,20 +1310,34 @@ fn render_add_channel_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoEl
         .gap_2()
         .on_mouse_down(
             gpui::MouseButton::Left,
-            cx.listener(|this, _event, _window, cx| {
+            cx.listener(|this, _event, window, cx| {
                 eprintln!("🖱️ Add Channel button clicked");
 
-                // 不在这里创建 InputState，而是在渲染时根据需要创建
-                // 这样可以避免借用冲突和生命周期问题
-
-                // Clear previous path selection
+                // Clear previous values
                 this.new_channel_db_path.clear();
-
-                // Clear previous input values
                 this.new_channel_id.clear();
                 this.new_channel_name.clear();
 
-                // 设置 flag 以显示输入框
+                // Create fresh InputState entities in the event handler (not in render)
+                let id_input = cx.new(|cx| InputState::new(window, cx).placeholder("Channel ID"));
+                cx.subscribe(&id_input, |this, input, event, cx| {
+                    if let gpui_component::input::InputEvent::Change = event {
+                        this.new_channel_id = input.read(cx).text().to_string();
+                    }
+                })
+                .detach();
+                this.channel_id_input = Some(id_input);
+
+                let name_input =
+                    cx.new(|cx| InputState::new(window, cx).placeholder("Channel name"));
+                cx.subscribe(&name_input, |this, input, event, cx| {
+                    if let gpui_component::input::InputEvent::Change = event {
+                        this.new_channel_name = input.read(cx).text().to_string();
+                    }
+                })
+                .detach();
+                this.channel_name_input = Some(name_input);
+
                 this.show_add_channel_input = true;
                 cx.notify();
                 eprintln!("✅ show_add_channel_input = true");
@@ -915,195 +1352,6 @@ fn render_add_channel_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoEl
                     .child("+ Add Channel"),
             ),
         )
-}
-
-/// 渲染右侧栏中的通道项
-fn render_channel_item_in_right(
-    channel_db: &ChannelDatabase,
-    cx: &mut Context<crate::CanViewApp>,
-) -> impl IntoElement {
-    let path = channel_db.database_path.clone();
-    let filename = std::path::Path::new(&path)
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or(&path)
-        .to_string();
-
-    let channel_id = channel_db.channel_id;
-
-    div()
-        .px_3()
-        .py_1()
-        .mb_1()
-        .h(px(32.))
-        .bg(rgb(0x151515))
-        .border_1()
-        .border_color(rgb(0x1a1a1a))
-        .rounded(px(3.0))
-        .flex()
-        .items_center()
-        .justify_between()
-        .child(
-            div()
-                .flex()
-                .flex_col()
-                .gap_0p5()
-                .child(
-                    div()
-                        .text_xs()
-                        .font_weight(FontWeight::MEDIUM)
-                        .text_color(rgb(0xcdd6f4))
-                        .child(format!(
-                            "CH{}: {}",
-                            channel_db.channel_id, channel_db.channel_name
-                        )),
-                )
-                .child(div().text_xs().text_color(rgb(0x646473)).child(filename)),
-        )
-        .child(
-            div()
-                .w(px(16.))
-                .h(px(16.))
-                .cursor_pointer()
-                .hover(|style| style.bg(rgb(0x382828)))
-                .rounded(px(2.))
-                .flex()
-                .items_center()
-                .justify_center()
-                .on_mouse_down(
-                    gpui::MouseButton::Left,
-                    cx.listener(move |this, _event, _window, cx| {
-                        this.delete_channel(channel_id, cx);
-                    }),
-                )
-                .child(
-                    div()
-                        .text_xs()
-                        .font_weight(FontWeight::BOLD)
-                        .text_color(rgb(0xf38ba8))
-                        .child("×"),
-                ),
-        )
-}
-
-/// 渲染右侧栏中的添加通道按钮
-fn render_add_channel_button_in_right(cx: &mut Context<crate::CanViewApp>) -> impl IntoElement {
-    div()
-        .px_3()
-        .py_2()
-        .mt_1()
-        .border_1()
-        .border_dashed()
-        .border_color(rgb(0x1a1a1a))
-        .rounded(px(3.0))
-        .cursor_pointer()
-        .hover(|style| style.bg(rgb(0x151515)))
-        .flex()
-        .items_center()
-        .justify_center()
-        .gap_1()
-        .child({
-            // 文件选择按钮 - 直接添加到列表
-            let this = cx.entity().clone();
-            div()
-                .flex()
-                .items_center()
-                .gap_1()
-                .child(
-                    div()
-                        .text_xs()
-                        .font_weight(FontWeight::MEDIUM)
-                        .text_color(rgb(0x7dcfff))
-                        .child("+"),
-                )
-                .child(
-                    div()
-                        .text_xs()
-                        .font_weight(FontWeight::MEDIUM)
-                        .text_color(rgb(0x7dcfff))
-                        .child("Add Channel"),
-                )
-                .on_mouse_down(gpui::MouseButton::Left, {
-                    let this = this.clone();
-                    move |_, _, app| {
-                        let this = this.clone();
-                        app.spawn(async move |cx| {
-                            if let Some(file) = rfd::AsyncFileDialog::new()
-                                .add_filter("Database Files", &["dbc", "ldf"])
-                                .pick_file()
-                                .await
-                            {
-                                let path_str = file.path().to_string_lossy().to_string();
-                                let _ = cx.update(|cx| {
-                                    this.update(cx, |view, cx| {
-                                        // 从文件名提取channel名称
-                                        let file_name = std::path::Path::new(&path_str)
-                                            .file_stem()
-                                            .and_then(|s| s.to_str())
-                                            .unwrap_or("Unknown");
-
-                                        // 自动分配下一个可用的channel ID
-                                        let next_id =
-                                            if let Some(lib_id) = &view.selected_library_id {
-                                                view.library_manager
-                                                    .find_library(lib_id)
-                                                    .and_then(|lib| lib.latest_version())
-                                                    .map(|v| v.channel_databases.len() as u16 + 1)
-                                                    .unwrap_or(1)
-                                            } else {
-                                                1
-                                            };
-
-                                        // 设置临时值用于保存
-                                        view.new_channel_id = next_id.to_string();
-                                        view.new_channel_name = file_name.to_string();
-                                        view.new_channel_db_path = path_str.clone();
-
-                                        // 直接保存
-                                        view.save_channel_config(cx);
-                                    });
-                                });
-                            }
-                            Ok::<(), anyhow::Error>(())
-                        })
-                        .detach();
-                    }
-                })
-        })
-}
-
-/// 渲染内联添加通道输入行 - 完全融入列表（旧版本，保留以兼容）
-fn render_add_channel_input_row(
-    channel_id_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
-    channel_name_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
-    _channel_db_path_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
-    channel_type: crate::models::ChannelType,
-    cx: &mut Context<crate::CanViewApp>,
-) -> impl IntoElement {
-    // Read path and entity before calling the actual render function
-    let (path_text, path_is_empty) = {
-        let state = cx.entity().read(cx);
-        let is_empty = state.new_channel_db_path.is_empty();
-        let text = if is_empty {
-            "No file selected".to_string()
-        } else {
-            state.new_channel_db_path.clone()
-        };
-        (text, is_empty)
-    };
-
-    let entity_clone = cx.entity().clone();
-
-    render_add_channel_input_row_with_path(
-        channel_id_input,
-        channel_name_input,
-        _channel_db_path_input,
-        channel_type,
-        path_text,
-        path_is_empty,
-        Some(entity_clone),
-        cx,
-    )
 }
 
 /// 渲染内联添加通道输入行 - 带预读取的路径和entity（避免在渲染时读取entity）
@@ -1144,6 +1392,7 @@ fn render_add_channel_input_row_with_path(
             // 类型选择器 - 可点击切换，宽度与表头对齐
             div().w(px(60.0)).flex_shrink_0().child(
                 div()
+                    .id("add-ch-type-toggle")
                     .px_2()
                     .py_1()
                     .bg(rgb(0x1a1a1a))
@@ -1305,6 +1554,7 @@ fn render_add_channel_input_row_with_path(
                 .child(
                     // 确认按钮
                     div()
+                        .id("add-ch-confirm")
                         .w(px(20.))
                         .h(px(20.))
                         .cursor_pointer()
@@ -1330,6 +1580,7 @@ fn render_add_channel_input_row_with_path(
                 .child(
                     // 取消按钮
                     div()
+                        .id("add-ch-cancel")
                         .w(px(20.))
                         .h(px(20.))
                         .cursor_pointer()

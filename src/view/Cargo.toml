@@ -15,6 +15,14 @@ env_logger = "0.11"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 base64 = "0.22"
+tokio = { version = "1.0", features = ["full"] }
+axum = "0.8"
+tower-http = { version = "0.6", features = ["cors"] }
+uuid = { version = "1.0", features = ["v4"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+urlencoding = "2.1"
+smol = "2"
+if-addrs = "0.13"
 
 # Platform-specific file dialog backend
 [target.'cfg(windows)'.dependencies]

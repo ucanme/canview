@@ -7,3 +7,4 @@ pub mod dialog;
 pub mod config;
 pub mod load;
 pub mod library;
+pub mod server;
