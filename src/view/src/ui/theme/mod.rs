@@ -218,6 +218,29 @@ pub mod colors {
     pub const INTERACTIVE_HOVER: Rgba = palette::SAPPHIRE;
     pub const DISABLED: Rgba = palette::OVERLAY0;
 
+    // Accent — current library badge (used by TopBar and StatusBar)
+    pub const ACCENT_GREEN_LIGHT: Rgba = palette::GREEN;
+    pub const ACCENT_GREEN_BG: Rgba = Rgba {
+        r: 0x1a as f32 / 255.0,
+        g: 0x2e as f32 / 255.0,
+        b: 0x1a as f32 / 255.0,
+        a: 1.0,
+    };
+    pub const ACCENT_GREEN_BORDER: Rgba = Rgba {
+        r: 0x2d as f32 / 255.0,
+        g: 0x5a as f32 / 255.0,
+        b: 0x2d as f32 / 255.0,
+        a: 1.0,
+    };
+
+    // Window control — close button hover
+    pub const CLOSE_HOVER: Rgba = Rgba {
+        r: 0xc5 as f32 / 255.0,
+        g: 0x30 as f32 / 255.0,
+        b: 0x30 as f32 / 255.0,
+        a: 1.0,
+    };
+
     // Shadows (for depth)
     pub const SHADOW_SM: Rgba = Rgba {
         r: 0.0,
@@ -302,5 +325,17 @@ mod tests {
         assert!(spacing::SM.0 < spacing::MD.0);
         assert!(spacing::MD.0 < spacing::LG.0);
         assert!(spacing::LG.0 < spacing::XL.0);
+    }
+
+    #[test]
+    fn test_accent_tokens_defined() {
+        // Accent tokens must be opaque and distinct from base palette
+        assert_eq!(colors::ACCENT_GREEN_LIGHT, palette::GREEN);
+        assert_eq!(colors::ACCENT_GREEN_BG.a, 1.0);
+        assert_eq!(colors::ACCENT_GREEN_BORDER.a, 1.0);
+        assert_eq!(colors::CLOSE_HOVER.a, 1.0);
+        // CLOSE_HOVER should be red-dominant
+        assert!(colors::CLOSE_HOVER.r > 0.7);
+        assert!(colors::CLOSE_HOVER.g < 0.3);
     }
 }
