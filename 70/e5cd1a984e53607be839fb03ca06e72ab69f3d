@@ -1,0 +1,28 @@
+docs/superpowers/specs/2026-07-21-ui-redesign-design.md
+  s_a6569676d6a73d::t_a2774ee4ae8446 109-110,112-118,121-126,128-132
+  s_a6569676d6a73d::t_94337fd31cc8bd 1-14,18-23,32-55,57-108,111,119-120,127,133-200,203,206-279,287,301-337,342,355-361,363-366,373-374,378-476
+  s_a6569676d6a73d::t_e61dcd2d87d3ed 338-341,343-344,346-354
+  s_a6569676d6a73d::t_807281e2e0d971 345
+  s_a6569676d6a73d::t_7df81b9c96e736 56
+  s_a6569676d6a73d::t_d44370e0f2bc25 362,367-372,375-377
+  s_a6569676d6a73d::t_a02e916063eec8 280-286,288-300
+  s_a6569676d6a73d::t_519889f829aedc 15-17
+  s_a6569676d6a73d::t_73712f1e75ce48 24-31
+  s_a6569676d6a73d::t_4399622ed6435d 201-202,204-205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "70e5cd1a984e53607be839fb03ca06e72ab69f3d",
+  "prompts": {},
+  "sessions": {
+    "s_a6569676d6a73d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc659355-d2eb-47cd-ac4c-8455acc74651",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
