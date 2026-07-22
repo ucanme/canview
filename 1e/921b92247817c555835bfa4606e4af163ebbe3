@@ -1,0 +1,34 @@
+src/view/src/app/impls_rendering.rs
+  s_a6569676d6a73d::t_a76c53266161ed 309-311,313-314,316,529
+  s_a6569676d6a73d::t_30978c577ccd45 312,315
+  s_a6569676d6a73d::t_ad70fb22ea3c38 134-139
+src/view/src/ui/components/mod.rs
+  s_a6569676d6a73d::t_0005bf3491b231 20-23
+  s_a6569676d6a73d::t_a76c53266161ed 17,24
+src/view/src/ui/components/filter_bar.rs
+  s_a6569676d6a73d::t_21fcd59004d952 227-228
+  s_a6569676d6a73d::t_5e259f7cfd91a2 31
+  s_a6569676d6a73d::t_abbeccaa3b13a7 171-172
+  s_a6569676d6a73d::t_6914d66ddee5ae 25-26,51,101,109,188
+  s_a6569676d6a73d::t_fbccc11cddf498 259
+  s_a6569676d6a73d::t_ad6f07006b54a8 192-194
+  s_a6569676d6a73d::t_eb61e4dfe0f57e 1-5,7-16,21-24,27-30,32-50,52-100,102-108,110-170,173-187,189-191,195-226,229-258,260-286
+  s_a6569676d6a73d::t_aca6d3be5210cd 6
+  s_a6569676d6a73d::t_cabbe95fb38b98 17-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "1e921b92247817c555835bfa4606e4af163ebbe3",
+  "prompts": {},
+  "sessions": {
+    "s_a6569676d6a73d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc659355-d2eb-47cd-ac4c-8455acc74651",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
