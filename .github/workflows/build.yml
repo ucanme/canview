@@ -21,14 +21,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macOS 构建暂时禁用
-          # 原因：core-graphics 依赖版本冲突 (0.24.0 vs 0.25.0)
-          # TODO: 在 GPUI 修复依赖冲突后重新启用
-          
-          # macOS ARM (Apple Silicon) - Native Build on M1
+          # macOS ARM (Apple Silicon) — builds a .app bundle so the
+          # canview icon shows in Dock and Cmd-Tab. Uses nightly because
+          # the project depends on edition 2024 + #![recursion_limit].
           - os: macos-14
             target: aarch64-apple-darwin
-            artifact_name: view
+            artifact_name: CANVIEW.app
             asset_name: canview-macos-aarch64
 
           # Linux x86_64
@@ -52,6 +50,12 @@ jobs:
         with:
           target: ${{ matrix.target }}
           components: rustfmt, clippy
+
+      - name: Switch to nightly (required for edition 2024 + recursion_limit)
+        run: |
+          rustup toolchain install nightly --profile minimal --component rustfmt clippy
+          rustup target add --toolchain nightly ${{ matrix.target }}
+          rustup default nightly
 
       - name: Setup Rust cache
         uses: swatinem/rust-cache@v2
@@ -140,31 +144,81 @@ jobs:
         if: "!startsWith(matrix.os, 'ubuntu')"
         run: cargo build --release -p view --target ${{ matrix.target }}
 
-      - name: Strip binary (Unix-like)
-        if: runner.os != 'Windows'
+      - name: Strip binary (Linux)
+        if: runner.os == 'Linux'
         run: strip target/${{ matrix.target }}/release/view || true
+
+      # macOS: wrap the binary in a .app bundle so the canview icon shows
+      # in Dock and Cmd-Tab. The bundle includes Info.plist + canview.icns.
+      - name: Create .app bundle (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -e
+          APP_DIR=target/${{ matrix.target }}/release/CANVIEW.app
+          CONTENTS="$APP_DIR/Contents"
+          MACOS_DIR="$CONTENTS/MacOS"
+          RESOURCES_DIR="$CONTENTS/Resources"
+          mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
+          cp target/${{ matrix.target }}/release/view "$MACOS_DIR/canview"
+          chmod +x "$MACOS_DIR/canview"
+          cp assets/ico/canview.icns "$RESOURCES_DIR/canview.icns"
+          # Write Info.plist without indentation (plist parser is strict
+          # about leading whitespace; printf gives full control).
+          {
+            printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>'
+            printf '%s\n' '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">'
+            printf '%s\n' '<plist version="1.0">'
+            printf '%s\n' '<dict>'
+            printf '%s\n' '  <key>CFBundleDevelopmentRegion</key><string>en</string>'
+            printf '%s\n' '  <key>CFBundleExecutable</key><string>canview</string>'
+            printf '%s\n' '  <key>CFBundleIdentifier</key><string>com.canview.app</string>'
+            printf '%s\n' '  <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>'
+            printf '%s\n' '  <key>CFBundleName</key><string>CANVIEW</string>'
+            printf '%s\n' '  <key>CFBundlePackageType</key><string>APPL</string>'
+            printf '%s\n' '  <key>CFBundleShortVersionString</key><string>0.1.0</string>'
+            printf '%s\n' '  <key>CFBundleVersion</key><string>0.1.0</string>'
+            printf '%s\n' '  <key>LSMinimumSystemVersion</key><string>10.13</string>'
+            printf '%s\n' '  <key>NSHighResolutionCapable</key><true/>'
+            printf '%s\n' '  <key>CFBundleIconFile</key><string>canview</string>'
+            printf '%s\n' '</dict>'
+            printf '%s\n' '</plist>'
+          } > "$CONTENTS/Info.plist"
 
       - name: Prepare upload directory
         shell: bash
         run: |
           mkdir -p upload
 
-      - name: Copy binary (Unix-like)
-        if: runner.os != 'Windows'
+      - name: Copy binary (Linux)
+        if: runner.os == 'Linux'
         run: |
           cp target/${{ matrix.target }}/release/view upload/${{ matrix.artifact_name }}
           chmod +x upload/${{ matrix.artifact_name }}
+
+      - name: Copy .app bundle (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          cp -R target/${{ matrix.target }}/release/CANVIEW.app upload/
 
       - name: Copy binary (Windows)
         if: runner.os == 'Windows'
         run: |
           cp target/${{ matrix.target }}/release/view.exe upload/${{ matrix.artifact_name }}
 
-      - name: Create archive (Unix-like)
-        if: runner.os != 'Windows'
+      - name: Create archive (Linux)
+        if: runner.os == 'Linux'
         run: |
           cd upload
           tar czf ../${{ matrix.asset_name }}.tar.gz ${{ matrix.artifact_name }}
+
+      - name: Create archive (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          cd upload
+          tar czf ../${{ matrix.asset_name }}.tar.gz CANVIEW.app
 
       - name: Create archive (Windows)
         if: runner.os == 'Windows'
@@ -177,7 +231,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset_name }}
-          path: upload/${{ matrix.artifact_name }}
+          path: |
+            upload/${{ matrix.artifact_name }}
+            upload/CANVIEW.app
           retention-days: 30
 
       - name: Upload artifact (Windows)
