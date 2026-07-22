@@ -1861,7 +1861,7 @@ impl Render for CanViewApp {
             // library version is active. Lets the user pick a library without
             // leaving the data view.
             .when_some(
-                crate::ui::components::render_library_picker(self, view.clone()),
+                crate::ui::components::render_library_picker_overlay(self, view.clone()),
                 |el, picker| el.child(picker),
             )
             .child(crate::ui::components::render_status_bar(self, view.clone()))

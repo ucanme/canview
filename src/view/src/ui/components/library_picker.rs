@@ -1,28 +1,26 @@
-//! LibraryPicker overlay component
+//! Library picker overlay
 //!
-//! Renders a centered prompt card over the Log/Plot data view when a BLF
-//! file has been loaded but no signal library is active. Lets the user
-//! pick a library/version to activate without leaving the data view, or
-//! jump to the full Library management view.
+//! Modal overlay shown when a BLF file is loaded but no signal library
+//! version is active. Covers only the data area (Log/Plot view). Lets the
+//! user pick a library + version and activate without leaving the data
+//! view, or jump to the full Library management view.
 
-use crate::app::{AppView, CanViewApp};
+use crate::app::{AppView, CanViewApp, LibraryDialogType};
 use crate::ui::theme::colors;
 use crate::ui::theme::spacing;
 use gpui::{prelude::*, *};
 
-/// Render the library picker overlay.
+/// Decides whether to render the overlay and what to render.
 ///
-/// Returns `Some(element)` when the overlay should be shown:
-/// - A BLF file has been loaded (`app.current_file_name.is_some()`)
-/// - The current view is a data view (Log or Plot)
-/// - No library version is active
-///
-/// Returns `None` otherwise, so the caller can skip rendering via `.when_some()`.
-pub fn render_library_picker(
+/// Returns `Some(element)` only when all of:
+/// - `app.current_file_name.is_some()` (BLF loaded)
+/// - `app.current_view` is LogView or PlotView (data view)
+/// - no active library version (`active_library_id` or `active_version_name` is None)
+/// - `app.library_picker_dismissed == false`
+pub fn render_library_picker_overlay(
     app: &CanViewApp,
     view: Entity<CanViewApp>,
 ) -> Option<impl IntoElement> {
-    // Only show when a file is loaded and we're in a data view and no lib is active.
     if app.current_file_name.is_none() {
         return None;
     }
@@ -32,19 +30,48 @@ pub fn render_library_picker(
     if app.active_library_id.is_some() && app.active_version_name.is_some() {
         return None;
     }
+    if app.library_picker_dismissed {
+        return None;
+    }
 
-    let libraries = app.library_manager.libraries();
+    let libraries = app.library_manager.libraries().to_vec();
 
-    let view_for_card = view.clone();
+    let view_for_close = view.clone();
     let view_for_new = view.clone();
     let view_for_manage = view.clone();
 
     let card = div()
         .absolute()
-        .top(px(80.))
-        .left_1_2()
-        .ml(px(-220.))
-        .w(px(440.))
+        .top_0()
+        .left_0()
+        .w_full()
+        .h_full()
+        .flex()
+        .items_center()
+        .justify_center()
+        .bg(rgba(0x00000055))
+        .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+            view_for_close.update(cx, |app, cx| {
+                app.library_picker_dismissed = true;
+                cx.notify();
+            });
+        })
+        .child(render_card(&libraries, view_for_new, view_for_manage));
+
+    Some(card)
+}
+
+/// Render the centered card.
+fn render_card(
+    libraries: &[crate::models::SignalLibrary],
+    view_for_new: Entity<CanViewApp>,
+    view_for_manage: Entity<CanViewApp>,
+) -> impl IntoElement {
+    let view_for_close = view_for_new.clone();
+
+    div()
+        .w(px(480.))
+        .max_h(px(400.))
         .bg(colors::BG_ELEVATED)
         .border_1()
         .border_color(colors::BORDER_DEFAULT)
@@ -54,233 +81,267 @@ pub fn render_library_picker(
         .flex_col()
         .p(spacing::LG)
         .gap(spacing::MD)
-        // Click inside the card should NOT propagate to the data view behind it.
         .on_mouse_down(MouseButton::Left, |_, _, cx| {
             cx.stop_propagation();
         })
-        // Header
-        .child(
-            div()
-                .flex()
-                .items_center()
-                .gap(spacing::SM)
-                .child(div().text_color(colors::WARNING).text_lg().child("⚠"))
-                .child(
-                    div()
-                        .text_color(colors::TEXT_PRIMARY)
-                        .text_sm()
-                        .font_weight(FontWeight::BOLD)
-                        .child("No active signal library"),
-                ),
-        )
-        .child(
-            div()
-                .text_color(colors::TEXT_MUTED)
-                .text_xs()
-                .child("Signal column will be empty. Pick a library version to decode messages."),
-        )
-        // Library list
-        .child(
-            div()
-                .flex()
-                .flex_col()
-                .gap(spacing::SM)
-                .max_h(px(280.))
-                .overflow_hidden()
-                .child(
-                    if libraries.is_empty() {
-                        // No libraries at all
-                        div()
-                            .text_color(colors::TEXT_MUTED)
-                            .text_xs()
-                            .p(spacing::SM)
-                            .bg(colors::BG_DEFAULT)
-                            .rounded(px(4.))
-                            .child("No libraries created yet. Click \"Create new library\" below.")
-                            .into_any_element()
-                    } else {
-                        // Render library/version tree
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap(spacing::SM)
-                            .children(libraries.iter().map(|lib| {
-                                let lib_id = lib.id.clone();
-                                render_library_entry(
-                                    &lib.name,
-                                    &lib.id,
-                                    &lib.versions,
-                                    view_for_card.clone(),
-                                )
-                            }))
-                            .into_any_element()
-                    },
-                ),
-        )
-        // Footer actions
+        // Header (title + ✕)
         .child(
             div()
                 .flex()
                 .items_center()
                 .justify_between()
-                .pt(spacing::SM)
-                .border_t_1()
-                .border_color(colors::BORDER_SUBTLE)
                 .child(
                     div()
-                        .text_color(colors::TEXT_MUTED)
-                        .text_xs()
-                        .child("Tip: active library is also shown in the top bar."),
+                        .text_color(colors::TEXT_PRIMARY)
+                        .text_sm()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .child("Select signal library"),
                 )
                 .child(
                     div()
-                        .flex()
-                        .items_center()
-                        .gap(spacing::SM)
-                        // Create new library
-                        .child(
-                            div()
-                                .px(spacing::SM)
-                                .py(px(4.))
-                                .bg(colors::SURFACE0)
-                                .border_1()
-                                .border_color(colors::BORDER_DEFAULT)
-                                .rounded(px(4.))
-                                .cursor_pointer()
-                                .text_xs()
-                                .text_color(colors::TEXT_SECONDARY)
-                                .hover(|s| s.bg(colors::SURFACE1).text_color(colors::TEXT_PRIMARY))
-                                .child("+ Create new library")
-                                .on_mouse_down(MouseButton::Left, move |_, _, cx| {
-                                    cx.stop_propagation();
-                                    view_for_new.update(cx, |app, cx| {
-                                        app.current_view = AppView::LibraryView;
-                                        app.show_library_dialog = true;
-                                        app.library_dialog_type =
-                                            crate::app::LibraryDialogType::Create;
-                                        cx.notify();
-                                    });
-                                }),
-                        )
-                        // Go to Library management
-                        .child(
-                            div()
-                                .px(spacing::SM)
-                                .py(px(4.))
-                                .bg(colors::PRIMARY)
-                                .rounded(px(4.))
-                                .cursor_pointer()
-                                .text_xs()
-                                .text_color(colors::BG_DEFAULT)
-                                .hover(|s| s.bg(colors::PRIMARY_HOVER))
-                                .child("Open Library →")
-                                .on_mouse_down(MouseButton::Left, move |_, _, cx| {
-                                    cx.stop_propagation();
-                                    view_for_manage.update(cx, |app, cx| {
-                                        app.current_view = AppView::LibraryView;
-                                        cx.notify();
-                                    });
-                                }),
-                        ),
+                        .cursor_pointer()
+                        .text_color(colors::TEXT_MUTED)
+                        .hover(|s| s.text_color(colors::TEXT_PRIMARY))
+                        .child("✕")
+                        .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                            cx.stop_propagation();
+                            view_for_close.update(cx, |app, cx| {
+                                app.library_picker_dismissed = true;
+                                cx.notify();
+                            });
+                        }),
                 ),
-        );
-
-    Some(card)
-}
-
-/// Render one library entry with its versions as a list of "Activate" buttons.
-fn render_library_entry(
-    lib_name: &str,
-    _lib_id: &str,
-    versions: &[crate::models::LibraryVersion],
-    view: Entity<CanViewApp>,
-) -> impl IntoElement {
-    div()
-        .flex()
-        .flex_col()
-        .gap(px(2.))
+        )
+        // Description
         .child(
             div()
-                .text_color(colors::TEXT_PRIMARY)
-                .text_sm()
-                .font_weight(FontWeight::SEMIBOLD)
-                .child(format!("📚 {}", lib_name)),
+                .text_color(colors::TEXT_MUTED)
+                .text_xs()
+                .child("Pick a library version to decode signals from this BLF file."),
         )
-        .children(versions.iter().map(|ver| {
-            let version_name = ver.name.clone();
-            render_version_row(&ver.name, version_name, view.clone())
-        }))
+        // Library list
+        .child(render_library_list(libraries, view_for_new.clone()))
+        // Footer
+        .child(render_footer(view_for_new, view_for_manage))
 }
 
-/// Render a single version row with an Activate button on the right.
-fn render_version_row(
-    display_name: &str,
-    version_name: String,
+/// Render the library list area. Empty state shows a hint; non-empty shows
+/// one row per library.
+fn render_library_list(
+    libraries: &[crate::models::SignalLibrary],
+    view: Entity<CanViewApp>,
+) -> AnyElement {
+    if libraries.is_empty() {
+        return div()
+            .flex_1()
+            .flex()
+            .items_center()
+            .justify_center()
+            .p(spacing::LG)
+            .text_color(colors::TEXT_MUTED)
+            .text_xs()
+            .child("No libraries yet. Click \"+ Create new library\" to add one.")
+            .into_any_element();
+    }
+
+    div()
+        .flex_1()
+        .flex()
+        .flex_col()
+        .children(libraries.iter().map(|lib| render_library_row(lib, view.clone())))
+        .into_any_element()
+}
+
+/// Render one library row: 📚 name | [version ▾] | [Activate]
+fn render_library_row(
+    lib: &crate::models::SignalLibrary,
     view: Entity<CanViewApp>,
 ) -> impl IntoElement {
+    let lib_id = lib.id.clone();
+    let lib_name = lib.name.clone();
+    let versions: Vec<String> = lib.versions.iter().map(|v| v.name.clone()).collect();
+    let selected_version = lib
+        .latest_version()
+        .map(|v| v.name.clone())
+        .unwrap_or_default();
+
     let view_for_activate = view.clone();
-    let display = display_name.to_string();
+    let selected_for_activate = selected_version.clone();
+    let versions_for_activate = versions.clone();
+    let lib_id_for_activate = lib_id.clone();
 
     div()
         .flex()
         .items_center()
         .justify_between()
+        .h(px(40.))
         .px(spacing::SM)
-        .py(px(4.))
-        .bg(colors::BG_DEFAULT)
-        .rounded(px(4.))
-        .hover(|s| s.bg(colors::SURFACE0))
+        .border_b_1()
+        .border_color(colors::BORDER_SUBTLE)
+        // Library name
         .child(
             div()
                 .flex()
                 .items_center()
                 .gap(px(6.))
+                .text_sm()
+                .text_color(colors::TEXT_PRIMARY)
+                .child("📚")
+                .child(lib_name),
+        )
+        // Version dropdown + Activate button
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap(spacing::SM)
+                .child(render_version_dropdown(&selected_version))
+                .child(
+                    div()
+                        .px(spacing::SM)
+                        .h(px(24.))
+                        .flex()
+                        .items_center()
+                        .bg(colors::PRIMARY)
+                        .rounded(px(4.))
+                        .cursor_pointer()
+                        .text_xs()
+                        .text_color(colors::BG_DEFAULT)
+                        .hover(|s| s.bg(colors::PRIMARY_HOVER))
+                        .child("Activate")
+                        .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                            cx.stop_propagation();
+                            let version_to_use = if selected_for_activate.is_empty() {
+                                versions_for_activate.first().cloned().unwrap_or_default()
+                            } else {
+                                selected_for_activate.clone()
+                            };
+                            if version_to_use.is_empty() {
+                                return;
+                            }
+                            view_for_activate.update(cx, |app, cx| {
+                                app.activate_library_version(
+                                    &lib_id_for_activate,
+                                    &version_to_use,
+                                    cx,
+                                );
+                            });
+                        }),
+                ),
+        )
+}
+
+/// Render the version dropdown as a static label showing the selected version.
+/// Full popover dropdown is a follow-up.
+fn render_version_dropdown(selected: &str) -> impl IntoElement {
+    div()
+        .px(spacing::SM)
+        .h(px(24.))
+        .flex()
+        .items_center()
+        .bg(colors::SURFACE0)
+        .border_1()
+        .border_color(colors::BORDER_DEFAULT)
+        .rounded(px(4.))
+        .text_xs()
+        .text_color(colors::TEXT_SECONDARY)
+        .child(if selected.is_empty() {
+            "Latest".to_string()
+        } else {
+            selected.to_string()
+        })
+}
+
+/// Render the footer: "+ Create new library" (left) + "Open Library →" (right)
+fn render_footer(
+    view_for_new: Entity<CanViewApp>,
+    view_for_manage: Entity<CanViewApp>,
+) -> impl IntoElement {
+    div()
+        .flex()
+        .items_center()
+        .justify_between()
+        .pt(spacing::SM)
+        .border_t_1()
+        .border_color(colors::BORDER_SUBTLE)
+        .child(
+            div()
+                .px(spacing::SM)
+                .py(px(4.))
+                .bg(colors::SURFACE0)
+                .border_1()
+                .border_color(colors::BORDER_DEFAULT)
+                .rounded(px(4.))
+                .cursor_pointer()
                 .text_xs()
-                .text_color(colors::TEXT_MUTED)
-                .child("└─")
-                .child(div().text_color(colors::TEXT_SECONDARY).child(display)),
+                .text_color(colors::TEXT_SECONDARY)
+                .hover(|s| s.bg(colors::SURFACE1).text_color(colors::TEXT_PRIMARY))
+                .child("+ Create new library")
+                .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                    cx.stop_propagation();
+                    view_for_new.update(cx, |app, cx| {
+                        app.current_view = AppView::LibraryView;
+                        app.show_library_dialog = true;
+                        app.library_dialog_type = LibraryDialogType::Create;
+                        cx.notify();
+                    });
+                }),
         )
         .child(
             div()
                 .px(spacing::SM)
-                .py(px(2.))
-                .bg(colors::SURFACE1)
-                .border_1()
-                .border_color(colors::BORDER_DEFAULT)
-                .rounded(px(3.))
+                .py(px(4.))
+                .bg(colors::PRIMARY)
+                .rounded(px(4.))
                 .cursor_pointer()
                 .text_xs()
-                .text_color(colors::TEXT_PRIMARY)
-                .hover(|s| s.bg(colors::PRIMARY).text_color(colors::BG_DEFAULT))
-                .child("Activate")
+                .text_color(colors::BG_DEFAULT)
+                .hover(|s| s.bg(colors::PRIMARY_HOVER))
+                .child("Open Library →")
                 .on_mouse_down(MouseButton::Left, move |_, _, cx| {
                     cx.stop_propagation();
-                    // Activate the most recently picked library version.
-                    // The caller passes `view` captured from the library picker;
-                    // we look up the library id from the active row by re-reading
-                    // the library_manager. But here we only have version_name.
-                    // Solution: capture library_id from the enclosing closure.
-                    // (Done via re-stitching: see render_library_entry.)
-                    view_for_activate.update(cx, |app, cx| {
-                        // Try to find which library contains this version name.
-                        // (Quick lookup; if multiple libs share the version name,
-                        // the first match wins — user can use Library view for
-                        // disambiguation.)
-                        let lib_id = app
-                            .library_manager
-                            .libraries()
-                            .iter()
-                            .find(|lib| {
-                                lib.versions.iter().any(|v| v.name == version_name)
-                            })
-                            .map(|lib| lib.id.clone());
-                        if let Some(id) = lib_id {
-                            app.activate_library_version(&id, &version_name, cx);
-                        } else {
-                            app.status_msg = "Version not found in any library".into();
-                            cx.notify();
-                        }
+                    view_for_manage.update(cx, |app, cx| {
+                        app.current_view = AppView::LibraryView;
+                        cx.notify();
                     });
                 }),
         )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_overlay_not_shown_without_file() {
+        let app = CanViewApp::new_state();
+        assert!(app.current_file_name.is_none());
+    }
+
+    #[test]
+    fn test_overlay_not_shown_when_dismissed() {
+        let mut app = CanViewApp::new_state();
+        app.library_picker_dismissed = true;
+        assert!(app.library_picker_dismissed);
+    }
+
+    #[test]
+    fn test_overlay_not_shown_when_active_library() {
+        let mut app = CanViewApp::new_state();
+        app.active_library_id = Some("lib1".to_string());
+        app.active_version_name = Some("v1.0".to_string());
+        assert!(app.active_library_id.is_some() && app.active_version_name.is_some());
+    }
+
+    #[test]
+    fn test_overlay_shown_when_in_data_view() {
+        let app = CanViewApp::new_state();
+        assert!(matches!(app.current_view, AppView::LogView));
+    }
+
+    #[test]
+    fn test_selected_version_starts_empty() {
+        let app = CanViewApp::new_state();
+        assert!(app.library_picker_selected_version.is_empty());
+    }
 }
