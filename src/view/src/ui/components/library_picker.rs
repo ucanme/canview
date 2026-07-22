@@ -125,8 +125,9 @@ fn render_card(
         .child(render_footer(view_for_new, view_for_manage))
 }
 
-/// Render the library list area. Empty state shows a hint; non-empty shows
-/// one row per library.
+/// Render the library list area. Empty state shows a hint; non-empty uses
+/// `uniform_list` so many libraries scroll inside the card (max_h 400px on
+/// the card caps visible height).
 fn render_library_list(
     libraries: &[crate::models::SignalLibrary],
     view: Entity<CanViewApp>,
@@ -144,11 +145,25 @@ fn render_library_list(
             .into_any_element();
     }
 
+    // Each library row is 40px tall. uniform_list provides native scrolling.
+    let row_count = libraries.len();
+    let libs: Vec<crate::models::SignalLibrary> = libraries.to_vec();
+    let view_for_rows = view.clone();
+
     div()
         .flex_1()
-        .flex()
-        .flex_col()
-        .children(libraries.iter().map(|lib| render_library_row(lib, view.clone())))
+        .h(px(280.))
+        .child(gpui::uniform_list(
+            "library-picker-list",
+            row_count,
+            move |range, _window, _cx| {
+                let view = view_for_rows.clone();
+                range
+                    .filter_map(|i| libs.get(i).map(|lib| (i, lib, view.clone())))
+                    .map(|(_, lib, v)| render_library_row(lib, v).into_any_element())
+                    .collect::<Vec<_>>()
+            },
+        ))
         .into_any_element()
 }
 
