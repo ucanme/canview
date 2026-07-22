@@ -94,7 +94,7 @@ fn render_server_segment(app: &CanViewApp, view: Entity<CanViewApp>) -> impl Int
         })
 }
 
-/// Render the library badge segment (right side, segment 2).
+/// Render the library badge segment (right side, segment 3).
 fn render_lib_badge_segment(app: &CanViewApp) -> impl IntoElement {
     if let (Some(lib_id), Some(ver)) = (&app.active_library_id, &app.active_version_name) {
         let lib_name = app
@@ -112,7 +112,24 @@ fn render_lib_badge_segment(app: &CanViewApp) -> impl IntoElement {
     }
 }
 
-/// Render the current view name segment (right side, segment 3).
+/// Render the status message segment (right side, segment 2).
+///
+/// Returns `Some(element)` when `app.status_msg` is non-empty, otherwise `None`
+/// so the caller can skip the surrounding separators via `.when_some()`.
+fn render_status_msg_segment(app: &CanViewApp) -> Option<impl IntoElement> {
+    if app.status_msg.is_empty() {
+        return None;
+    }
+    Some(
+        div()
+            .text_color(colors::TEXT_MUTED)
+            .text_xs()
+            .truncate()
+            .child(app.status_msg.clone()),
+    )
+}
+
+/// Render the current view name segment (right side, segment 4).
 fn render_view_name_segment(view_val: AppView) -> impl IntoElement {
     let name = match view_val {
         AppView::LogView => "log view",
@@ -163,7 +180,7 @@ pub fn render_status_bar(app: &CanViewApp, view: Entity<CanViewApp>) -> impl Int
                         .child(format!("LDF: {}", app.ldf_channels.len())),
                 ),
         )
-        // Right side: server | lib badge | view name (separated by vertical bars)
+        // Right side: server | status_msg | lib badge | view name (separated by vertical bars)
         .child(
             div()
                 .flex()
@@ -171,6 +188,9 @@ pub fn render_status_bar(app: &CanViewApp, view: Entity<CanViewApp>) -> impl Int
                 .gap(spacing::SM)
                 .child(render_server_segment(app, view.clone()))
                 .child(render_separator())
+                .when_some(render_status_msg_segment(app), |el, status_seg| {
+                    el.child(status_seg).child(render_separator())
+                })
                 .child(render_lib_badge_segment(app))
                 .child(render_separator())
                 .child(render_view_name_segment(current_view)),
