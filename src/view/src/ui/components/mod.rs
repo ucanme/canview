@@ -12,6 +12,10 @@ pub mod simple_text_input;
 pub mod tabs;
 pub mod text_input;
 pub mod zed_style_text_input;
+pub mod tab_bar;
+pub mod top_bar;
+pub use tab_bar::render_tab_bar;
+pub use top_bar::render_top_bar;
 
 // Re-exports for working components
 pub use button::{Button, ButtonSize, ButtonVariant};
