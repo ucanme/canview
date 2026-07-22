@@ -32,6 +32,38 @@ fn main() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).init();
 
     let app = Application::new();
+    // When the user clicks the Dock icon while the app is already running
+    // but no windows are visible (minimized, hidden, or on another space),
+    // GPUI fires on_reopen. Without a handler, the app appears "stuck open
+    // with no window". We open a fresh main window here so the user always
+    // gets a visible window on Dock click.
+    app.on_reopen(move |cx| {
+        eprintln!("🔄 App re-opened (Dock click) — opening a new window");
+        cx.spawn(async move |cx| {
+            let options = WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(Bounds {
+                    origin: Point::new(px(200.0), px(150.0)),
+                    size: gpui::Size {
+                        width: px(1600.0),
+                        height: px(1000.0),
+                    },
+                })),
+                titlebar: Some(TitlebarOptions {
+                    title: Some("CANVIEW - Bus Data Analyzer".into()),
+                    appears_transparent: true,
+                    traffic_light_position: None,
+                }),
+                kind: gpui::WindowKind::Normal,
+                ..Default::default()
+            };
+            cx.open_window(options, |window, cx| {
+                let view = cx.new(|_cx| CanViewApp::new());
+                cx.new(|cx| gpui_component::Root::new(view, window, cx))
+            })?;
+            Ok::<_, anyhow::Error>(())
+        })
+        .detach();
+    });
     app.run(move |cx| {
         // This must be called before using any GPUI Component features
         gpui_component::init(cx);
