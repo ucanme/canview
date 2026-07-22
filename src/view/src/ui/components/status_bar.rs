@@ -132,12 +132,100 @@ fn render_status_msg_segment(app: &CanViewApp) -> Option<impl IntoElement> {
 /// Render the current view name segment (right side, segment 4).
 fn render_view_name_segment(view_val: AppView) -> impl IntoElement {
     let name = match view_val {
-        AppView::LogView => "log view",
-        AppView::PlotView => "plot view",
-        AppView::LibraryView => "library view",
-        AppView::ConfigView => "config view",
+        AppView::LogView => "log mode",
+        AppView::PlotView => "plot mode",
+        AppView::LibraryView => "library mode",
+        AppView::ConfigView => "config mode",
     };
     div().text_color(colors::TEXT_MUTED).child(name.to_string())
+}
+
+/// Render the data-view toggle (Log ⇄ Plot) in the center of the status bar.
+///
+/// Two mutually-exclusive buttons. Clicking one switches the current view to
+/// that data view. When the app is in Library/Config view, both buttons are
+/// rendered but neither is active — clicking either switches back to data
+/// view (this is the "return to msg list" path).
+fn render_data_view_toggle(app: &CanViewApp, view: Entity<CanViewApp>) -> impl IntoElement {
+    let current = app.current_view;
+    let log_active = current == AppView::LogView;
+    let plot_active = current == AppView::PlotView;
+
+    let view_for_log = view.clone();
+    let view_for_plot = view.clone();
+
+    div()
+        .flex()
+        .items_center()
+        .gap(px(2.))
+        .bg(colors::BG_DEFAULT)
+        .rounded(px(4.))
+        .border_1()
+        .border_color(colors::BORDER_SUBTLE)
+        .px(px(2.))
+        // Log button
+        .child(
+            div()
+                .px(spacing::SM)
+                .py(px(1.))
+                .rounded(px(3.))
+                .cursor_pointer()
+                .text_color(if log_active {
+                    colors::TEXT_PRIMARY
+                } else {
+                    colors::TEXT_MUTED
+                })
+                .when(log_active, |el| {
+                    el.bg(colors::PRIMARY).text_color(colors::BG_DEFAULT)
+                })
+                .hover(|s| {
+                    if log_active {
+                        s
+                    } else {
+                        s.bg(colors::SURFACE0).text_color(colors::TEXT_SECONDARY)
+                    }
+                })
+                .child("Log")
+                .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                    cx.stop_propagation();
+                    view_for_log.update(cx, |app, cx| {
+                        app.current_view = AppView::LogView;
+                        cx.notify();
+                    });
+                }),
+        )
+        // Plot button
+        .child(
+            div()
+                .px(spacing::SM)
+                .py(px(1.))
+                .rounded(px(3.))
+                .cursor_pointer()
+                .text_color(if plot_active {
+                    colors::TEXT_PRIMARY
+                } else {
+                    colors::TEXT_MUTED
+                })
+                .when(plot_active, |el| {
+                    el.bg(colors::PRIMARY).text_color(colors::BG_DEFAULT)
+                })
+                .hover(|s| {
+                    if plot_active {
+                        s
+                    } else {
+                        s.bg(colors::SURFACE0).text_color(colors::TEXT_SECONDARY)
+                    }
+                })
+                .child("Plot")
+                .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                    cx.stop_propagation();
+                    view_for_plot.update(cx, |app, cx| {
+                        app.current_view = AppView::PlotView;
+                        crate::ui::views::chart_view::extract_and_update_series_data(app);
+                        cx.notify();
+                    });
+                }),
+        )
 }
 
 /// Render the StatusBar.
@@ -154,12 +242,14 @@ pub fn render_status_bar(app: &CanViewApp, view: Entity<CanViewApp>) -> impl Int
         .justify_between()
         .px(spacing::MD)
         .text_xs()
-        // Left side: file | msgs | DBC | LDF (separated by vertical bars)
+        // Left side: Log/Plot toggle | file | msgs | DBC | LDF
         .child(
             div()
                 .flex()
                 .items_center()
                 .gap(spacing::SM)
+                .child(render_data_view_toggle(app, view.clone()))
+                .child(render_separator())
                 .child(render_file_segment(app))
                 .child(render_separator())
                 .child(

@@ -1857,6 +1857,13 @@ impl Render for CanViewApp {
                         }
                     }),
             )
+            // Library picker overlay — shown only when a BLF is loaded but no
+            // library version is active. Lets the user pick a library without
+            // leaving the data view.
+            .when_some(
+                crate::ui::components::render_library_picker(self, view.clone()),
+                |el, picker| el.child(picker),
+            )
             .child(crate::ui::components::render_status_bar(self, view.clone()))
             .child({
                 // Full-screen overlay to catch clicks outside file dropdown

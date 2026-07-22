@@ -1,10 +1,11 @@
 //! TopBar component
 //!
-//! Renders the top bar: File menu button + TabBar + active library badge +
-//! window controls (Win/Linux only — macOS uses system traffic lights).
+//! Renders the top bar: File menu button (left) + Library button (right) +
+//! active library badge + window controls (Win/Linux only — macOS uses
+//! system traffic lights). Data view tabs (Log/Plot) live in the StatusBar,
+//! not here.
 
 use crate::app::{AppView, CanViewApp};
-use crate::ui::components::tab_bar::render_tab_bar;
 use crate::ui::theme::colors;
 use crate::ui::theme::spacing;
 use gpui::{prelude::*, *};
@@ -31,9 +32,12 @@ pub fn render_top_bar(
     let is_macos = cfg!(target_os = "macos");
     let badge = active_lib_badge(app);
     let show_file_menu = app.show_file_menu;
-    let _current_view = app.current_view;
+    let in_library_view = app.current_view == AppView::LibraryView
+        || app.current_view == AppView::ConfigView;
 
-    // File menu button — built as a div with the same styling as a Ghost button
+    // File menu button (left side). When the dropdown is open, use a deeper
+    // background fill to indicate "pressed" state — visually distinct from
+    // Library's bottom-indicator active state, so they can't be confused.
     let view_for_file = view.clone();
     let file_button = div()
         .px(spacing::SM)
@@ -47,8 +51,14 @@ pub fn render_top_bar(
         } else {
             colors::TEXT_MUTED
         })
-        .when(show_file_menu, |el| el.bg(colors::SURFACE0))
-        .hover(|s| s.text_color(colors::TEXT_SECONDARY).bg(colors::SURFACE0))
+        .when(show_file_menu, |el| el.bg(colors::SURFACE1))
+        .hover(|s| {
+            if show_file_menu {
+                s
+            } else {
+                s.text_color(colors::TEXT_SECONDARY).bg(colors::SURFACE0)
+            }
+        })
         .child("File")
         .on_mouse_down(MouseButton::Left, move |_, _, cx| {
             cx.stop_propagation();
@@ -58,7 +68,8 @@ pub fn render_top_bar(
             });
         });
 
-    // Active library badge — clickable, jumps to Library view
+    // Active library badge (shown when a version is activated). Clicking it
+    // jumps to the Library view.
     let view_for_badge = view.clone();
     let badge_el = badge.map(|b| {
         div()
@@ -83,6 +94,41 @@ pub fn render_top_bar(
             })
     });
 
+    // Library button (left, next to File). Acts as the configuration entry
+    // point. Active state uses a bottom 2px indicator (not background fill)
+    // so it can never visually clash with the File menu's open state.
+    let view_for_library = view.clone();
+    let library_button = div()
+        .px(spacing::SM)
+        .h_full()
+        .flex()
+        .items_center()
+        .cursor_pointer()
+        .text_sm()
+        .text_color(if in_library_view {
+            colors::TEXT_PRIMARY
+        } else {
+            colors::TEXT_MUTED
+        })
+        .hover(|s| {
+            if in_library_view {
+                s
+            } else {
+                s.text_color(colors::TEXT_SECONDARY)
+            }
+        })
+        .when(in_library_view, |el| {
+            el.border_b_2().border_color(colors::PRIMARY)
+        })
+        .child("Library")
+        .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+            cx.stop_propagation();
+            view_for_library.update(cx, |app, cx| {
+                app.current_view = AppView::LibraryView;
+                cx.notify();
+            });
+        });
+
     // macOS: 80px left padding to leave room for traffic lights
     let left_pad = if is_macos { Some(px(80.)) } else { None };
 
@@ -96,11 +142,13 @@ pub fn render_top_bar(
         .border_color(colors::BORDER_SUBTLE)
         .window_control_area(WindowControlArea::Drag)
         .when_some(left_pad, |el, pad| el.child(div().w(pad)))
+        // Left: File menu + Library button (config entry) + active library badge
         .child(file_button)
-        .child(div().w(spacing::SM)) // gap between File and tabs
-        .child(render_tab_bar(app, view.clone()))
-        .child(div().flex_1()) // push badge + window controls to the right
+        .child(library_button)
         .when_some(badge_el, |el, b| el.child(b))
+        // Center: spacer that fills remaining width so the right side sticks to the edge
+        .child(div().flex_1())
+        // Right: window controls (non-macOS only)
         .when(!is_macos, |el| el.child(render_window_controls(view)))
 }
 
