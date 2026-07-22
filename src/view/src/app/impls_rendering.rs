@@ -1846,7 +1846,7 @@ impl Render for CanViewApp {
                     }
                 }
             })
-            .child(crate::ui::components::top_bar::render_top_bar(self, view.clone(), cx))
+            .child(crate::ui::components::render_top_bar(self, view.clone(), cx))
             .child(
                 // Content area - Zed style
                 div()
@@ -1865,7 +1865,7 @@ impl Render for CanViewApp {
                         }
                     }),
             )
-            .child(crate::ui::components::status_bar::render_status_bar(self, view.clone()))
+            .child(crate::ui::components::render_status_bar(self, view.clone()))
             .child({
                 // Full-screen overlay to catch clicks outside file dropdown
                 if self.show_file_menu {
