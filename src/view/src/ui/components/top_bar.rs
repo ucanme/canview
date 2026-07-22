@@ -42,7 +42,11 @@ pub fn render_top_bar(
         .items_center()
         .cursor_pointer()
         .text_sm()
-        .text_color(if show_file_menu { colors::TEXT_PRIMARY } else { colors::TEXT_MUTED })
+        .text_color(if show_file_menu {
+            colors::TEXT_PRIMARY
+        } else {
+            colors::TEXT_MUTED
+        })
         .when(show_file_menu, |el| el.bg(colors::SURFACE0))
         .hover(|s| s.text_color(colors::TEXT_SECONDARY).bg(colors::SURFACE0))
         .child("File")

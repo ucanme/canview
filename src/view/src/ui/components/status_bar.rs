@@ -24,8 +24,15 @@ fn format_count(n: usize) -> String {
 
 /// Render the file name segment (left side, segment 1).
 fn render_file_segment(app: &CanViewApp) -> impl IntoElement {
-    let text = app.current_file_name.clone().unwrap_or_else(|| "No file loaded — File > Open BLF...".to_string());
-    let color = if app.current_file_name.is_some() { colors::TEXT_SECONDARY } else { colors::TEXT_PLACEHOLDER };
+    let text = app
+        .current_file_name
+        .clone()
+        .unwrap_or_else(|| "No file loaded — File > Open BLF...".to_string());
+    let color = if app.current_file_name.is_some() {
+        colors::TEXT_SECONDARY
+    } else {
+        colors::TEXT_PLACEHOLDER
+    };
     div()
         .flex()
         .items_center()
@@ -36,10 +43,7 @@ fn render_file_segment(app: &CanViewApp) -> impl IntoElement {
 
 /// Render a vertical separator (1px wide, 12px tall).
 fn render_separator() -> impl IntoElement {
-    div()
-        .w(px(1.))
-        .h(px(12.))
-        .bg(colors::BORDER_SUBTLE)
+    div().w(px(1.)).h(px(12.)).bg(colors::BORDER_SUBTLE)
 }
 
 /// Render the server status segment (right side, segment 1).
@@ -48,8 +52,16 @@ fn render_server_segment(app: &CanViewApp, view: Entity<CanViewApp>) -> impl Int
     let url = app.share_url().map(|s| s.to_string()).unwrap_or_default();
     let view_for_click = view.clone();
     let url_for_copy = url.clone();
-    let dot_color = if running { colors::SUCCESS } else { colors::DISABLED };
-    let label = if running { format!("Server ON {}", url) } else { "Share disabled".to_string() };
+    let dot_color = if running {
+        colors::SUCCESS
+    } else {
+        colors::DISABLED
+    };
+    let label = if running {
+        format!("Server ON {}", url)
+    } else {
+        "Share disabled".to_string()
+    };
 
     div()
         .flex()
@@ -59,30 +71,35 @@ fn render_server_segment(app: &CanViewApp, view: Entity<CanViewApp>) -> impl Int
         .when(running, |el| el.hover(|s| s.bg(colors::SURFACE0)))
         .child(div().w(px(8.)).h(px(8.)).rounded_full().bg(dot_color))
         .child(div().text_color(colors::TEXT_MUTED).child(label))
-        .when(running, |el| el.on_mouse_down(MouseButton::Left, move |_, _, cx| {
-            cx.stop_propagation();
-            cx.write_to_clipboard(gpui::ClipboardItem::new_string(url_for_copy.clone()));
-            view_for_click.update(cx, |app, cx| {
-                app.share_url_copied = true;
-                cx.notify();
-                // Reset after 2s
-                cx.spawn(async move |this, cx| {
-                    smol::Timer::after(std::time::Duration::from_secs(2)).await;
-                    if let Some(entity) = this.upgrade() {
-                        entity.update(cx, |app, cx| {
-                            app.share_url_copied = false;
-                            cx.notify();
-                        });
-                    }
-                }).detach();
-            });
-        }))
+        .when(running, |el| {
+            el.on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                cx.stop_propagation();
+                cx.write_to_clipboard(gpui::ClipboardItem::new_string(url_for_copy.clone()));
+                view_for_click.update(cx, |app, cx| {
+                    app.share_url_copied = true;
+                    cx.notify();
+                    // Reset after 2s
+                    cx.spawn(async move |this, cx| {
+                        smol::Timer::after(std::time::Duration::from_secs(2)).await;
+                        if let Some(entity) = this.upgrade() {
+                            entity.update(cx, |app, cx| {
+                                app.share_url_copied = false;
+                                cx.notify();
+                            });
+                        }
+                    })
+                    .detach();
+                });
+            })
+        })
 }
 
 /// Render the library badge segment (right side, segment 2).
 fn render_lib_badge_segment(app: &CanViewApp) -> impl IntoElement {
     if let (Some(lib_id), Some(ver)) = (&app.active_library_id, &app.active_version_name) {
-        let lib_name = app.library_manager.find_library(lib_id)
+        let lib_name = app
+            .library_manager
+            .find_library(lib_id)
             .map(|l| l.name.clone())
             .unwrap_or_else(|| lib_id.clone());
         let text = format!("📚 {} / {}", lib_name, ver);
@@ -128,11 +145,23 @@ pub fn render_status_bar(app: &CanViewApp, view: Entity<CanViewApp>) -> impl Int
                 .gap(spacing::SM)
                 .child(render_file_segment(app))
                 .child(render_separator())
-                .child(div().text_color(colors::TEXT_MUTED).child(format!("{} msgs", format_count(app.messages.len()))))
+                .child(
+                    div()
+                        .text_color(colors::TEXT_MUTED)
+                        .child(format!("{} msgs", format_count(app.messages.len()))),
+                )
                 .child(render_separator())
-                .child(div().text_color(colors::TEXT_MUTED).child(format!("DBC: {}", app.dbc_channels.len())))
+                .child(
+                    div()
+                        .text_color(colors::TEXT_MUTED)
+                        .child(format!("DBC: {}", app.dbc_channels.len())),
+                )
                 .child(render_separator())
-                .child(div().text_color(colors::TEXT_MUTED).child(format!("LDF: {}", app.ldf_channels.len()))),
+                .child(
+                    div()
+                        .text_color(colors::TEXT_MUTED)
+                        .child(format!("LDF: {}", app.ldf_channels.len())),
+                ),
         )
         // Right side: server | lib badge | view name (separated by vertical bars)
         .child(

@@ -38,13 +38,25 @@ pub fn render_filter_chip(
         .gap(px(4.))
         .bg(colors::SURFACE0)
         .border_1()
-        .border_color(if active { colors::BORDER_FOCUSED } else { colors::BORDER_DEFAULT })
+        .border_color(if active {
+            colors::BORDER_FOCUSED
+        } else {
+            colors::BORDER_DEFAULT
+        })
         .rounded(px(4.))
         .cursor_pointer()
         .hover(|s| s.bg(colors::SURFACE1))
         .text_sm()
-        .child(div().text_color(colors::TEXT_MUTED).child(label.to_string()))
-        .child(div().text_color(colors::TEXT_SECONDARY).child(value.to_string()))
+        .child(
+            div()
+                .text_color(colors::TEXT_MUTED)
+                .child(label.to_string()),
+        )
+        .child(
+            div()
+                .text_color(colors::TEXT_SECONDARY)
+                .child(value.to_string()),
+        )
         .child(div().text_color(colors::TEXT_MUTED).child("▾"))
         .on_mouse_down(MouseButton::Left, move |_, _, cx| {
             cx.stop_propagation();
@@ -98,20 +110,30 @@ fn render_log_filters(app: &CanViewApp, view: Entity<CanViewApp>) -> impl IntoEl
         .gap(spacing::SM)
         .w_full()
         // ID chip
-        .child(render_filter_chip("ID", &id_value, app.id_filter.is_some(), move |cx| {
-            // Toggle the ID filter dropdown — reuses the existing show_id_filter_input state
-            view_for_id.update(cx, |app, cx| {
-                app.show_id_filter_input = !app.show_id_filter_input;
-                cx.notify();
-            });
-        }))
+        .child(render_filter_chip(
+            "ID",
+            &id_value,
+            app.id_filter.is_some(),
+            move |cx| {
+                // Toggle the ID filter dropdown — reuses the existing show_id_filter_input state
+                view_for_id.update(cx, |app, cx| {
+                    app.show_id_filter_input = !app.show_id_filter_input;
+                    cx.notify();
+                });
+            },
+        ))
         // Channel chip
-        .child(render_filter_chip("Channel", &channel_value, app.channel_filter.is_some(), move |cx| {
-            view_for_channel.update(cx, |app, cx| {
-                app.show_channel_filter_input = !app.show_channel_filter_input;
-                cx.notify();
-            });
-        }))
+        .child(render_filter_chip(
+            "Channel",
+            &channel_value,
+            app.channel_filter.is_some(),
+            move |cx| {
+                view_for_channel.update(cx, |app, cx| {
+                    app.show_channel_filter_input = !app.show_channel_filter_input;
+                    cx.notify();
+                });
+            },
+        ))
         // Signal search — placeholder div; real input is rendered separately at the existing call site
         .child(div().flex_1())
         // Hex/Dec toggle (right-aligned)
@@ -122,17 +144,21 @@ fn render_log_filters(app: &CanViewApp, view: Entity<CanViewApp>) -> impl IntoEl
                 .gap(px(2.))
                 .child(render_toggle_button("Hex", !app.id_display_decimal, {
                     let view = view_for_id_display.clone();
-                    move |cx| view.update(cx, |app, cx| {
-                        app.id_display_decimal = false;
-                        cx.notify();
-                    })
+                    move |cx| {
+                        view.update(cx, |app, cx| {
+                            app.id_display_decimal = false;
+                            cx.notify();
+                        })
+                    }
                 }))
                 .child(render_toggle_button("Dec", app.id_display_decimal, {
                     let view = view_for_id_display.clone();
-                    move |cx| view.update(cx, |app, cx| {
-                        app.id_display_decimal = true;
-                        cx.notify();
-                    })
+                    move |cx| {
+                        view.update(cx, |app, cx| {
+                            app.id_display_decimal = true;
+                            cx.notify();
+                        })
+                    }
                 })),
         )
         // Display points toggle
@@ -185,17 +211,22 @@ fn render_library_filters(app: &CanViewApp, view: Entity<CanViewApp>) -> impl In
         .gap(spacing::SM)
         .w_full()
         // Type chip
-        .child(render_filter_chip("Type", &type_value, app.library_filter_type.is_some(), move |cx| {
-            // Cycle through: None -> DBC -> LDF -> None
-            view_for_type.update(cx, |app, cx| {
-                app.library_filter_type = match app.library_filter_type {
-                    None => Some(DatabaseType::DBC),
-                    Some(DatabaseType::DBC) => Some(DatabaseType::LDF),
-                    Some(DatabaseType::LDF) => None,
-                };
-                cx.notify();
-            });
-        }))
+        .child(render_filter_chip(
+            "Type",
+            &type_value,
+            app.library_filter_type.is_some(),
+            move |cx| {
+                // Cycle through: None -> DBC -> LDF -> None
+                view_for_type.update(cx, |app, cx| {
+                    app.library_filter_type = match app.library_filter_type {
+                        None => Some(DatabaseType::DBC),
+                        Some(DatabaseType::DBC) => Some(DatabaseType::LDF),
+                        Some(DatabaseType::LDF) => None,
+                    };
+                    cx.notify();
+                });
+            },
+        ))
         // Search input placeholder — real Input rendered at the existing call site
         .child(div().flex_1())
         // + New Library
@@ -265,8 +296,16 @@ fn render_toggle_button(
         .items_center()
         .cursor_pointer()
         .text_sm()
-        .text_color(if active { colors::TEXT_PRIMARY } else { colors::TEXT_MUTED })
-        .when(active, |el| el.bg(colors::SURFACE0).border_1().border_color(colors::PRIMARY))
+        .text_color(if active {
+            colors::TEXT_PRIMARY
+        } else {
+            colors::TEXT_MUTED
+        })
+        .when(active, |el| {
+            el.bg(colors::SURFACE0)
+                .border_1()
+                .border_color(colors::PRIMARY)
+        })
         .hover(|s| s.bg(colors::SURFACE1))
         .child(label.to_string())
         .on_mouse_down(MouseButton::Left, move |_, _, cx| {

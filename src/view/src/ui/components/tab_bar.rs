@@ -18,10 +18,7 @@ pub const TAB_ITEMS: [(&str, AppView); 3] = [
 ];
 
 /// Render the tab bar (3 tabs).
-pub fn render_tab_bar(
-    app: &CanViewApp,
-    view: Entity<CanViewApp>,
-) -> impl IntoElement {
+pub fn render_tab_bar(app: &CanViewApp, view: Entity<CanViewApp>) -> impl IntoElement {
     let current = app.current_view;
     div()
         .flex()
@@ -38,11 +35,17 @@ pub fn render_tab_bar(
                 .items_center()
                 .cursor_pointer()
                 .text_sm()
-                .text_color(if active { colors::TEXT_PRIMARY } else { colors::TEXT_MUTED })
-                .hover(move |s| if active {
-                    s
+                .text_color(if active {
+                    colors::TEXT_PRIMARY
                 } else {
-                    s.text_color(colors::TEXT_SECONDARY).bg(colors::SURFACE0)
+                    colors::TEXT_MUTED
+                })
+                .hover(move |s| {
+                    if active {
+                        s
+                    } else {
+                        s.text_color(colors::TEXT_SECONDARY).bg(colors::SURFACE0)
+                    }
                 })
                 .when(active, |el| el.border_b_2().border_color(colors::PRIMARY))
                 .child(label.to_string())
