@@ -2203,6 +2203,10 @@ impl Render for CanViewApp {
                                                 .await
                                             {
                                                 let path = file.path().to_owned();
+                                                let fname = path
+                                                    .file_name()
+                                                    .and_then(|n| n.to_str())
+                                                    .map(|s| s.to_string());
                                                 let _ = cx.update(|cx| {
                                                     view.update(cx, |view, _| {
                                                         view.status_msg = "Loading BLF...".into();
@@ -2218,7 +2222,7 @@ impl Render for CanViewApp {
                                                     .await;
                                                 let _ = cx.update(|cx| {
                                                     view.update(cx, |view, cx| {
-                                                        view.apply_blf_result(result);
+                                                        view.apply_blf_result(result, fname);
                                                         cx.notify();
                                                     });
                                                 });

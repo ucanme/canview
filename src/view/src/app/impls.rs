@@ -32,6 +32,7 @@ impl CanViewApp {
             // Default window/app states
             is_maximized: false,
             is_streaming_mode: false,
+            current_file_name: None,
             saved_window_bounds: None,
             display_bounds: None,
             // Initialize uniform list scroll handle
@@ -226,7 +227,7 @@ impl CanViewApp {
         }
     }
 
-    pub(crate) fn apply_blf_result(&mut self, result: anyhow::Result<BlfResult>) {
+    pub(crate) fn apply_blf_result(&mut self, result: anyhow::Result<BlfResult>, file_name: Option<String>) {
         match result {
             Ok(result) => {
                 let error_count = result.errors.len();
@@ -267,6 +268,7 @@ impl CanViewApp {
                 self.start_time = Self::parse_blf_start_time(&result.file_stats.measurement_start_time);
 
                 self.messages = result.objects;
+                self.current_file_name = file_name;
             }
             Err(e) => {
                 // 在状态栏显示详细的错误信息（不清空之前的数据）
@@ -274,6 +276,7 @@ impl CanViewApp {
 
                 // 保持当前视图不变，不切换到 LogView
                 // 这样用户可以看到之前成功加载的数据
+                // Keep the existing current_file_name on error so status bar shows the last good file
 
                 // 打印详细错误信息到控制台
                 Self::display_blf_load_error(&e);
@@ -583,6 +586,7 @@ impl CanViewApp {
             signal_storage: crate::library::SignalLibraryStorage::new().ok(),
             is_maximized,
             is_streaming_mode: false,
+            current_file_name: None,
             saved_window_bounds,
             display_bounds,
             list_scroll_handle: gpui::UniformListScrollHandle::new(),

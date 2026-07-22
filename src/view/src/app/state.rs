@@ -27,6 +27,7 @@ pub struct RuntimeState {
     pub ldf_channels: HashMap<u16, LdfDatabase>,
     pub start_time: Option<chrono::NaiveDateTime>,
     pub is_streaming_mode: bool,
+    pub current_file_name: Option<String>,
     pub active_library_id: Option<String>,
     pub active_version_name: Option<String>,
 }
@@ -93,6 +94,8 @@ pub struct CanViewApp {
     // Window state
     pub is_maximized: bool,
     pub is_streaming_mode: bool,
+    // Currently loaded BLF file name (for StatusBar display)
+    pub current_file_name: Option<String>,
     pub saved_window_bounds: Option<Bounds<Pixels>>,
     pub display_bounds: Option<Bounds<Pixels>>,
 
@@ -265,6 +268,7 @@ impl CanViewApp {
             signal_storage: crate::library::SignalLibraryStorage::new().ok(),
             is_maximized,
             is_streaming_mode: false,
+            current_file_name: None,
             saved_window_bounds,
             display_bounds: None,
             list_scroll_handle: UniformListScrollHandle::new(),
@@ -383,6 +387,7 @@ impl CanViewApp {
             ldf_channels: self.ldf_channels.clone(),
             start_time: self.start_time,
             is_streaming_mode: self.is_streaming_mode,
+            current_file_name: self.current_file_name.clone(),
             active_library_id: self.active_library_id.clone(),
             active_version_name: self.active_version_name.clone(),
         }
@@ -414,6 +419,7 @@ impl CanViewApp {
         self.ldf_channels = state.ldf_channels;
         self.start_time = state.start_time;
         self.is_streaming_mode = state.is_streaming_mode;
+        self.current_file_name = state.current_file_name;
         self.active_library_id = state.active_library_id;
         self.active_version_name = state.active_version_name;
         eprintln!("✅ State restored. Now have: {:?} view, {} messages, {} plot series, zoom: {:?}-{:?}, {} signals, {} DBC, {} LDF",
