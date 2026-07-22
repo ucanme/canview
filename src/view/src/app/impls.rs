@@ -1216,6 +1216,30 @@ impl CanViewApp {
         cx.notify();
     }
 
+    /// Deactivate the currently active library version, if any.
+    ///
+    /// Clears the in-memory active state AND the persisted config so the
+    /// picker overlay can re-appear (when a BLF is loaded) and other
+    /// libraries can be activated next.
+    pub fn deactivate_library_version(&mut self, cx: &mut Context<Self>) {
+        let was_active = self.active_library_id.is_some();
+        self.active_library_id = None;
+        self.active_version_name = None;
+        self.app_config.active_library_id = None;
+        self.app_config.active_version_name = None;
+        // Clear library_id/version_name on all channel mappings so the
+        // signal decoder stops producing decoded signals.
+        for mapping in &mut self.app_config.mappings {
+            mapping.library_id = None;
+            mapping.version_name = None;
+        }
+        if was_active {
+            self.status_msg = "Library deactivated".into();
+            self.save_config(cx);
+        }
+        cx.notify();
+    }
+
     /// Internal method to load a library version without GPUI context
     fn internal_load_library_version(
         &mut self,
