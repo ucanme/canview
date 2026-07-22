@@ -190,6 +190,7 @@ fn render_data_view_toggle(app: &CanViewApp, view: Entity<CanViewApp>) -> impl I
                     cx.stop_propagation();
                     view_for_log.update(cx, |app, cx| {
                         app.current_view = AppView::LogView;
+                        app.library_picker_dismissed = false;
                         cx.notify();
                     });
                 }),
@@ -221,6 +222,7 @@ fn render_data_view_toggle(app: &CanViewApp, view: Entity<CanViewApp>) -> impl I
                     cx.stop_propagation();
                     view_for_plot.update(cx, |app, cx| {
                         app.current_view = AppView::PlotView;
+                        app.library_picker_dismissed = false;
                         crate::ui::views::chart_view::extract_and_update_series_data(app);
                         cx.notify();
                     });

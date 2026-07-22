@@ -89,6 +89,7 @@ pub fn render_top_bar(
                 cx.stop_propagation();
                 view_for_badge.update(cx, |app, cx| {
                     app.current_view = AppView::LibraryView;
+                    app.library_picker_dismissed = false;
                     cx.notify();
                 });
             })
@@ -125,6 +126,7 @@ pub fn render_top_bar(
             cx.stop_propagation();
             view_for_library.update(cx, |app, cx| {
                 app.current_view = AppView::LibraryView;
+                app.library_picker_dismissed = false;
                 cx.notify();
             });
         });
