@@ -33,7 +33,7 @@ BS_:
 
 BU_: DBG
 
-BO_ 123 EngineStatus: 8 DBG
+BO_ 257 EngineStatus: 8 DBG
  SG_ EngineTemp : 0|8@1+ (1, -40) [0|215] "degC" DBG
  SG_ EngineRPM : 8|16@1+ (0.25, 0) [0|16000] "rpm" DBG
 
