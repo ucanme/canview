@@ -1,0 +1,21 @@
+src/blf/src/bin/gen_test_blf.rs
+  s_a6569676d6a73d::t_d44b3bdd31896e 108
+  s_a6569676d6a73d::t_dbd3de47d51e3a 30
+  s_a6569676d6a73d::t_d0aa78cfa5114c 104-107,109,112-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "8b432a299e0d1a3b4d3efd7119dcfd59f0b1f0bf",
+  "prompts": {},
+  "sessions": {
+    "s_a6569676d6a73d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc659355-d2eb-47cd-ac4c-8455acc74651",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
