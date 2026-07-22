@@ -33,6 +33,8 @@ impl CanViewApp {
             is_maximized: false,
             is_streaming_mode: false,
             current_file_name: None,
+            library_picker_dismissed: false,
+            library_picker_selected_version: std::collections::HashMap::new(),
             saved_window_bounds: None,
             display_bounds: None,
             // Initialize uniform list scroll handle
@@ -269,6 +271,8 @@ impl CanViewApp {
 
                 self.messages = result.objects;
                 self.current_file_name = file_name;
+                self.library_picker_dismissed = false;
+                self.library_picker_selected_version.clear();
             }
             Err(e) => {
                 // 在状态栏显示详细的错误信息（不清空之前的数据）
@@ -587,6 +591,8 @@ impl CanViewApp {
             is_maximized,
             is_streaming_mode: false,
             current_file_name: None,
+            library_picker_dismissed: false,
+            library_picker_selected_version: std::collections::HashMap::new(),
             saved_window_bounds,
             display_bounds,
             list_scroll_handle: gpui::UniformListScrollHandle::new(),

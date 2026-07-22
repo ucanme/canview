@@ -96,6 +96,9 @@ pub struct CanViewApp {
     pub is_streaming_mode: bool,
     // Currently loaded BLF file name (for StatusBar display)
     pub current_file_name: Option<String>,
+    // Library picker UI state (not persisted to config)
+    pub library_picker_dismissed: bool,
+    pub library_picker_selected_version: std::collections::HashMap<String, String>,
     pub saved_window_bounds: Option<Bounds<Pixels>>,
     pub display_bounds: Option<Bounds<Pixels>>,
 
@@ -269,6 +272,8 @@ impl CanViewApp {
             is_maximized,
             is_streaming_mode: false,
             current_file_name: None,
+            library_picker_dismissed: false,
+            library_picker_selected_version: std::collections::HashMap::new(),
             saved_window_bounds,
             display_bounds: None,
             list_scroll_handle: UniformListScrollHandle::new(),
