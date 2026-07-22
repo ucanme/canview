@@ -1,0 +1,33 @@
+src/view/src/controllers/config_controller.rs
+  s_a6569676d6a73d::t_3358c0ac577d25 149-150
+src/view/src/app/state.rs
+  s_a6569676d6a73d::t_e4cf343dca9835 97-98
+  s_a6569676d6a73d::t_707ff5f5858eb2 390
+  s_a6569676d6a73d::t_55f0a9d09611c4 271
+  s_a6569676d6a73d::t_c4b83d541ffe81 30,214-215,218,354-355,359-360
+  s_a6569676d6a73d::t_550adddde94329 422
+src/view/src/app/impls.rs
+  s_a6569676d6a73d::t_b0ab6a30f21840 589
+  s_a6569676d6a73d::t_2601d39d2af912 230
+  s_a6569676d6a73d::t_b41989305b5556 271,279
+  s_a6569676d6a73d::t_525e71a1554c80 35
+src/view/src/app/impls_rendering.rs
+  s_a6569676d6a73d::t_1436e4c95df210 2206-2209
+  s_a6569676d6a73d::t_11408651fab7fa 2225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "20db299d5c7c2d679b0691d418fe780e32db926c",
+  "prompts": {},
+  "sessions": {
+    "s_a6569676d6a73d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc659355-d2eb-47cd-ac4c-8455acc74651",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
