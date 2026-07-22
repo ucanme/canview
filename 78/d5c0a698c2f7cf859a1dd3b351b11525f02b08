@@ -1,0 +1,23 @@
+src/view/src/app/impls_rendering.rs
+  s_a6569676d6a73d::t_552e4e40ebc443 1864
+src/view/src/ui/components/library_picker.rs
+  s_a6569676d6a73d::t_6a8ff4aff4906d 1,3-6,8,13,15-20,33-35,37,39,45-74,87,92,97-112,115,120,123-181,185-190,192,197-198,201-202,205-229,231,234-236,238-239,241-252,255-258,264-266,269-275,277-288,293-295,298-300,303-305,310-346
+src/view/src/ui/components/mod.rs
+  s_a6569676d6a73d::t_470df608d6aca1 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "78d5c0a698c2f7cf859a1dd3b351b11525f02b08",
+  "prompts": {},
+  "sessions": {
+    "s_a6569676d6a73d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc659355-d2eb-47cd-ac4c-8455acc74651",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
