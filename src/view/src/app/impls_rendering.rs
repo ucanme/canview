@@ -131,6 +131,12 @@ impl CanViewApp {
     fn render_library_view(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
         use crate::ui::views::library_management::render_library_management_view;
 
+        // TODO: wire up FilterBar for Library view in follow-up commit.
+        // render_library_management_view takes &LibraryManager (not &CanViewApp),
+        // so wiring requires either threading an Entity<CanViewApp> through its
+        // signature or wrapping the call here with a FilterBar child added to
+        // this outer div. Deferred to keep this commit's surface small.
+
         // Safety check: prevent stack overflow from invalid state
         let libraries = self.library_manager.libraries();
         if libraries.len() > 1000 {
@@ -300,6 +306,14 @@ impl CanViewApp {
             .flex()
             .flex_col()
             .relative()  // Add relative positioning for absolute children
+            // FilterBar — new styled top filter bar (Task 4). Inline filter UI
+            // below remains in place and will be removed in a follow-up once the
+            // dropdown wiring is migrated.
+            .child(crate::ui::components::render_filter_bar(
+                self,
+                view.clone(),
+                crate::ui::components::FilterBarVariant::Log,
+            ))
             // Handle keyboard input for ID filter
             .on_key_down(move |event, _window, cx| {
                 eprintln!("Global on_key_down: keystroke={}", event.keystroke);
@@ -512,6 +526,7 @@ impl CanViewApp {
                 });
             })
             .child(
+                // TODO: remove once FilterBar dropdowns are wired up
                 // Zed-style header with calculated column widths and proper alignment
                 div()
                     .w_full()
