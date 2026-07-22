@@ -306,14 +306,6 @@ impl CanViewApp {
             .flex()
             .flex_col()
             .relative()  // Add relative positioning for absolute children
-            // FilterBar — new styled top filter bar (Task 4). Inline filter UI
-            // below remains in place and will be removed in a follow-up once the
-            // dropdown wiring is migrated.
-            .child(crate::ui::components::render_filter_bar(
-                self,
-                view.clone(),
-                crate::ui::components::FilterBarVariant::Log,
-            ))
             // Handle keyboard input for ID filter
             .on_key_down(move |event, _window, cx| {
                 eprintln!("Global on_key_down: keystroke={}", event.keystroke);
