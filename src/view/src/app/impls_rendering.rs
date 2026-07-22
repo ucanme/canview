@@ -1845,6 +1845,7 @@ impl Render for CanViewApp {
                     .flex_1()
                     .bg(rgb(0x0c0c0e)) // Zed's main background
                     .overflow_hidden()
+                    .relative()
                     .child(match self.current_view {
                         AppView::LogView => {
                             self.render_log_view(cx.entity().clone()).into_any_element()
@@ -1855,14 +1856,12 @@ impl Render for CanViewApp {
                             crate::ui::views::chart_view::render_plot_view(window, self, cx.entity().clone(), cx)
                                 .into_any_element()
                         }
-                    }),
-            )
-            // Library picker overlay — shown only when a BLF is loaded but no
-            // library version is active. Lets the user pick a library without
-            // leaving the data view.
-            .when_some(
-                crate::ui::components::render_library_picker_overlay(self, view.clone()),
-                |el, picker| el.child(picker),
+                    })
+                    // Library picker overlay — covers only the content area
+                    .when_some(
+                        crate::ui::components::render_library_picker_overlay(self, view.clone()),
+                        |el, picker| el.child(picker),
+                    ),
             )
             .child(crate::ui::components::render_status_bar(self, view.clone()))
             .child({
