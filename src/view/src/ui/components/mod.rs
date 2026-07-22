@@ -15,8 +15,10 @@ pub mod zed_style_text_input;
 pub mod tab_bar;
 pub mod top_bar;
 pub mod filter_bar;
+pub mod status_bar;
 pub use tab_bar::render_tab_bar;
 pub use top_bar::render_top_bar;
+pub use status_bar::render_status_bar;
 // `render_filter_chip` is currently only used inside filter_bar; it's re-exported
 // here so external callers (e.g. Library view when wired up in a follow-up) can
 // build chips without reaching into the submodule path.

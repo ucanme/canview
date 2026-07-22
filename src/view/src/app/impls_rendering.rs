@@ -1865,65 +1865,7 @@ impl Render for CanViewApp {
                         }
                     }),
             )
-            .child(
-                // Zed-style status bar at bottom
-                div()
-                    .h(px(24.))
-                    .bg(rgb(0x1e1e1e))
-                    .border_t_1()
-                    .border_color(rgb(0x2a2a2a))
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .px_3()
-                    .text_xs()
-                    .text_color(rgb(0x9ca3af))
-                    .child(
-                        // Left: File info
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_3()
-                            .child(div().child(format!("{} messages", self.messages.len())))
-                            .child(div().child(format!("{} DBC channels", self.dbc_channels.len())))
-                            .child(
-                                div().child(format!("{} LIN channels", self.ldf_channels.len())),
-                            ),
-                    )
-                    .child(
-                        // Right: Status with resize handle
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_3()
-                            .child(div().child(if self.is_streaming_mode {
-                                "Streaming Mode"
-                            } else {
-                                "Normal Mode"
-                            }))
-                            .child(div().child(self.status_msg.clone()))
-                            .child(
-                                // Resize handle in bottom-right corner
-                                div()
-                                    .ml_2()
-                                    .w(px(16.))
-                                    .h(px(16.))
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .child(
-                                        div()
-                                            .w(px(10.))
-                                            .h(px(10.))
-                                            .border_r_2()
-                                            .border_b_2()
-                                            .border_color(rgb(0x6b7280))
-                                            .opacity(0.5),
-                                    )
-                                    .hover(|style| style.opacity(1.0)),
-                            ),
-                    ),
-            )
+            .child(crate::ui::components::status_bar::render_status_bar(self, view.clone()))
             .child({
                 // Full-screen overlay to catch clicks outside file dropdown
                 if self.show_file_menu {
