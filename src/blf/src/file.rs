@@ -14,6 +14,11 @@ pub struct BlfResult {
     pub objects: Vec<LogObject>,
     /// A vector of any errors encountered during parsing.
     pub errors: Vec<BlfParseError>,
+    /// Total file size in bytes (for progress reporting in the UI).
+    pub bytes_total: u64,
+    /// Bytes the parser consumed. Equals bytes_total on full success;
+    /// less when parsing bailed early on a malformed structure.
+    pub bytes_consumed: u64,
 }
 
 impl BlfResult {
@@ -65,21 +70,27 @@ impl BlfResult {
 /// A `BlfParseResult` containing a `BlfResult` struct on success, which holds both the
 /// file statistics and the list of parsed log objects.
 pub fn read_blf_from_file<P: AsRef<Path>>(path: P) -> BlfParseResult<BlfResult> {
-    let data = fs::read(path).map_err(BlfParseError::IoError)?;
+    let data = fs::read(path.as_ref()).map_err(BlfParseError::IoError)?;
+    let bytes_total = data.len() as u64;
     let mut cursor = Cursor::new(&data[..]);
 
     // 1. Parse the file statistics header. This will advance the cursor.
     let file_stats = FileStatistics::read(&mut cursor)?;
+    let stats_consumed = cursor.position();
 
     // 2. Parse the log objects from the rest of the data slice.
     let parser = BlfParser::new();
-    let remaining_data = &data[cursor.position() as usize..];
-    let (objects, errors) = parser.parse(remaining_data)?;
+    let remaining_data = &data[stats_consumed as usize..];
+    let (objects, errors, parse_consumed) = parser.parse(remaining_data)?;
+
+    let bytes_consumed = stats_consumed + parse_consumed;
 
     Ok(BlfResult {
         file_stats,
         objects,
         errors,
+        bytes_total,
+        bytes_consumed,
     })
 }
 
@@ -145,7 +156,7 @@ impl StreamingBlfReader {
             .map_err(BlfParseError::IoError)?;
 
         // Parse the buffer
-        let (objects, _errors) = self.parser.parse(&self.buffer)?;
+        let (objects, _errors, _consumed) = self.parser.parse(&self.buffer)?;
         self.current_position += read_size as u64;
 
         // Return only the requested batch size

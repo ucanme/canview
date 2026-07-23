@@ -152,7 +152,7 @@ impl BlfParser {
     }
 
     /// Parses the data slice and returns a vector of log objects and a vector of errors.
-    pub fn parse(&self, data: &[u8]) -> BlfParseResult<(Vec<LogObject>, Vec<BlfParseError>)> {
+    pub fn parse(&self, data: &[u8]) -> BlfParseResult<(Vec<LogObject>, Vec<BlfParseError>, u64)> {
         let mut cursor = Cursor::new(data);
         let mut all_objects = Vec::new();
         let mut all_errors = Vec::new();
@@ -268,7 +268,8 @@ impl BlfParser {
             );
         }
 
-        Ok((all_objects, all_errors))
+        let consumed = cursor.position();
+        Ok((all_objects, all_errors, consumed))
     }
 
     fn parse_can_object(
