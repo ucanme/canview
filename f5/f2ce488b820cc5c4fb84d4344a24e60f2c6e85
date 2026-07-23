@@ -1,0 +1,19 @@
+src/blf/src/objects/log_container.rs
+  s_a6569676d6a73d::t_ff3c45a37bee06 52,56-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "f5f2ce488b820cc5c4fb84d4344a24e60f2c6e85",
+  "prompts": {},
+  "sessions": {
+    "s_a6569676d6a73d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc659355-d2eb-47cd-ac4c-8455acc74651",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
