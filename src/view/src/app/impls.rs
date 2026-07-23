@@ -32,6 +32,13 @@ impl CanViewApp {
             // Default window/app states
             is_maximized: false,
             is_streaming_mode: false,
+            current_file_name: None,
+            library_picker_dismissed: false,
+            library_picker_selected_version: std::collections::HashMap::new(),
+            blf_bytes_total: 0,
+            blf_bytes_consumed: 0,
+            blf_parse_errors: Vec::new(),
+            show_blf_errors_popover: false,
             saved_window_bounds: None,
             display_bounds: None,
             // Initialize uniform list scroll handle
@@ -226,7 +233,7 @@ impl CanViewApp {
         }
     }
 
-    pub(crate) fn apply_blf_result(&mut self, result: anyhow::Result<BlfResult>) {
+    pub(crate) fn apply_blf_result(&mut self, result: anyhow::Result<BlfResult>, file_name: Option<String>) {
         match result {
             Ok(result) => {
                 let error_count = result.errors.len();
@@ -247,15 +254,15 @@ impl CanViewApp {
 
                 // 根据是否有错误设置不同的状态栏消息
                 if error_count > 0 {
-                    let first_error = &result.errors[0];
-                    self.status_msg = format!(
-                        "⚠️ Loaded {} messages | {} errors (first: {})",
-                        result.objects.len(),
-                        error_count,
-                        first_error
-                    )
-                    .into();
+                    // Keep status_msg short ("⚠️ N parse errors — see details")
+                    // so it fits in the StatusBar. The full error list (with
+                    // structure.field context) is stored in blf_parse_errors
+                    // and shown in a popover when the user clicks "details".
+                    self.blf_parse_errors = result.errors.iter().map(|e| format!("{}", e)).collect();
+                    self.status_msg = format!("⚠️ {} parse error(s) — see details", error_count).into();
                 } else {
+                    self.blf_parse_errors.clear();
+                    self.show_blf_errors_popover = false;
                     self.status_msg = format!("✅ Loaded {} messages", result.objects.len()).into();
                 }
 
@@ -267,6 +274,11 @@ impl CanViewApp {
                 self.start_time = Self::parse_blf_start_time(&result.file_stats.measurement_start_time);
 
                 self.messages = result.objects;
+                self.current_file_name = file_name;
+                self.library_picker_dismissed = false;
+                self.library_picker_selected_version.clear();
+                self.blf_bytes_total = result.bytes_total;
+                self.blf_bytes_consumed = result.bytes_consumed;
             }
             Err(e) => {
                 // 在状态栏显示详细的错误信息（不清空之前的数据）
@@ -274,9 +286,16 @@ impl CanViewApp {
 
                 // 保持当前视图不变，不切换到 LogView
                 // 这样用户可以看到之前成功加载的数据
+                // Keep the existing current_file_name on error so status bar shows the last good file
 
                 // 打印详细错误信息到控制台
                 Self::display_blf_load_error(&e);
+
+                // Reset progress on error so StatusBar doesn't show stale bytes
+                self.blf_bytes_total = 0;
+                self.blf_bytes_consumed = 0;
+                self.blf_parse_errors.clear();
+                self.show_blf_errors_popover = false;
             }
         }
     }
@@ -583,6 +602,13 @@ impl CanViewApp {
             signal_storage: crate::library::SignalLibraryStorage::new().ok(),
             is_maximized,
             is_streaming_mode: false,
+            current_file_name: None,
+            library_picker_dismissed: false,
+            library_picker_selected_version: std::collections::HashMap::new(),
+            blf_bytes_total: 0,
+            blf_bytes_consumed: 0,
+            blf_parse_errors: Vec::new(),
+            show_blf_errors_popover: false,
             saved_window_bounds,
             display_bounds,
             list_scroll_handle: gpui::UniformListScrollHandle::new(),
@@ -1203,6 +1229,30 @@ impl CanViewApp {
             .unwrap_or_else(|| library_id.to_string());
         self.status_msg = format!("✅ Activated: {} / {}", lib_name, version_name).into();
         self.save_config(cx);
+        cx.notify();
+    }
+
+    /// Deactivate the currently active library version, if any.
+    ///
+    /// Clears the in-memory active state AND the persisted config so the
+    /// picker overlay can re-appear (when a BLF is loaded) and other
+    /// libraries can be activated next.
+    pub fn deactivate_library_version(&mut self, cx: &mut Context<Self>) {
+        let was_active = self.active_library_id.is_some();
+        self.active_library_id = None;
+        self.active_version_name = None;
+        self.app_config.active_library_id = None;
+        self.app_config.active_version_name = None;
+        // Clear library_id/version_name on all channel mappings so the
+        // signal decoder stops producing decoded signals.
+        for mapping in &mut self.app_config.mappings {
+            mapping.library_id = None;
+            mapping.version_name = None;
+        }
+        if was_active {
+            self.status_msg = "Library deactivated".into();
+            self.save_config(cx);
+        }
         cx.notify();
     }
 

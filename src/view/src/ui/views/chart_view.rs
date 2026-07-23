@@ -73,7 +73,7 @@ pub fn render_plot_view(window: &mut Window, app: &mut CanViewApp, view: Entity<
 /// Render the toolbar at the top of the plot area
 fn render_toolbar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoElement {
     let is_zoomed = app.plot_zoom_start.is_some() || app.plot_zoom_end.is_some();
-    
+
     div()
         .flex()
         .items_center()
@@ -83,29 +83,7 @@ fn render_toolbar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoEl
         .bg(rgb(0x18181b))
         .border_b_1()
         .border_color(rgb(0x27272a))
-        .child(
-            div()
-                .flex()
-                .items_center()
-                .gap_3()
-                .child(
-                    div()
-                        .text_xs()
-                        .font_weight(FontWeight::BOLD)
-                        .text_color(rgb(0xe4e4e7))
-                        .child("信号波形图 (Signal Plotter)")
-                )
-                .when(is_zoomed, |this| {
-                    this.child(
-                        div()
-                            .px_2()
-                            .py(px(2.0))
-                            .bg(rgb(0x3f3f46))
-                            .rounded(px(4.0))
-                            .child(div().text_xs().text_color(rgb(0xa1a1aa)).child("Zoom Active"))
-                    )
-                })
-        )
+        .child(div().flex_1())
         .child(
             div()
                 .flex()
@@ -133,71 +111,12 @@ fn render_toolbar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoEl
                     div()
                         .px_2()
                         .py_1()
-                        .bg(rgb(0x312e81))
-                        .rounded(px(4.0))
-                        .cursor_pointer()
-                        .hover(|s| s.bg(rgb(0x1e1b4b)))
-                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this: &mut CanViewApp, _, _, cx| {
-                            // Simple zoom into middle 50%
-                             let (_current_start, _current_end) = if this.plot_zoom_start.is_some() || this.plot_zoom_end.is_some() {
-                                (this.plot_zoom_start.unwrap_or(0.0), this.plot_zoom_end.unwrap_or(3600.0)) // FIXME: get real end
-                             } else {
-                                // Find min/max time from all points if possible, or use a default
-                                (0.0, 100.0) // Placeholder
-                             };
-                             
-                             // Better: calculate range from current plot_data
-                             let mut min_t = f64::MAX;
-                             let mut max_t = f64::MIN;
-                             for series in this.plot_data.iter() {
-                                 for p in series.points.iter() {
-                                     if p.time < min_t { min_t = p.time; }
-                                     if p.time > max_t { max_t = p.time; }
-                                 }
-                             }
-                             
-                             if min_t < max_t {
-                                 let range = max_t - min_t;
-                                 this.plot_zoom_start = Some(min_t + range * 0.25);
-                                 this.plot_zoom_end = Some(max_t - range * 0.25);
-                                 crate::ui::views::chart_view::extract_and_update_series_data(this);
-                                 cx.notify();
-                             }
-                        }))
-                        .child(div().text_xs().text_color(rgb(0xffffff)).child("Zoom Selection"))
-                )
-                .child(
-                    div()
-                        .px_2()
-                        .py_1()
-                        .bg(rgb(0x3b82f6))
-                        .rounded(px(4.0))
-                        .cursor_pointer()
-                        .hover(|s| s.bg(rgb(0x2563eb)))
-                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this: &mut CanViewApp, _event: &gpui::MouseDownEvent, _window, cx| {
-                            eprintln!("🔄 Redraw button clicked - extracting series data...");
-                            crate::ui::views::chart_view::extract_and_update_series_data(this);
-                            eprintln!("✅ Data extraction complete, series count: {}", this.plot_data.len());
-                            cx.notify();
-                        }))
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(rgb(0xffffff))
-                                .child("Redraw Plot")
-                        )
-                )
-                .child(
-                    div()
-                        .px_2()
-                        .py_1()
                         .bg(if app.show_plot_points { rgb(0x10b981) } else { rgb(0x6b7280) })
                         .rounded(px(4.0))
                         .cursor_pointer()
                         .hover(|s| s.bg(if app.show_plot_points { rgb(0x059669) } else { rgb(0x4b5563) }))
                         .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this: &mut CanViewApp, _, _, cx| {
                             this.show_plot_points = !this.show_plot_points;
-                            eprintln!("📊 Plot points display: {}", if this.show_plot_points { "ON" } else { "OFF" });
                             cx.notify();
                         }))
                         .child(
@@ -950,6 +869,8 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                 gpui::ScrollDelta::Pixels(pixels) => f32::from(pixels.y),
             };
 
+            eprintln!("🖱️  scroll_delta = {:.4}", scroll_delta);
+
             // Lower threshold for better responsiveness
             if scroll_delta.abs() < 0.01 {
                 return;
@@ -966,28 +887,72 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                 // Zoom in: reduce range
                 let new_range = current_range / zoom_factor;
 
-                // Ensure we don't go below minimum range
-                let min_range = 0.01;
+                // Minimum range = the smallest interval that still contains at
+                // least one data point. Use a fraction of the full data range,
+                // but never smaller than the time between two adjacent points
+                // (approximated by abs_range / total_point_count).
+                let abs_range = abs_max_t - abs_min_t;
+                let total_points: usize = this.plot_full_data.iter().map(|s| s.points.len()).sum();
+                let min_range = if total_points > 1 {
+                    // smallest gap between any two adjacent points across all series
+                    let mut smallest_gap = f64::MAX;
+                    for series in this.plot_full_data.iter() {
+                        let mut prev: Option<f64> = None;
+                        for p in series.points.iter() {
+                            if let Some(prev_t) = prev {
+                                let gap = p.time - prev_t;
+                                if gap > 0.0 && gap < smallest_gap {
+                                    smallest_gap = gap;
+                                }
+                            }
+                            prev = Some(p.time);
+                        }
+                    }
+                    if smallest_gap == f64::MAX {
+                        // all points at the same time → use 1/1000 of range
+                        (abs_range / 1000.0).max(1e-6)
+                    } else {
+                        // allow zooming in to half the smallest gap, so at
+                        // least one point remains visible
+                        (smallest_gap * 0.5).max(1e-6)
+                    }
+                } else {
+                    // less than 2 points total → no zoom-in needed
+                    (abs_range / 1000.0).max(1e-6)
+                };
+
                 if new_range < min_range {
-                    eprintln!("⚠️  Cannot zoom in further: minimum range ({:.3}s) reached", min_range);
+                    eprintln!("⚠️  Cannot zoom in further: minimum range ({:.6}s) reached", min_range);
                     return;
                 }
 
-                let center = (current_min + current_max) / 2.0;
-                let new_min = center - new_range / 2.0;
-                let new_max = center + new_range / 2.0;
+                // Zoom centered on the mouse position, not the chart center,
+                // so the data under the cursor stays put.
+                let chart_width_px = window_width - padding - chart_start_x;
+                let mouse_t_ratio = if current_max > current_min && chart_width_px > gpui::px(0.0) {
+                    let r = (mouse_x - chart_start_x) / chart_width_px;
+                    f32::max(0.0, f32::min(1.0, r)) as f64
+                } else {
+                    0.5
+                };
+                let focus_t = current_min + (current_max - current_min) * mouse_t_ratio;
+                let new_min = focus_t - new_range * mouse_t_ratio;
+                let new_max = focus_t + new_range * (1.0 - mouse_t_ratio);
                 (new_min, new_max)
             } else {
-                // Zoom out: expand toward full data range
-                // abs_range removed as it was unused
-
-                // Simple expansion: multiply by zoom_factor
+                // Zoom out: expand toward full data range, centered on mouse
                 let new_range = current_range * zoom_factor;
 
-                // Expand from center
-                let center = (current_min + current_max) / 2.0;
-                let mut new_min = center - new_range / 2.0;
-                let mut new_max = center + new_range / 2.0;
+                let chart_width_px = window_width - padding - chart_start_x;
+                let mouse_t_ratio = if current_max > current_min && chart_width_px > gpui::px(0.0) {
+                    let r = (mouse_x - chart_start_x) / chart_width_px;
+                    f32::max(0.0, f32::min(1.0, r)) as f64
+                } else {
+                    0.5
+                };
+                let focus_t = current_min + (current_max - current_min) * mouse_t_ratio;
+                let mut new_min = focus_t - new_range * mouse_t_ratio;
+                let mut new_max = focus_t + new_range * (1.0 - mouse_t_ratio);
 
                 // Clamp to data boundaries
                 new_min = new_min.max(abs_min_t);

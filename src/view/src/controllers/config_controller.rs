@@ -146,36 +146,6 @@ pub fn import_database_file(app: &mut CanViewApp, _cx: &mut Context<CanViewApp>)
 
 /// Apply BLF file loading result
 pub fn apply_blf_result(app: &mut CanViewApp, result: anyhow::Result<blf::BlfResult>) {
-    match result {
-        Ok(blf_result) => {
-            eprintln!("✅ BLF file loaded successfully");
-            eprintln!("  Object count: {}", blf_result.objects.len());
-
-            // Clear old messages and load new ones
-            app.messages.clear();
-
-            // Process all objects
-            for obj in blf_result.objects {
-                if let Ok(log_obj) = blf::LogObject::try_from(obj) {
-                    app.messages.push(log_obj);
-                }
-            }
-
-            let msg_count = app.messages.len();
-            eprintln!("  Valid messages: {}", msg_count);
-
-            // Set start time from first message if available
-            if let Some(msg) = app.messages.first() {
-                let _timestamp = msg.timestamp();
-                // TODO: Convert timestamp properly
-                // app.start_time = Some(chrono::NaiveDateTime::from_timestamp_opt(...).unwrap());
-            }
-
-            app.status_msg = format!("Loaded {} messages from BLF file", msg_count).into();
-        }
-        Err(e) => {
-            eprintln!("❌ Error loading BLF file: {}", e);
-            app.status_msg = format!("Error loading BLF: {}", e).into();
-        }
-    }
+    // Delegate to the impl method, with no file name (controller path doesn't have it)
+    app.apply_blf_result(result, None);
 }

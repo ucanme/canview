@@ -27,7 +27,26 @@ fn main() {
     }
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "macos")]
 fn main() {
-    // Do nothing on non-Windows platforms
+    // Emit rerun-if-changed for the icon so cargo rebuilds when it changes.
+    let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let icon_path = manifest_dir.join("../../assets/ico/canview.icns");
+    println!("cargo:rerun-if-changed={}", icon_path.display());
+
+    // macOS: place the .icns inside the binary's Resources dir so the
+    // system picks it up when the binary is wrapped in an .app bundle by
+    // scripts/package-macos.sh. We also create a minimal Info.plist next
+    // to the binary for `cargo run` users who don't run the packaging
+    // script — but that won't make Dock show the icon by itself; only an
+    // .app bundle does. See README for `cargo bundle` or scripts/.
+    //
+    // Link the Metal framework (required by gpui on macOS).
+    println!("cargo:rustc-link-lib=framework=Metal");
+    println!("cargo:rustc-link-lib=framework=QuartzCore");
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+fn main() {
+    // Linux/other: no platform-specific build steps
 }

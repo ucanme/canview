@@ -4,7 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-gpui = { git = "https://github.com/zed-industries/zed" }
+# runtime_shaders: build shaders at runtime (Rust) instead of via xcrun metal,
+# so the crate builds without full Xcode. CI uses full Xcode and ignores this.
+gpui = { git = "https://github.com/zed-industries/zed", features = ["runtime_shaders"] }
 gpui-component = { git = "https://github.com/longbridge/gpui-component" }
 anyhow = "1.0"
 blf = { path = "../blf" }

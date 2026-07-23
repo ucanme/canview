@@ -2,6 +2,7 @@
 
 use crate::objects::object_header::ObjectHeaderBase;
 use crate::{BlfParseError, BlfParseResult};
+use crate::BlfResultContext;
 use byteorder::{LittleEndian, ReadBytesExt};
 use flate2::read::ZlibDecoder;
 use std::io::{Cursor, Read};
@@ -20,11 +21,27 @@ pub struct LogContainer {
 impl LogContainer {
     /// Reads and uncompresses a `LogContainer` from a byte stream.
     pub fn read(cursor: &mut Cursor<&[u8]>, header: ObjectHeaderBase) -> BlfParseResult<Self> {
-        let compression_method = cursor.read_u16::<LittleEndian>()?;
-        let _reserved1 = cursor.read_u16::<LittleEndian>()?;
-        let _reserved2 = cursor.read_u32::<LittleEndian>()?;
-        let uncompressed_size = cursor.read_u32::<LittleEndian>()? as usize;
-        let _reserved3 = cursor.read_u32::<LittleEndian>()?;
+        let compression_method = cursor
+            .read_u16::<LittleEndian>()
+            .map_err(BlfParseError::IoError)
+            .context("LogContainer.compression_method")?;
+        let _reserved1 = cursor
+            .read_u16::<LittleEndian>()
+            .map_err(BlfParseError::IoError)
+            .context("LogContainer.reserved1")?;
+        let _reserved2 = cursor
+            .read_u32::<LittleEndian>()
+            .map_err(BlfParseError::IoError)
+            .context("LogContainer.reserved2")?;
+        let uncompressed_size = cursor
+            .read_u32::<LittleEndian>()
+            .map_err(BlfParseError::IoError)
+            .context("LogContainer.uncompressed_size")?
+            as usize;
+        let _reserved3 = cursor
+            .read_u32::<LittleEndian>()
+            .map_err(BlfParseError::IoError)
+            .context("LogContainer.reserved3")?;
 
         let log_container_specific_fields_size = 16;
         let data_size = (header.object_size as usize)
@@ -32,18 +49,31 @@ impl LogContainer {
             .saturating_sub(log_container_specific_fields_size);
 
         let mut compressed_data = vec![0; data_size];
-        cursor.read_exact(&mut compressed_data)?;
+        let data_start_offset = cursor.position();
+        cursor
+            .read_exact(&mut compressed_data)
+            .map_err(BlfParseError::IoError)
+            .context(format!(
+                "LogContainer.data@0x{:X}(expected {} bytes)",
+                data_start_offset, data_size
+            ))?;
 
         let uncompressed_data = match compression_method {
             0 => compressed_data,
             2 => {
                 let mut decoder = ZlibDecoder::new(&compressed_data[..]);
                 let mut uncompressed = Vec::with_capacity(uncompressed_size);
-                decoder.read_to_end(&mut uncompressed)?;
+                decoder
+                    .read_to_end(&mut uncompressed)
+                    .map_err(BlfParseError::IoError)
+                    .context("LogContainer.zlib_decode")?;
 
                 uncompressed
             }
-            _ => return Err(BlfParseError::UnsupportedCompression(compression_method)),
+            _ => {
+                return Err(BlfParseError::UnsupportedCompression(compression_method)
+                    .context("LogContainer.compression_method"))
+            }
         };
 
         Ok(LogContainer {

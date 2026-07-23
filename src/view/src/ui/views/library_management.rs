@@ -851,7 +851,7 @@ fn render_version_item(
                             .child(format!("{}", stats.total_channels)),
                     )
                     .child(
-                        // Activate button
+                        // Activate / Deactivate button. ▷ → activate; ▶ → deactivate.
                         div()
                             .id(format!("ver-activate-btn-{}", version_name))
                             .px_1()
@@ -866,7 +866,11 @@ fn render_version_item(
                                     let library_id = library_id.clone();
                                     move |this, _, _window, cx| {
                                         cx.stop_propagation();
-                                        this.activate_library_version(&library_id, &version_name, cx);
+                                        if is_active {
+                                            this.deactivate_library_version(cx);
+                                        } else {
+                                            this.activate_library_version(&library_id, &version_name, cx);
+                                        }
                                     }
                                 }),
                             )

@@ -131,6 +131,12 @@ impl CanViewApp {
     fn render_library_view(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
         use crate::ui::views::library_management::render_library_management_view;
 
+        // TODO: wire up FilterBar for Library view in follow-up commit.
+        // render_library_management_view takes &LibraryManager (not &CanViewApp),
+        // so wiring requires either threading an Entity<CanViewApp> through its
+        // signature or wrapping the call here with a FilterBar child added to
+        // this outer div. Deferred to keep this commit's surface small.
+
         // Safety check: prevent stack overflow from invalid state
         let libraries = self.library_manager.libraries();
         if libraries.len() > 1000 {
@@ -188,78 +194,69 @@ impl CanViewApp {
     ///
     /// Helper method to apply both ID and channel filters to the message list.
     /// This is extracted from render_log_view to reduce complexity.
-    fn filter_messages(&self) -> Vec<LogObject> {
+    fn filter_messages(&self) -> Vec<(usize, LogObject)> {
         match (self.id_filter, self.channel_filter) {
-            (None, None) => self.messages.clone(),
-            (Some(filter_id), None) => {
-                // Only ID filter
-                self.messages
-                    .iter()
-                    .filter(|msg| match msg {
-                        LogObject::CanMessage(can_msg) => can_msg.id == filter_id,
-                        LogObject::CanMessage2(can_msg) => can_msg.id == filter_id,
-                        LogObject::CanFdMessage(fd_msg) => fd_msg.id == filter_id,
-                        LogObject::CanFdMessage64(fd_msg) => fd_msg.id == filter_id,
-                        LogObject::LinMessage(lin_msg) => lin_msg.id as u32 == filter_id,
-                        LogObject::LinMessage2(_) => false,
-                        _ => false,
-                    })
-                    .cloned()
-                    .collect()
-            }
-            (None, Some(filter_channel)) => {
-                // Only channel filter
-                self.messages
-                    .iter()
-                    .filter(|msg| match msg {
-                        LogObject::CanMessage(can_msg) => {
-                            can_msg.channel == filter_channel
-                        }
-                        LogObject::CanMessage2(can_msg) => {
-                            can_msg.channel == filter_channel
-                        }
-                        LogObject::CanFdMessage(fd_msg) => {
-                            fd_msg.channel == filter_channel
-                        }
-                        LogObject::CanFdMessage64(fd_msg) => {
-                            fd_msg.channel as u16 == filter_channel
-                        }
-                        LogObject::LinMessage(lin_msg) => {
-                            lin_msg.channel == filter_channel
-                        }
-                        LogObject::LinMessage2(_) => false,
-                        _ => false,
-                    })
-                    .cloned()
-                    .collect()
-            }
-            (Some(filter_id), Some(filter_channel)) => {
-                // Both ID and channel filters
-                self.messages
-                    .iter()
-                    .filter(|msg| match msg {
-                        LogObject::CanMessage(can_msg) => {
-                            can_msg.id == filter_id && can_msg.channel == filter_channel
-                        }
-                        LogObject::CanMessage2(can_msg) => {
-                            can_msg.id == filter_id && can_msg.channel == filter_channel
-                        }
-                        LogObject::CanFdMessage(fd_msg) => {
-                            fd_msg.id == filter_id && fd_msg.channel == filter_channel
-                        }
-                        LogObject::CanFdMessage64(fd_msg) => {
-                            fd_msg.id == filter_id && fd_msg.channel as u16 == filter_channel
-                        }
-                        LogObject::LinMessage(lin_msg) => {
-                            lin_msg.id as u32 == filter_id
-                                && lin_msg.channel == filter_channel
-                        }
-                        LogObject::LinMessage2(_) => false,
-                        _ => false,
-                    })
-                    .cloned()
-                    .collect()
-            }
+            (None, None) => self
+                .messages
+                .iter()
+                .enumerate()
+                .map(|(i, m)| (i, m.clone()))
+                .collect(),
+            (Some(filter_id), None) => self
+                .messages
+                .iter()
+                .enumerate()
+                .filter(|(_, msg)| match msg {
+                    LogObject::CanMessage(can_msg) => can_msg.id == filter_id,
+                    LogObject::CanMessage2(can_msg) => can_msg.id == filter_id,
+                    LogObject::CanFdMessage(fd_msg) => fd_msg.id == filter_id,
+                    LogObject::CanFdMessage64(fd_msg) => fd_msg.id == filter_id,
+                    LogObject::LinMessage(lin_msg) => lin_msg.id as u32 == filter_id,
+                    LogObject::LinMessage2(_) => false,
+                    _ => false,
+                })
+                .map(|(i, m)| (i, m.clone()))
+                .collect(),
+            (None, Some(filter_channel)) => self
+                .messages
+                .iter()
+                .enumerate()
+                .filter(|(_, msg)| match msg {
+                    LogObject::CanMessage(can_msg) => can_msg.channel == filter_channel,
+                    LogObject::CanMessage2(can_msg) => can_msg.channel == filter_channel,
+                    LogObject::CanFdMessage(fd_msg) => fd_msg.channel == filter_channel,
+                    LogObject::CanFdMessage64(fd_msg) => fd_msg.channel as u16 == filter_channel,
+                    LogObject::LinMessage(lin_msg) => lin_msg.channel == filter_channel,
+                    LogObject::LinMessage2(_) => false,
+                    _ => false,
+                })
+                .map(|(i, m)| (i, m.clone()))
+                .collect(),
+            (Some(filter_id), Some(filter_channel)) => self
+                .messages
+                .iter()
+                .enumerate()
+                .filter(|(_, msg)| match msg {
+                    LogObject::CanMessage(can_msg) => {
+                        can_msg.id == filter_id && can_msg.channel == filter_channel
+                    }
+                    LogObject::CanMessage2(can_msg) => {
+                        can_msg.id == filter_id && can_msg.channel == filter_channel
+                    }
+                    LogObject::CanFdMessage(fd_msg) => {
+                        fd_msg.id == filter_id && fd_msg.channel == filter_channel
+                    }
+                    LogObject::CanFdMessage64(fd_msg) => {
+                        fd_msg.id == filter_id && fd_msg.channel as u16 == filter_channel
+                    }
+                    LogObject::LinMessage(lin_msg) => {
+                        lin_msg.id as u32 == filter_id && lin_msg.channel == filter_channel
+                    }
+                    LogObject::LinMessage2(_) => false,
+                    _ => false,
+                })
+                .map(|(i, m)| (i, m.clone()))
+                .collect(),
         }
     }
     fn render_log_view(&self, view: Entity<CanViewApp>) -> impl IntoElement {
@@ -512,6 +509,7 @@ impl CanViewApp {
                 });
             })
             .child(
+                // TODO: remove once FilterBar dropdowns are wired up
                 // Zed-style header with calculated column widths and proper alignment
                 div()
                     .w_full()
@@ -761,10 +759,10 @@ impl CanViewApp {
 
                                     range
                                         .map(|index| {
-                                            if let Some(msg) = filtered_messages.get(index) {
+                                            if let Some((orig_idx, msg)) = filtered_messages.get(index) {
                                                 render_message_row_static_with_widths(
                                                     msg,
-                                                    index,
+                                                    *orig_idx,
                                                     time_width,
                                                     ch_width,
                                                     type_width,
@@ -1831,242 +1829,14 @@ impl Render for CanViewApp {
                     }
                 }
             })
-            .child(
-                // Unified top bar - Redesigned
-                {
-                    use crate::ui::components::{Button, ButtonSize, ButtonVariant};
-
-                    // Precompute active library display string for the badge
-                    let active_lib_badge = if let (Some(lib_id), Some(ver)) =
-                        (&self.active_library_id, &self.active_version_name)
-                    {
-                        let lib_name = self
-                            .library_manager
-                            .find_library(lib_id)
-                            .map(|l| l.name.clone())
-                            .unwrap_or_else(|| lib_id.clone());
-                        Some(format!("📚 {} / {}", lib_name, ver))
-                    } else {
-                        None
-                    };
-
-                    let app_buttons = div()
-                        .flex()
-                        .items_center()
-                        .gap_2()
-                        .child(
-                            // File menu button
-                            Button::new("File")
-                                .size(ButtonSize::Small)
-                                .variant(ButtonVariant::Ghost)
-                                .active(self.show_file_menu)
-                                .build()
-                                .id("file_menu_btn")
-                                .on_mouse_down(gpui::MouseButton::Left, {
-                                    let view = view.clone();
-                                    move |_event, _, cx| {
-                                        cx.stop_propagation();
-                                        view.update(cx, |this, cx| {
-                                            this.show_file_menu = !this.show_file_menu;
-                                            cx.notify();
-                                        });
-                                    }
-                                }),
-                        )
-                        .child(
-                            // Log tab
-                            Button::new("Log")
-                                .size(ButtonSize::Small)
-                                .variant(ButtonVariant::Ghost)
-                                .active(self.current_view == AppView::LogView)
-                                .build()
-                                .id("log_tab")
-                                .on_mouse_down(gpui::MouseButton::Left, {
-                                    let view = view.clone();
-                                    move |_event, _, cx| {
-                                        cx.stop_propagation();
-                                        view.update(cx, |this, cx| {
-                                            this.current_view = AppView::LogView;
-                                            cx.notify();
-                                        });
-                                    }
-                                }),
-                        )
-                        .child(
-                            Button::new("Signal Plot")
-                                .size(ButtonSize::Small)
-                                .variant(ButtonVariant::Ghost)
-                                .active(self.current_view == AppView::PlotView)
-                                .build()
-                                .id("plot_tab")
-                                .on_mouse_down(gpui::MouseButton::Left, {
-                                    let view = view.clone();
-                                    move |_event, _, cx| {
-                                        cx.stop_propagation();
-                                        view.update(cx, |this, cx| {
-                                            this.current_view = AppView::PlotView;
-                                            crate::ui::views::chart_view::extract_and_update_series_data(this);
-                                            cx.notify();
-                                        });
-                                    }
-                                }),
-                        )
-                        .child(
-                            Button::new("Library")
-                                .size(ButtonSize::Small)
-                                .variant(ButtonVariant::Ghost)
-                                .active(self.current_view == AppView::LibraryView)
-                                .build()
-                                .id("library_tab")
-                                .on_mouse_down(gpui::MouseButton::Left, {
-                                    let view = view.clone();
-                                    move |_event, _, cx| {
-                                        cx.stop_propagation();
-                                        view.update(cx, |this, cx| {
-                                            this.current_view = AppView::LibraryView;
-                                            cx.notify();
-                                        });
-                                    }
-                                }),
-                        )
-                        .when_some(active_lib_badge, |el, badge| {
-                            // Active library badge — click to jump to Library view
-                            el.child(
-                                div()
-                                    .px_2()
-                                    .py_0p5()
-                                    .bg(rgb(0x1a2e1a))
-                                    .border_1()
-                                    .border_color(rgb(0x2d5a2d))
-                                    .rounded(px(4.))
-                                    .text_xs()
-                                    .text_color(rgb(0xa6e3a1))
-                                    .cursor_pointer()
-                                    .hover(|s| s.bg(rgb(0x253525)))
-                                    .child(badge)
-                                    .on_mouse_down(gpui::MouseButton::Left, {
-                                        let view = view.clone();
-                                        move |_event, _, cx| {
-                                            cx.stop_propagation();
-                                            view.update(cx, |this, cx| {
-                                                this.current_view = AppView::LibraryView;
-                                                cx.notify();
-                                            });
-                                        }
-                                    }),
-                            )
-                        });
-
-                    div()
-                        .h(px(36.)) // Height reduced
-                        .bg(rgb(0x0c0c0e))
-                        .flex()
-                        .items_center()
-                        .px_4()
-                        .border_b_1()
-                        .border_color(rgb(0x1a1a1a))
-                        .window_control_area(WindowControlArea::Drag)
-                        .child(if cfg!(target_os = "macos") {
-                            div()
-                                .flex()
-                                .w_full()
-                                .items_center()
-                                .child(div().w(px(80.)))
-                                .child(app_buttons)
-                                .child(div().flex_1())
-                        } else {
-                            div()
-                                .flex()
-                                .w_full()
-                                .items_center()
-                                .child(app_buttons)
-                                .child(div().flex_1())
-                                .child(
-                                    div()
-                                        .flex()
-                                        .items_center()
-                                        .h_full()
-                                        .child(
-                                            div()
-                                                .w(px(36.))
-                                                .h_full()
-                                                .flex()
-                                                .items_center()
-                                                .justify_center()
-                                                .cursor_pointer()
-                                                .hover(|style| style.bg(rgb(0x1f1f1f)))
-                                                .on_mouse_down(gpui::MouseButton::Left, {
-                                                    let view = view.clone();
-                                                    move |_event, window, cx| {
-                                                        cx.stop_propagation();
-                                                        window.minimize_window();
-                                                        view.update(cx, |_, cx| cx.notify());
-                                                    }
-                                                })
-                                                .child(
-                                                    div().w(px(10.)).h(px(1.)).bg(rgb(0x9ca3af)),
-                                                ),
-                                        )
-                                        .child(
-                                            div()
-                                                .w(px(36.))
-                                                .h_full()
-                                                .flex()
-                                                .items_center()
-                                                .justify_center()
-                                                .cursor_pointer()
-                                                .hover(|style| style.bg(rgb(0x1f1f1f)))
-                                                .on_mouse_down(gpui::MouseButton::Left, {
-                                                    let view = view.clone();
-                                                    move |_event, window, cx| {
-                                                        cx.stop_propagation();
-                                                        view.update(cx, |this, cx| {
-                                                            this.toggle_maximize(window, cx);
-                                                            cx.notify();
-                                                        });
-                                                    }
-                                                })
-                                                .child(
-                                                    div()
-                                                        .w(px(10.))
-                                                        .h(px(10.))
-                                                        .border_1()
-                                                        .border_color(rgb(0x9ca3af)),
-                                                ),
-                                        )
-                                        .child(
-                                            div()
-                                                .w(px(36.))
-                                                .h_full()
-                                                .flex()
-                                                .items_center()
-                                                .justify_center()
-                                                .cursor_pointer()
-                                                .hover(|style| style.bg(rgb(0xc53030)))
-                                                .on_mouse_down(
-                                                    gpui::MouseButton::Left,
-                                                    move |_event, window, cx| {
-                                                        cx.stop_propagation();
-                                                        window.remove_window();
-                                                    },
-                                                )
-                                                .child(
-                                                    div()
-                                                        .text_sm()
-                                                        .text_color(rgb(0x9ca3af))
-                                                        .child("✕"),
-                                                ),
-                                        ),
-                                )
-                        })
-                },
-            )
+            .child(crate::ui::components::render_top_bar(self, view.clone(), cx))
             .child(
                 // Content area - Zed style
                 div()
                     .flex_1()
                     .bg(rgb(0x0c0c0e)) // Zed's main background
                     .overflow_hidden()
+                    .relative()
                     .child(match self.current_view {
                         AppView::LogView => {
                             self.render_log_view(cx.entity().clone()).into_any_element()
@@ -2077,67 +1847,14 @@ impl Render for CanViewApp {
                             crate::ui::views::chart_view::render_plot_view(window, self, cx.entity().clone(), cx)
                                 .into_any_element()
                         }
-                    }),
-            )
-            .child(
-                // Zed-style status bar at bottom
-                div()
-                    .h(px(24.))
-                    .bg(rgb(0x1e1e1e))
-                    .border_t_1()
-                    .border_color(rgb(0x2a2a2a))
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .px_3()
-                    .text_xs()
-                    .text_color(rgb(0x9ca3af))
-                    .child(
-                        // Left: File info
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_3()
-                            .child(div().child(format!("{} messages", self.messages.len())))
-                            .child(div().child(format!("{} DBC channels", self.dbc_channels.len())))
-                            .child(
-                                div().child(format!("{} LIN channels", self.ldf_channels.len())),
-                            ),
-                    )
-                    .child(
-                        // Right: Status with resize handle
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_3()
-                            .child(div().child(if self.is_streaming_mode {
-                                "Streaming Mode"
-                            } else {
-                                "Normal Mode"
-                            }))
-                            .child(div().child(self.status_msg.clone()))
-                            .child(
-                                // Resize handle in bottom-right corner
-                                div()
-                                    .ml_2()
-                                    .w(px(16.))
-                                    .h(px(16.))
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .child(
-                                        div()
-                                            .w(px(10.))
-                                            .h(px(10.))
-                                            .border_r_2()
-                                            .border_b_2()
-                                            .border_color(rgb(0x6b7280))
-                                            .opacity(0.5),
-                                    )
-                                    .hover(|style| style.opacity(1.0)),
-                            ),
+                    })
+                    // Library picker overlay — covers only the content area
+                    .when_some(
+                        crate::ui::components::render_library_picker_overlay(self, view.clone()),
+                        |el, picker| el.child(picker),
                     ),
             )
+            .child(crate::ui::components::render_status_bar(self, view.clone()))
             .child({
                 // Full-screen overlay to catch clicks outside file dropdown
                 if self.show_file_menu {
@@ -2203,6 +1920,10 @@ impl Render for CanViewApp {
                                                 .await
                                             {
                                                 let path = file.path().to_owned();
+                                                let fname = path
+                                                    .file_name()
+                                                    .and_then(|n| n.to_str())
+                                                    .map(|s| s.to_string());
                                                 let _ = cx.update(|cx| {
                                                     view.update(cx, |view, _| {
                                                         view.status_msg = "Loading BLF...".into();
@@ -2218,7 +1939,7 @@ impl Render for CanViewApp {
                                                     .await;
                                                 let _ = cx.update(|cx| {
                                                     view.update(cx, |view, cx| {
-                                                        view.apply_blf_result(result);
+                                                        view.apply_blf_result(result, fname);
                                                         cx.notify();
                                                     });
                                                 });

@@ -27,6 +27,7 @@ pub struct RuntimeState {
     pub ldf_channels: HashMap<u16, LdfDatabase>,
     pub start_time: Option<chrono::NaiveDateTime>,
     pub is_streaming_mode: bool,
+    pub current_file_name: Option<String>,
     pub active_library_id: Option<String>,
     pub active_version_name: Option<String>,
 }
@@ -93,6 +94,18 @@ pub struct CanViewApp {
     // Window state
     pub is_maximized: bool,
     pub is_streaming_mode: bool,
+    // Currently loaded BLF file name (for StatusBar display)
+    pub current_file_name: Option<String>,
+    // Library picker UI state (not persisted to config)
+    pub library_picker_dismissed: bool,
+    pub library_picker_selected_version: std::collections::HashMap<String, String>,
+    // BLF file size and parser-consumed bytes (for StatusBar progress)
+    pub blf_bytes_total: u64,
+    pub blf_bytes_consumed: u64,
+    // BLF parse errors (full Display strings, shown in the details popover)
+    pub blf_parse_errors: Vec<String>,
+    // Controls the BLF errors details popover in the StatusBar
+    pub show_blf_errors_popover: bool,
     pub saved_window_bounds: Option<Bounds<Pixels>>,
     pub display_bounds: Option<Bounds<Pixels>>,
 
@@ -265,6 +278,13 @@ impl CanViewApp {
             signal_storage: crate::library::SignalLibraryStorage::new().ok(),
             is_maximized,
             is_streaming_mode: false,
+            current_file_name: None,
+            library_picker_dismissed: false,
+            library_picker_selected_version: std::collections::HashMap::new(),
+            blf_bytes_total: 0,
+            blf_bytes_consumed: 0,
+            blf_parse_errors: Vec::new(),
+            show_blf_errors_popover: false,
             saved_window_bounds,
             display_bounds: None,
             list_scroll_handle: UniformListScrollHandle::new(),
@@ -383,6 +403,7 @@ impl CanViewApp {
             ldf_channels: self.ldf_channels.clone(),
             start_time: self.start_time,
             is_streaming_mode: self.is_streaming_mode,
+            current_file_name: self.current_file_name.clone(),
             active_library_id: self.active_library_id.clone(),
             active_version_name: self.active_version_name.clone(),
         }
@@ -414,6 +435,7 @@ impl CanViewApp {
         self.ldf_channels = state.ldf_channels;
         self.start_time = state.start_time;
         self.is_streaming_mode = state.is_streaming_mode;
+        self.current_file_name = state.current_file_name;
         self.active_library_id = state.active_library_id;
         self.active_version_name = state.active_version_name;
         eprintln!("✅ State restored. Now have: {:?} view, {} messages, {} plot series, zoom: {:?}-{:?}, {} signals, {} DBC, {} LDF",

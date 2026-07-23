@@ -27,7 +27,7 @@ pub struct FileStatistics {
     pub file_size: u64,
     pub uncompressed_file_size: u64,
     pub object_count: u64,
-    pub application_build: u8,
+    pub application_build: u32,
     pub measurement_start_time: SystemTime,
     pub last_object_time: SystemTime,
 }
@@ -101,12 +101,23 @@ pub fn serialize_file_statistics(stats: &FileStatistics) -> Vec<u8> {
     writer
         .write_u64::<LittleEndian>(stats.object_count)
         .unwrap();
-    writer.write_u8(stats.application_build).unwrap();
+    // application_build is u32 per FileStatistics::read (file_statistics.rs:186),
+    // not u8 — generator previously wrote 1 byte, causing 3-byte misalignment
+    // that shifted the LogContainer magic and broke parsing.
+    writer
+        .write_u32::<LittleEndian>(stats.application_build)
+        .unwrap();
     write_system_time(&stats.measurement_start_time, &mut writer);
     write_system_time(&stats.last_object_time, &mut writer);
-    writer.write_u32::<LittleEndian>(0).unwrap(); // apiNumber
-    writer.write_all(&[0; 32]).unwrap(); // reserved
-    writer.write_all(&[0; 96]).unwrap(); // restOfHeader
+    // The parser reads `statistics_size - current_pos` bytes as rest, so
+    // the trailing reserved/restOfHeader fills the gap automatically.
+    // Earlier `apiNumber` write was a duplicate of the api_number written
+    // at the top and not consumed by the parser; removed.
+    let current_len = writer.len();
+    let target_len = stats.statistics_size as usize;
+    if current_len < target_len {
+        writer.write_all(&vec![0u8; target_len - current_len]).unwrap();
+    }
     writer
 }
 
