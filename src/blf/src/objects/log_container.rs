@@ -49,10 +49,14 @@ impl LogContainer {
             .saturating_sub(log_container_specific_fields_size);
 
         let mut compressed_data = vec![0; data_size];
+        let data_start_offset = cursor.position();
         cursor
             .read_exact(&mut compressed_data)
             .map_err(BlfParseError::IoError)
-            .context("LogContainer.data")?;
+            .context(format!(
+                "LogContainer.data@0x{:X}(expected {} bytes)",
+                data_start_offset, data_size
+            ))?;
 
         let uncompressed_data = match compression_method {
             0 => compressed_data,
