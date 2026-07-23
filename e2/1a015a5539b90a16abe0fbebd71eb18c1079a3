@@ -1,0 +1,22 @@
+src/view/src/ui/components/status_bar.rs
+  s_a6569676d6a73d::t_22229bfae6aa09 359-398
+  s_a6569676d6a73d::t_43adb1362b3090 65-84
+  s_a6569676d6a73d::t_68732a8738a9d8 25-40
+  s_a6569676d6a73d::t_883ddd16207dfc 283,292-294
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "e21a015a5539b90a16abe0fbebd71eb18c1079a3",
+  "prompts": {},
+  "sessions": {
+    "s_a6569676d6a73d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc659355-d2eb-47cd-ac4c-8455acc74651",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
