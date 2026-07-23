@@ -22,6 +22,22 @@ fn format_count(n: usize) -> String {
     out
 }
 
+/// Format a byte count with units (1024-based): 0B, 1023B, 1.0KB, 1.5MB, 2.3GB.
+pub fn format_bytes(n: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = 1024 * KB;
+    const GB: u64 = 1024 * MB;
+    if n >= GB {
+        format!("{:.1}GB", n as f64 / GB as f64)
+    } else if n >= MB {
+        format!("{:.1}MB", n as f64 / MB as f64)
+    } else if n >= KB {
+        format!("{:.1}KB", n as f64 / KB as f64)
+    } else {
+        format!("{}B", n)
+    }
+}
+
 /// Render the file name segment (left side, segment 1).
 fn render_file_segment(app: &CanViewApp) -> impl IntoElement {
     let text = app
@@ -44,6 +60,26 @@ fn render_file_segment(app: &CanViewApp) -> impl IntoElement {
 /// Render a vertical separator (1px wide, 12px tall).
 fn render_separator() -> impl IntoElement {
     div().w(px(1.)).h(px(12.)).bg(colors::BORDER_SUBTLE)
+}
+
+/// Render the BLF bytes-progress segment: "521.0KB / 521.0KB (100.0%)".
+/// Returns None when no file is loaded (blf_bytes_total == 0) so the
+/// caller can skip rendering via .when_some().
+fn render_blf_progress_segment(app: &CanViewApp) -> Option<impl IntoElement> {
+    if app.blf_bytes_total == 0 {
+        return None;
+    }
+    let total = format_bytes(app.blf_bytes_total);
+    let consumed = format_bytes(app.blf_bytes_consumed);
+    let pct = (app.blf_bytes_consumed as f64 / app.blf_bytes_total as f64) * 100.0;
+    let text = format!("{} / {} ({:.1}%)", consumed, total, pct);
+    // Color: green at 100%, yellow if < 100% (partial parse)
+    let color = if pct >= 100.0 {
+        colors::TEXT_SECONDARY
+    } else {
+        colors::WARNING
+    };
+    Some(div().text_color(color).child(text))
 }
 
 /// Render the server status segment (right side, segment 1).
@@ -244,7 +280,7 @@ pub fn render_status_bar(app: &CanViewApp, view: Entity<CanViewApp>) -> impl Int
         .justify_between()
         .px(spacing::MD)
         .text_xs()
-        // Left side: Log/Plot toggle | file | msgs | DBC | LDF
+        // Left side: Log/Plot toggle | file | BLF progress | msgs | DBC | LDF
         .child(
             div()
                 .flex()
@@ -253,6 +289,9 @@ pub fn render_status_bar(app: &CanViewApp, view: Entity<CanViewApp>) -> impl Int
                 .child(render_data_view_toggle(app, view.clone()))
                 .child(render_separator())
                 .child(render_file_segment(app))
+                .when_some(render_blf_progress_segment(app), |el, seg| {
+                    el.child(render_separator()).child(seg)
+                })
                 .child(render_separator())
                 .child(
                     div()
@@ -316,5 +355,45 @@ mod tests {
     #[test]
     fn test_format_count_exact_thousand() {
         assert_eq!(format_count(1000), "1,000");
+    }
+
+    #[test]
+    fn test_format_bytes_zero() {
+        assert_eq!(format_bytes(0), "0B");
+    }
+
+    #[test]
+    fn test_format_bytes_small() {
+        assert_eq!(format_bytes(1023), "1023B");
+    }
+
+    #[test]
+    fn test_format_bytes_exact_kb() {
+        assert_eq!(format_bytes(1024), "1.0KB");
+    }
+
+    #[test]
+    fn test_format_bytes_kb_decimal() {
+        assert_eq!(format_bytes(1536), "1.5KB");
+    }
+
+    #[test]
+    fn test_format_bytes_exact_mb() {
+        assert_eq!(format_bytes(1024 * 1024), "1.0MB");
+    }
+
+    #[test]
+    fn test_format_bytes_mb_decimal() {
+        assert_eq!(format_bytes(2_400_819), "2.3MB");
+    }
+
+    #[test]
+    fn test_format_bytes_exact_gb() {
+        assert_eq!(format_bytes(1024 * 1024 * 1024), "1.0GB");
+    }
+
+    #[test]
+    fn test_format_bytes_gb_decimal() {
+        assert_eq!(format_bytes(2_700_000_000), "2.5GB");
     }
 }
