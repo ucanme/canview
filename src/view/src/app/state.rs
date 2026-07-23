@@ -99,6 +99,9 @@ pub struct CanViewApp {
     // Library picker UI state (not persisted to config)
     pub library_picker_dismissed: bool,
     pub library_picker_selected_version: std::collections::HashMap<String, String>,
+    // BLF file size and parser-consumed bytes (for StatusBar progress)
+    pub blf_bytes_total: u64,
+    pub blf_bytes_consumed: u64,
     pub saved_window_bounds: Option<Bounds<Pixels>>,
     pub display_bounds: Option<Bounds<Pixels>>,
 
@@ -274,6 +277,8 @@ impl CanViewApp {
             current_file_name: None,
             library_picker_dismissed: false,
             library_picker_selected_version: std::collections::HashMap::new(),
+            blf_bytes_total: 0,
+            blf_bytes_consumed: 0,
             saved_window_bounds,
             display_bounds: None,
             list_scroll_handle: UniformListScrollHandle::new(),

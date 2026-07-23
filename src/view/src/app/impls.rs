@@ -35,6 +35,8 @@ impl CanViewApp {
             current_file_name: None,
             library_picker_dismissed: false,
             library_picker_selected_version: std::collections::HashMap::new(),
+            blf_bytes_total: 0,
+            blf_bytes_consumed: 0,
             saved_window_bounds: None,
             display_bounds: None,
             // Initialize uniform list scroll handle
@@ -273,6 +275,8 @@ impl CanViewApp {
                 self.current_file_name = file_name;
                 self.library_picker_dismissed = false;
                 self.library_picker_selected_version.clear();
+                self.blf_bytes_total = result.bytes_total;
+                self.blf_bytes_consumed = result.bytes_consumed;
             }
             Err(e) => {
                 // 在状态栏显示详细的错误信息（不清空之前的数据）
@@ -284,6 +288,10 @@ impl CanViewApp {
 
                 // 打印详细错误信息到控制台
                 Self::display_blf_load_error(&e);
+
+                // Reset progress on error so StatusBar doesn't show stale bytes
+                self.blf_bytes_total = 0;
+                self.blf_bytes_consumed = 0;
             }
         }
     }
@@ -593,6 +601,8 @@ impl CanViewApp {
             current_file_name: None,
             library_picker_dismissed: false,
             library_picker_selected_version: std::collections::HashMap::new(),
+            blf_bytes_total: 0,
+            blf_bytes_consumed: 0,
             saved_window_bounds,
             display_bounds,
             list_scroll_handle: gpui::UniformListScrollHandle::new(),
