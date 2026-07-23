@@ -272,7 +272,7 @@ impl BlfParser {
             );
         }
 
-        let consumed = cursor.position();
+        let consumed = cursor.position().min(data_len as u64);
         Ok((all_objects, all_errors, consumed))
     }
 
@@ -585,9 +585,13 @@ impl BlfParser {
         start_pos: u64,
         object_size: u32,
     ) {
+        let data_len = cursor.get_ref().len() as u64;
         let padded_size = (object_size as u64 + 3) & !3;
         let next_pos = start_pos + padded_size;
-        cursor.set_position(next_pos);
+        // Clamp to data_len so consumed bytes never exceed file size
+        // (avoids StatusBar showing >100%).
+        let clamped = next_pos.min(data_len);
+        cursor.set_position(clamped);
     }
 
     #[allow(dead_code)]

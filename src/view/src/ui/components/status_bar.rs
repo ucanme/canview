@@ -71,7 +71,11 @@ fn render_blf_progress_segment(app: &CanViewApp) -> Option<impl IntoElement> {
     }
     let total = format_bytes(app.blf_bytes_total);
     let consumed = format_bytes(app.blf_bytes_consumed);
-    let pct = (app.blf_bytes_consumed as f64 / app.blf_bytes_total as f64) * 100.0;
+    // Clamp at 100% — consumed should never exceed total, but float math
+    // can introduce tiny overshoot (e.g. 100.01%). The min() in the
+    // parser already prevents this at the source; the cap here is a
+    // last-line-of-defense so users never see >100%.
+    let pct = ((app.blf_bytes_consumed as f64 / app.blf_bytes_total as f64) * 100.0).min(100.0);
     let text = format!("{} / {} ({:.1}%)", consumed, total, pct);
     // Color: green at 100%, yellow if < 100% (partial parse)
     let color = if pct >= 100.0 {

@@ -85,7 +85,11 @@ pub fn read_blf_from_file<P: AsRef<Path>>(path: P) -> BlfParseResult<BlfResult> 
     let (objects, errors, parse_consumed) =
         parser.parse(remaining_data).context("BlfParser")?;
 
-    let bytes_consumed = stats_consumed + parse_consumed;
+    // Clamp to bytes_total so progress never exceeds 100% even when the
+    // parser's internal cursor advances past the actual data (defensive —
+    // advance_cursor_to_next_object already clamps, but belt-and-suspenders
+    // here protects against any other overshoot path).
+    let bytes_consumed = (stats_consumed + parse_consumed).min(bytes_total);
 
     Ok(BlfResult {
         file_stats,
