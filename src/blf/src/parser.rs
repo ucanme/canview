@@ -3,6 +3,7 @@
 
 use crate::objects::*;
 use crate::{BlfParseError, BlfParseResult, LogContainer, ObjectType};
+use crate::BlfResultContext;
 
 use std::io::{Cursor, Read};
 
@@ -178,7 +179,7 @@ impl BlfParser {
                 break;
             }
 
-            let header_result = ObjectHeaderBase::read(&mut cursor);
+            let header_result = ObjectHeaderBase::read(&mut cursor).context("BlfParser.ObjectHeaderBase");
             let header = match header_result {
                 Ok(h) => h,
                 Err(e) => {
@@ -226,10 +227,13 @@ impl BlfParser {
                 }
             } else {
                 println!("Parsing container {}", header.object_size);
-                match LogContainer::read(&mut cursor, header.clone()) {
+                match LogContainer::read(&mut cursor, header.clone()).context("BlfParser.LogContainer") {
                     Ok(container) => {
                         let mut container_cursor = Cursor::new(&container.uncompressed_data[..]);
-                        match self.parse_inner_objects(&mut container_cursor) {
+                        match self
+                            .parse_inner_objects(&mut container_cursor)
+                            .context("BlfParser.parse_inner_objects")
+                        {
                             Ok(objects) => {
                                 if self.debug {
                                     println!(
@@ -485,7 +489,7 @@ impl BlfParser {
             }
 
             // Try to read the header, but handle the case where there's no valid object left
-            let header = match ObjectHeader::read(cursor) {
+            let header = match ObjectHeader::read(cursor).context("BlfParser.ObjectHeader") {
                 Ok(header) => header,
                 Err(BlfParseError::InvalidContainerMagic) => {
                     // If we can't read a valid header due to magic number, skip one byte and try again

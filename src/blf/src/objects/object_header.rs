@@ -9,6 +9,7 @@
 
 use crate::ObjectType;
 use crate::{BlfParseError, BlfParseResult};
+use crate::BlfResultContext;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::io::{Cursor, Write};
 
@@ -60,14 +61,31 @@ impl ObjectHeaderBase {
 
     /// Reads the base header fields from a byte stream.
     pub fn read(cursor: &mut Cursor<&[u8]>) -> BlfParseResult<Self> {
-        let signature = cursor.read_u32::<LittleEndian>()?;
+        let signature = cursor
+            .read_u32::<LittleEndian>()
+            .map_err(BlfParseError::IoError)
+            .context("ObjectHeaderBase.signature")?;
         if signature != OBJECT_SIGNATURE {
-            return Err(BlfParseError::InvalidContainerMagic);
+            return Err(BlfParseError::InvalidContainerMagic.context("ObjectHeaderBase.signature"));
         }
-        let header_size = cursor.read_u16::<LittleEndian>()?;
-        let header_version = cursor.read_u16::<LittleEndian>()?;
-        let object_size = cursor.read_u32::<LittleEndian>()?;
-        let object_type = ObjectType::from(cursor.read_u32::<LittleEndian>()?);
+        let header_size = cursor
+            .read_u16::<LittleEndian>()
+            .map_err(BlfParseError::IoError)
+            .context("ObjectHeaderBase.header_size")?;
+        let header_version = cursor
+            .read_u16::<LittleEndian>()
+            .map_err(BlfParseError::IoError)
+            .context("ObjectHeaderBase.header_version")?;
+        let object_size = cursor
+            .read_u32::<LittleEndian>()
+            .map_err(BlfParseError::IoError)
+            .context("ObjectHeaderBase.object_size")?;
+        let object_type = ObjectType::from(
+            cursor
+                .read_u32::<LittleEndian>()
+                .map_err(BlfParseError::IoError)
+                .context("ObjectHeaderBase.object_type")?,
+        );
 
         Ok(ObjectHeaderBase {
             signature,
@@ -275,7 +293,7 @@ impl ObjectHeader {
     /// Reads an `ObjectHeader` (V1 or V2) from a byte stream.
     pub fn read(cursor: &mut Cursor<&[u8]>) -> BlfParseResult<Self> {
         // Read base header first
-        let base = ObjectHeaderBase::read(cursor)?;
+        let base = ObjectHeaderBase::read(cursor).context("ObjectHeader.base")?;
 
         let mut object_flags = 0;
         let mut client_index = 0;
@@ -293,10 +311,22 @@ impl ObjectHeader {
 
             if base.header_size >= 32 {
                 // 标准的完整 V1 header (32 字节)
-                object_flags = cursor.read_u32::<LittleEndian>()?;
-                client_index = cursor.read_u16::<LittleEndian>()?;
-                object_version = cursor.read_u16::<LittleEndian>()?;
-                object_time_stamp = cursor.read_u64::<LittleEndian>()?;
+                object_flags = cursor
+                    .read_u32::<LittleEndian>()
+                    .map_err(BlfParseError::IoError)
+                    .context("ObjectHeader.object_flags")?;
+                client_index = cursor
+                    .read_u16::<LittleEndian>()
+                    .map_err(BlfParseError::IoError)
+                    .context("ObjectHeader.client_index")?;
+                object_version = cursor
+                    .read_u16::<LittleEndian>()
+                    .map_err(BlfParseError::IoError)
+                    .context("ObjectHeader.object_version")?;
+                object_time_stamp = cursor
+                    .read_u64::<LittleEndian>()
+                    .map_err(BlfParseError::IoError)
+                    .context("ObjectHeader.object_time_stamp")?;
             } else if base.header_size == 16 {
                 // header_size 声称是 16 字节，但我们尝试读取完整数据
                 // 因为很多 BLF 文件的 header_size 字段不准确
@@ -306,28 +336,64 @@ impl ObjectHeader {
 
                 if remaining >= 16 {
                     // 有足够数据，尝试读取完整 header
-                    object_flags = cursor.read_u32::<LittleEndian>()?;
-                    client_index = cursor.read_u16::<LittleEndian>()?;
-                    object_version = cursor.read_u16::<LittleEndian>()?;
-                    object_time_stamp = cursor.read_u64::<LittleEndian>()?;
+                    object_flags = cursor
+                        .read_u32::<LittleEndian>()
+                        .map_err(BlfParseError::IoError)
+                        .context("ObjectHeader.object_flags")?;
+                    client_index = cursor
+                        .read_u16::<LittleEndian>()
+                        .map_err(BlfParseError::IoError)
+                        .context("ObjectHeader.client_index")?;
+                    object_version = cursor
+                        .read_u16::<LittleEndian>()
+                        .map_err(BlfParseError::IoError)
+                        .context("ObjectHeader.object_version")?;
+                    object_time_stamp = cursor
+                        .read_u64::<LittleEndian>()
+                        .map_err(BlfParseError::IoError)
+                        .context("ObjectHeader.object_time_stamp")?;
                 } else {
                     // 数据不足，这才是真正的紧凑型 header
                     // 保持默认值（全零）
                 }
             } else {
-                return Err(BlfParseError::UnknownHeaderVersion(base.header_version));
+                return Err(BlfParseError::UnknownHeaderVersion(base.header_version)
+                    .context("ObjectHeader.header_version"));
             }
         } else if base.header_version == 2 {
             // V2 header: flags + timeStampStatus + reserved + objectVersion + timestamp + originalTimestamp
-            object_flags = cursor.read_u32::<LittleEndian>()?;
-            time_stamp_status = Some(cursor.read_u8()?);
-            reserved = cursor.read_u8()?;
-            object_version = cursor.read_u16::<LittleEndian>()?;
-            object_time_stamp = cursor.read_u64::<LittleEndian>()?;
-            original_time_stamp = Some(cursor.read_u64::<LittleEndian>()?);
+            object_flags = cursor
+                .read_u32::<LittleEndian>()
+                .map_err(BlfParseError::IoError)
+                .context("ObjectHeader.object_flags")?;
+            time_stamp_status = Some(
+                cursor
+                    .read_u8()
+                    .map_err(BlfParseError::IoError)
+                    .context("ObjectHeader.time_stamp_status")?,
+            );
+            reserved = cursor
+                .read_u8()
+                .map_err(BlfParseError::IoError)
+                .context("ObjectHeader.reserved")?;
+            object_version = cursor
+                .read_u16::<LittleEndian>()
+                .map_err(BlfParseError::IoError)
+                .context("ObjectHeader.object_version")?;
+            object_time_stamp = cursor
+                .read_u64::<LittleEndian>()
+                .map_err(BlfParseError::IoError)
+                .context("ObjectHeader.object_time_stamp")?;
+            original_time_stamp = Some(
+                cursor
+                    .read_u64::<LittleEndian>()
+                    .map_err(BlfParseError::IoError)
+                    .context("ObjectHeader.original_time_stamp")?,
+            );
             client_index = 0; // Not used in V2
         } else {
-            return Err(BlfParseError::UnknownHeaderVersion(base.header_version));
+            return Err(BlfParseError::UnknownHeaderVersion(base.header_version)
+                .context("ObjectHeader.header_version"));
         }
 
         Ok(ObjectHeader {

@@ -1,6 +1,7 @@
 //! File statistics header definition.
 
 use crate::{BlfParseError, BlfParseResult};
+use crate::BlfResultContext;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Cursor, Read};
 
@@ -160,41 +161,77 @@ impl FileStatistics {
     /// 14. reserved/restorePointsOffset (variable)
     pub fn read(cursor: &mut Cursor<&[u8]>) -> BlfParseResult<Self> {
         // 读取文件签名 (字节序: 0x47474f4c = "LOGG")
-        let signature = cursor.read_u32::<LittleEndian>()?;
+        let signature = cursor
+            .read_u32::<LittleEndian>()
+            .map_err(BlfParseError::IoError)
+            .context("FileStatistics.signature")?;
         if signature != FILE_SIGNATURE {
-            return Err(BlfParseError::InvalidFileMagic);
+            return Err(BlfParseError::InvalidFileMagic.context("FileStatistics.signature"));
         }
 
         // 读取统计信息大小
-        let statistics_size = cursor.read_u32::<LittleEndian>()?;
+        let statistics_size = cursor
+            .read_u32::<LittleEndian>()
+            .map_err(BlfParseError::IoError)
+            .context("FileStatistics.statistics_size")?;
 
         // 读取 API number (在144字节格式中可能为0)
-        let api_number = cursor.read_u32::<LittleEndian>()?;
+        let api_number = cursor
+            .read_u32::<LittleEndian>()
+            .map_err(BlfParseError::IoError)
+            .context("FileStatistics.api_number")?;
 
         // 读取应用程序信息
-        let application_id = cursor.read_u8()?;
-        let compression_level = cursor.read_u8()?;
-        let application_major = cursor.read_u8()?;
-        let application_minor = cursor.read_u8()?;
+        let application_id = cursor
+            .read_u8()
+            .map_err(BlfParseError::IoError)
+            .context("FileStatistics.application_id")?;
+        let compression_level = cursor
+            .read_u8()
+            .map_err(BlfParseError::IoError)
+            .context("FileStatistics.compression_level")?;
+        let application_major = cursor
+            .read_u8()
+            .map_err(BlfParseError::IoError)
+            .context("FileStatistics.application_major")?;
+        let application_minor = cursor
+            .read_u8()
+            .map_err(BlfParseError::IoError)
+            .context("FileStatistics.application_minor")?;
 
         // 读取文件统计信息
-        let file_size = cursor.read_u64::<LittleEndian>()?;
-        let uncompressed_file_size = cursor.read_u64::<LittleEndian>()?;
-        let object_count = cursor.read_u32::<LittleEndian>()?;
+        let file_size = cursor
+            .read_u64::<LittleEndian>()
+            .map_err(BlfParseError::IoError)
+            .context("FileStatistics.file_size")?;
+        let uncompressed_file_size = cursor
+            .read_u64::<LittleEndian>()
+            .map_err(BlfParseError::IoError)
+            .context("FileStatistics.uncompressed_file_size")?;
+        let object_count = cursor
+            .read_u32::<LittleEndian>()
+            .map_err(BlfParseError::IoError)
+            .context("FileStatistics.object_count")?;
 
         // 读取 application build
-        let application_build = cursor.read_u32::<LittleEndian>()?;
+        let application_build = cursor
+            .read_u32::<LittleEndian>()
+            .map_err(BlfParseError::IoError)
+            .context("FileStatistics.application_build")?;
 
         // 读取时间戳信息
-        let measurement_start_time = SystemTime::read(cursor)?;
-        let last_object_time = SystemTime::read(cursor)?;
+        let measurement_start_time = SystemTime::read(cursor).context("FileStatistics.measurement_start_time")?;
+        let last_object_time = SystemTime::read(cursor).context("FileStatistics.last_object_time")?;
 
         // 读取剩余的保留字段
         let current_pos = cursor.position();
         let remaining_bytes = statistics_size as u64 - current_pos;
         if remaining_bytes > 0 {
             let mut _rest = vec![0u8; remaining_bytes as usize];
-            cursor.read_exact(&mut _rest)?;
+            cursor
+                .read_exact(&mut _rest)
+                .map_err(BlfParseError::IoError)
+                .context("FileStatistics.reserved")?;
         }
 
         Ok(FileStatistics {

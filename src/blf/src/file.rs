@@ -1,6 +1,7 @@
 //! Handles the top-level reading and parsing of BLF files.
 
 use crate::{BlfParseError, BlfParseResult, BlfParser, FileStatistics, LogObject};
+use crate::BlfResultContext;
 use std::fs::{self, File};
 use std::io::{BufReader, Cursor, Read, Seek, SeekFrom};
 use std::path::Path;
@@ -75,13 +76,14 @@ pub fn read_blf_from_file<P: AsRef<Path>>(path: P) -> BlfParseResult<BlfResult> 
     let mut cursor = Cursor::new(&data[..]);
 
     // 1. Parse the file statistics header. This will advance the cursor.
-    let file_stats = FileStatistics::read(&mut cursor)?;
+    let file_stats = FileStatistics::read(&mut cursor).context("FileStatistics")?;
     let stats_consumed = cursor.position();
 
     // 2. Parse the log objects from the rest of the data slice.
     let parser = BlfParser::new();
     let remaining_data = &data[stats_consumed as usize..];
-    let (objects, errors, parse_consumed) = parser.parse(remaining_data)?;
+    let (objects, errors, parse_consumed) =
+        parser.parse(remaining_data).context("BlfParser")?;
 
     let bytes_consumed = stats_consumed + parse_consumed;
 
