@@ -253,9 +253,11 @@ impl CanViewApp {
                 // 根据是否有错误设置不同的状态栏消息
                 if error_count > 0 {
                     let first_error = &result.errors[0];
+                    // Keep status_msg short so the "structure.field" context
+                    // fits in the StatusBar. Full error list goes to stderr
+                    // via Self::log_blf_errors (called below).
                     self.status_msg = format!(
-                        "⚠️ Loaded {} messages | {} errors (first: {})",
-                        result.objects.len(),
+                        "⚠️ {} parse error(s): {}",
                         error_count,
                         first_error
                     )
