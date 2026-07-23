@@ -102,6 +102,10 @@ pub struct CanViewApp {
     // BLF file size and parser-consumed bytes (for StatusBar progress)
     pub blf_bytes_total: u64,
     pub blf_bytes_consumed: u64,
+    // BLF parse errors (full Display strings, shown in the details popover)
+    pub blf_parse_errors: Vec<String>,
+    // Controls the BLF errors details popover in the StatusBar
+    pub show_blf_errors_popover: bool,
     pub saved_window_bounds: Option<Bounds<Pixels>>,
     pub display_bounds: Option<Bounds<Pixels>>,
 
@@ -279,6 +283,8 @@ impl CanViewApp {
             library_picker_selected_version: std::collections::HashMap::new(),
             blf_bytes_total: 0,
             blf_bytes_consumed: 0,
+            blf_parse_errors: Vec::new(),
+            show_blf_errors_popover: false,
             saved_window_bounds,
             display_bounds: None,
             list_scroll_handle: UniformListScrollHandle::new(),

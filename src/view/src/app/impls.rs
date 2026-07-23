@@ -37,6 +37,8 @@ impl CanViewApp {
             library_picker_selected_version: std::collections::HashMap::new(),
             blf_bytes_total: 0,
             blf_bytes_consumed: 0,
+            blf_parse_errors: Vec::new(),
+            show_blf_errors_popover: false,
             saved_window_bounds: None,
             display_bounds: None,
             // Initialize uniform list scroll handle
@@ -252,17 +254,15 @@ impl CanViewApp {
 
                 // 根据是否有错误设置不同的状态栏消息
                 if error_count > 0 {
-                    let first_error = &result.errors[0];
-                    // Keep status_msg short so the "structure.field" context
-                    // fits in the StatusBar. Full error list goes to stderr
-                    // via Self::log_blf_errors (called below).
-                    self.status_msg = format!(
-                        "⚠️ {} parse error(s): {}",
-                        error_count,
-                        first_error
-                    )
-                    .into();
+                    // Keep status_msg short ("⚠️ N parse errors — see details")
+                    // so it fits in the StatusBar. The full error list (with
+                    // structure.field context) is stored in blf_parse_errors
+                    // and shown in a popover when the user clicks "details".
+                    self.blf_parse_errors = result.errors.iter().map(|e| format!("{}", e)).collect();
+                    self.status_msg = format!("⚠️ {} parse error(s) — see details", error_count).into();
                 } else {
+                    self.blf_parse_errors.clear();
+                    self.show_blf_errors_popover = false;
                     self.status_msg = format!("✅ Loaded {} messages", result.objects.len()).into();
                 }
 
@@ -294,6 +294,8 @@ impl CanViewApp {
                 // Reset progress on error so StatusBar doesn't show stale bytes
                 self.blf_bytes_total = 0;
                 self.blf_bytes_consumed = 0;
+                self.blf_parse_errors.clear();
+                self.show_blf_errors_popover = false;
             }
         }
     }
@@ -605,6 +607,8 @@ impl CanViewApp {
             library_picker_selected_version: std::collections::HashMap::new(),
             blf_bytes_total: 0,
             blf_bytes_consumed: 0,
+            blf_parse_errors: Vec::new(),
+            show_blf_errors_popover: false,
             saved_window_bounds,
             display_bounds,
             list_scroll_handle: gpui::UniformListScrollHandle::new(),
