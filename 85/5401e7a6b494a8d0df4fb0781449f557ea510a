@@ -1,0 +1,24 @@
+src/blf/src/parser.rs
+  s_a6569676d6a73d::t_b3721d9ce1f9b3 271-272
+  s_a6569676d6a73d::t_15dd200e4ee2d5 155
+src/blf/src/file.rs
+  s_a6569676d6a73d::t_c02fc93a008259 159
+  s_a6569676d6a73d::t_bbb0dda8cad331 17-21
+  s_a6569676d6a73d::t_1eda8ef248dc43 73-74,79,83-86,92-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "855401e7a6b494a8d0df4fb0781449f557ea510a",
+  "prompts": {},
+  "sessions": {
+    "s_a6569676d6a73d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc659355-d2eb-47cd-ac4c-8455acc74651",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
