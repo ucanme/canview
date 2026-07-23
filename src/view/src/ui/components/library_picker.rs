@@ -24,7 +24,10 @@ pub fn render_library_picker_overlay(
     if app.current_file_name.is_none() {
         return None;
     }
-    if !matches!(app.current_view, AppView::LogView | AppView::PlotView) {
+    // Only show in PlotView — LogView users just browse raw messages and
+    // don't need a DBC. Picking a library only matters when plotting
+    // signals, so prompt there.
+    if app.current_view != AppView::PlotView {
         return None;
     }
     if app.active_library_id.is_some() && app.active_version_name.is_some() {
