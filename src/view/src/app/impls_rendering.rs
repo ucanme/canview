@@ -194,78 +194,69 @@ impl CanViewApp {
     ///
     /// Helper method to apply both ID and channel filters to the message list.
     /// This is extracted from render_log_view to reduce complexity.
-    fn filter_messages(&self) -> Vec<LogObject> {
+    fn filter_messages(&self) -> Vec<(usize, LogObject)> {
         match (self.id_filter, self.channel_filter) {
-            (None, None) => self.messages.clone(),
-            (Some(filter_id), None) => {
-                // Only ID filter
-                self.messages
-                    .iter()
-                    .filter(|msg| match msg {
-                        LogObject::CanMessage(can_msg) => can_msg.id == filter_id,
-                        LogObject::CanMessage2(can_msg) => can_msg.id == filter_id,
-                        LogObject::CanFdMessage(fd_msg) => fd_msg.id == filter_id,
-                        LogObject::CanFdMessage64(fd_msg) => fd_msg.id == filter_id,
-                        LogObject::LinMessage(lin_msg) => lin_msg.id as u32 == filter_id,
-                        LogObject::LinMessage2(_) => false,
-                        _ => false,
-                    })
-                    .cloned()
-                    .collect()
-            }
-            (None, Some(filter_channel)) => {
-                // Only channel filter
-                self.messages
-                    .iter()
-                    .filter(|msg| match msg {
-                        LogObject::CanMessage(can_msg) => {
-                            can_msg.channel == filter_channel
-                        }
-                        LogObject::CanMessage2(can_msg) => {
-                            can_msg.channel == filter_channel
-                        }
-                        LogObject::CanFdMessage(fd_msg) => {
-                            fd_msg.channel == filter_channel
-                        }
-                        LogObject::CanFdMessage64(fd_msg) => {
-                            fd_msg.channel as u16 == filter_channel
-                        }
-                        LogObject::LinMessage(lin_msg) => {
-                            lin_msg.channel == filter_channel
-                        }
-                        LogObject::LinMessage2(_) => false,
-                        _ => false,
-                    })
-                    .cloned()
-                    .collect()
-            }
-            (Some(filter_id), Some(filter_channel)) => {
-                // Both ID and channel filters
-                self.messages
-                    .iter()
-                    .filter(|msg| match msg {
-                        LogObject::CanMessage(can_msg) => {
-                            can_msg.id == filter_id && can_msg.channel == filter_channel
-                        }
-                        LogObject::CanMessage2(can_msg) => {
-                            can_msg.id == filter_id && can_msg.channel == filter_channel
-                        }
-                        LogObject::CanFdMessage(fd_msg) => {
-                            fd_msg.id == filter_id && fd_msg.channel == filter_channel
-                        }
-                        LogObject::CanFdMessage64(fd_msg) => {
-                            fd_msg.id == filter_id && fd_msg.channel as u16 == filter_channel
-                        }
-                        LogObject::LinMessage(lin_msg) => {
-                            lin_msg.id as u32 == filter_id
-                                && lin_msg.channel == filter_channel
-                        }
-                        LogObject::LinMessage2(_) => false,
-                        _ => false,
-                    })
-                    .cloned()
-                    .collect()
-            }
+            (None, None) => self
+                .messages
+                .iter()
+                .enumerate()
+                .map(|(i, m)| (i, m.clone()))
+                .collect(),
+            (Some(filter_id), None) => self
+                .messages
+                .iter()
+                .enumerate()
+                .filter(|(_, msg)| match msg {
+                    LogObject::CanMessage(can_msg) => can_msg.id == filter_id,
+                    LogObject::CanMessage2(can_msg) => can_msg.id == filter_id,
+                    LogObject::CanFdMessage(fd_msg) => fd_msg.id == filter_id,
+                    LogObject::CanFdMessage64(fd_msg) => fd_msg.id == filter_id,
+                    LogObject::LinMessage(lin_msg) => lin_msg.id as u32 == filter_id,
+                    LogObject::LinMessage2(_) => false,
+                    _ => false,
+                })
+                .map(|(i, m)| (i, m.clone()))
+                .collect(),
+            (None, Some(filter_channel)) => self
+                .messages
+                .iter()
+                .enumerate()
+                .filter(|(_, msg)| match msg {
+                    LogObject::CanMessage(can_msg) => can_msg.channel == filter_channel,
+                    LogObject::CanMessage2(can_msg) => can_msg.channel == filter_channel,
+                    LogObject::CanFdMessage(fd_msg) => fd_msg.channel == filter_channel,
+                    LogObject::CanFdMessage64(fd_msg) => fd_msg.channel as u16 == filter_channel,
+                    LogObject::LinMessage(lin_msg) => lin_msg.channel == filter_channel,
+                    LogObject::LinMessage2(_) => false,
+                    _ => false,
+                })
+                .map(|(i, m)| (i, m.clone()))
+                .collect(),
+            (Some(filter_id), Some(filter_channel)) => self
+                .messages
+                .iter()
+                .enumerate()
+                .filter(|(_, msg)| match msg {
+                    LogObject::CanMessage(can_msg) => {
+                        can_msg.id == filter_id && can_msg.channel == filter_channel
+                    }
+                    LogObject::CanMessage2(can_msg) => {
+                        can_msg.id == filter_id && can_msg.channel == filter_channel
+                    }
+                    LogObject::CanFdMessage(fd_msg) => {
+                        fd_msg.id == filter_id && fd_msg.channel == filter_channel
+                    }
+                    LogObject::CanFdMessage64(fd_msg) => {
+                        fd_msg.id == filter_id && fd_msg.channel as u16 == filter_channel
+                    }
+                    LogObject::LinMessage(lin_msg) => {
+                        lin_msg.id as u32 == filter_id && lin_msg.channel == filter_channel
+                    }
+                    LogObject::LinMessage2(_) => false,
+                    _ => false,
+                })
+                .map(|(i, m)| (i, m.clone()))
+                .collect(),
         }
     }
     fn render_log_view(&self, view: Entity<CanViewApp>) -> impl IntoElement {
@@ -768,10 +759,10 @@ impl CanViewApp {
 
                                     range
                                         .map(|index| {
-                                            if let Some(msg) = filtered_messages.get(index) {
+                                            if let Some((orig_idx, msg)) = filtered_messages.get(index) {
                                                 render_message_row_static_with_widths(
                                                     msg,
-                                                    index,
+                                                    *orig_idx,
                                                     time_width,
                                                     ch_width,
                                                     type_width,
