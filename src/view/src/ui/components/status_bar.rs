@@ -157,19 +157,15 @@ fn render_lib_badge_segment(app: &CanViewApp) -> impl IntoElement {
 /// Returns `Some(element)` when `app.status_msg` is non-empty, otherwise `None`
 /// so the caller can skip the surrounding separators via `.when_some()`.
 /// When `blf_parse_errors` is non-empty, a clickable "details" link is
-/// appended; clicking it opens a popover listing the full errors with
-/// their "structure.field" context chains.
+/// appended. The popover itself is rendered separately by
+/// render_blf_errors_popover (as a sibling of the status bar) so it isn't
+/// clipped by this segment's truncate().
 fn render_status_msg_segment(app: &CanViewApp, view: Entity<CanViewApp>) -> Option<impl IntoElement> {
     if app.status_msg.is_empty() {
         return None;
     }
     let has_errors = !app.blf_parse_errors.is_empty();
     let view_for_details = view.clone();
-    let view_for_close = view.clone();
-    let errors_count = app.blf_parse_errors.len();
-    let errors: Vec<String> = app.blf_parse_errors.clone();
-    let show_popover = app.show_blf_errors_popover;
-    let view_for_popover_close = view.clone();
 
     Some(
         div()
@@ -195,85 +191,103 @@ fn render_status_msg_segment(app: &CanViewApp, view: Entity<CanViewApp>) -> Opti
                             });
                         }),
                 )
-            })
-            .when(has_errors && show_popover, |el| {
-                el.child(
-                    div()
-                        .absolute()
-                        .bottom(px(28.))
-                        .right_0()
-                        .w(px(460.))
-                        .max_h(px(360.))
-                        .bg(colors::BG_ELEVATED)
-                        .border_1()
-                        .border_color(colors::BORDER_DEFAULT)
-                        .rounded(px(6.))
-                        .shadow_lg()
-                        .flex()
-                        .flex_col()
-                        .p(spacing::SM)
-                        .gap(spacing::XS)
-                        .on_mouse_down(MouseButton::Left, |_, _, cx| {
-                            cx.stop_propagation();
-                        })
-                        .child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .justify_between()
-                                .child(
-                                    div()
-                                        .text_color(colors::TEXT_PRIMARY)
-                                        .text_sm()
-                                        .font_weight(FontWeight::SEMIBOLD)
-                                        .child(format!("BLF parse errors ({})", errors_count)),
-                                )
-                                .child(
-                                    div()
-                                        .cursor_pointer()
-                                        .text_color(colors::TEXT_MUTED)
-                                        .hover(|s| s.text_color(colors::TEXT_PRIMARY))
-                                        .child("✕")
-                                        .on_mouse_down(MouseButton::Left, move |_, _, cx| {
-                                            cx.stop_propagation();
-                                            view_for_popover_close.update(cx, |app, cx| {
-                                                app.show_blf_errors_popover = false;
-                                                cx.notify();
-                                            });
-                                        }),
-                                ),
-                        )
-                        .child(
-                            div()
-                                .flex_1()
-                                .flex()
-                                .flex_col()
-                                .gap(px(2.))
-                                .children(
-                                    errors
-                                        .iter()
-                                        .enumerate()
-                                        .map(|(i, e)| {
-                                            div()
-                                                .text_color(colors::TEXT_MUTED)
-                                                .text_xs()
-                                                .child(format!("{}. {}", i + 1, e))
-                                        })
-                                        .collect::<Vec<_>>(),
-                                ),
-                        ),
-                )
-            })
-            .when(show_popover, |el| {
-                // Click-outside handler at the segment level so clicking
-                // anywhere outside the popover closes it.
-                el.on_mouse_down(MouseButton::Left, move |_, _, cx| {
-                    view_for_close.update(cx, |app, cx| {
-                        app.show_blf_errors_popover = false;
-                        cx.notify();
-                    });
-                })
             }),
+    )
+}
+
+/// Render the BLF errors popover as a standalone element (sibling of the
+/// status bar) so it isn't clipped by the status_msg segment's truncate().
+/// Returns None when no errors or when the popover is closed.
+fn render_blf_errors_popover(app: &CanViewApp, view: Entity<CanViewApp>) -> Option<impl IntoElement> {
+    if app.blf_parse_errors.is_empty() || !app.show_blf_errors_popover {
+        return None;
+    }
+    let errors_count = app.blf_parse_errors.len();
+    let errors: Vec<String> = app.blf_parse_errors.clone();
+    let view_for_close = view.clone();
+    let view_for_click_outside = view.clone();
+
+    Some(
+        div()
+            .absolute()
+            .top_0()
+            .left_0()
+            .w_full()
+            .h_full()
+            .bg(rgba(0x00000055))
+            .flex()
+            .items_end()
+            .justify_end()
+            .p(spacing::LG)
+            .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                view_for_click_outside.update(cx, |app, cx| {
+                    app.show_blf_errors_popover = false;
+                    cx.notify();
+                });
+            })
+            .child(
+                div()
+                    .w(px(460.))
+                    .max_h(px(360.))
+                    .bg(colors::BG_ELEVATED)
+                    .border_1()
+                    .border_color(colors::BORDER_DEFAULT)
+                    .rounded(px(6.))
+                    .shadow_lg()
+                    .flex()
+                    .flex_col()
+                    .p(spacing::SM)
+                    .gap(spacing::XS)
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation();
+                    })
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .child(
+                                div()
+                                    .text_color(colors::TEXT_PRIMARY)
+                                    .text_sm()
+                                    .font_weight(FontWeight::SEMIBOLD)
+                                    .child(format!("BLF parse errors ({})", errors_count)),
+                            )
+                            .child(
+                                div()
+                                    .cursor_pointer()
+                                    .text_color(colors::TEXT_MUTED)
+                                    .hover(|s| s.text_color(colors::TEXT_PRIMARY))
+                                    .child("✕")
+                                    .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                                        cx.stop_propagation();
+                                        view_for_close.update(cx, |app, cx| {
+                                            app.show_blf_errors_popover = false;
+                                            cx.notify();
+                                        });
+                                    }),
+                            ),
+                    )
+                    .child(
+                        div()
+                            .flex_1()
+                            .flex()
+                            .flex_col()
+                            .gap(px(2.))
+                            .children(
+                                errors
+                                    .iter()
+                                    .enumerate()
+                                    .map(|(i, e)| {
+                                        div()
+                                            .text_color(colors::TEXT_MUTED)
+                                            .text_xs()
+                                            .child(format!("{}. {}", i + 1, e))
+                                    })
+                                    .collect::<Vec<_>>(),
+                            ),
+                    ),
+            ),
     )
 }
 
@@ -383,6 +397,7 @@ pub fn render_status_bar(app: &CanViewApp, view: Entity<CanViewApp>) -> impl Int
     let current_view = app.current_view;
 
     div()
+        .relative()
         .h(px(24.))
         .bg(colors::BG_MUTED)
         .border_t_1()
@@ -437,6 +452,12 @@ pub fn render_status_bar(app: &CanViewApp, view: Entity<CanViewApp>) -> impl Int
                 .child(render_lib_badge_segment(app))
                 .child(render_separator())
                 .child(render_view_name_segment(current_view)),
+        )
+        // Popover as a sibling of the status bar row, so it isn't clipped
+        // by the status_msg segment's truncate().
+        .when_some(
+            render_blf_errors_popover(app, view.clone()),
+            |el, popover| el.child(popover),
         )
 }
 
