@@ -68,8 +68,8 @@ pub struct FileSegment {
 ```
 
 - `file_id` 由全局 `AtomicU32` 计数器生成,从 1 开始,跨 session 不持久化
-- `messages` 用 `Arc<[LogObject]>` 共享,合并时不复制 LogObject
-- `time_min`/`time_max` 用全局秒(相对于某个固定基准,如 UNIX epoch),用于排序和绘图
+- `messages` 用 `Arc<[LogObject]>` 共享 segment 内部消息
+- `time_min`/`time_max` 用全局秒(相对于 UNIX epoch),用于排序和绘图。计算公式:`global_seconds = (measurement_start_time - UNIX_EPOCH).num_seconds() as f64 + object_time_stamp / 1_000_000_000.0`
 
 ### 2.2 MergedView
 
@@ -77,10 +77,10 @@ pub struct FileSegment {
 
 ```rust
 pub struct MergedView {
-    /// 按全局绝对时间排序后的 (file_id, msg_idx) 索引对数组
-    pub merged_index: Arc<[(u32, usize)]>,
-    /// 拼接后的全局消息视图(按时间升序)
+    /// 拼接后的全局消息视图(按时间升序),每条 LogObject 是从各 segment 借用的克隆
     pub messages: Arc<[LogObject]>,
+    /// 每条消息来自哪个 file_id,长度与 messages 相同,用于 popover/调试溯源(不用于绘图)
+    pub source_file_ids: Arc<[u32]>,
     pub time_min: Option<f64>,
     pub time_max: Option<f64>,
     pub version: u64,                          // segment 集合变化时 +1,用于缓存失效
@@ -90,6 +90,17 @@ pub struct MergedView {
 - `merged.messages` 严格按全局绝对时间升序
 - 时间戳相同时按 `(file_id, msg_idx)` 稳定排序
 - `version` 用于让 plot_data 缓存判断是否需要重算
+- `source_file_ids[i]` 记录 `messages[i]` 来自哪个 segment,用于文件管理 popover 中"移除某文件后定位受影响消息"。**绘图不使用此字段**(按需求"不区分来源")
+
+**关于"不复制 LogObject"的澄清:**
+
+`LogObject` 是 `#[derive(Clone)]` 的枚举,合并时 `merged.messages` 中的每条消息是从各 segment 克隆过来的。`Arc<[LogObject]>` 共享的是合并后数组本身(多个视图共享),**不是跨 segment 共享单个 LogObject**。这意味着:
+
+- 单文件加载:0 拷贝(segment.messages 直接作为 merged.messages)
+- 多文件加载:N 个 segment 的 messages 逐条 clone 进 merged.messages(O(总消息数) 一次性拷贝)
+- 移除一个文件:重建 merged,从剩余 segment 重新 clone(O(剩余消息数))
+
+这是性能取舍:选择简单可控的全局数组,而非引用图。若消息总量 > 5M,考虑后续优化为 `Vec<Arc<LogObject>>` 共享单条消息。
 
 ### 2.3 CanViewApp 新增字段
 
@@ -191,9 +202,10 @@ let tasks: Vec<_> = paths.into_iter().map(|path| {
 
 ### 4.2 流式合并优化
 
-- 首个文件完成 → 直接构建 `merged`(O(N),无合并开销)
-- 第 K 个文件完成 → **增量合并**:把新 segment 的 messages 与现有 `merged.messages` 做 k-way merge 的一轮(O(N+M)),而非整体重排序(O((N+M) log(N+M)))
+- 首个文件完成 → 直接构建 `merged`(O(N),无合并开销,直接借用 segment.messages 的 clone)
+- 第 K 个文件完成 → **双指针归并**:把新 segment 的 messages 与现有 `merged.messages` 做经典双指针归并(O(N+M)),生成新的 `merged.messages`,而非整体重排序(O((N+M) log(N+M)))
 - 单文件内部消息已按时间排序(BLF 文件本身按时间写入),所以两两合并就是经典的有序数组归并
+- 移除一个文件 → 从剩余 segments **重新构建** `merged`(不是从现有 merged 中删除该文件的消息,而是用剩余 segments 重新归并,O(剩余消息数 log 剩余文件数) 或顺序归并 O(剩余消息数 × 剩余文件数) 取决于实现;简单实现用顺序归并即可,因为文件数通常 < 20)
 
 ### 4.3 大文件保护
 
@@ -402,7 +414,9 @@ pub struct RuntimeState {
     pub current_view: AppView,
     pub files: Vec<Arc<FileSegment>>,  // 新增
     pub merged: MergedView,            // 新增
-    // 删除:messages, current_file_name, is_streaming_mode
+    // 删除:messages(由 merged.messages 派生), is_streaming_mode
+    // current_file_name 保留(CanViewApp 字段,不进 RuntimeState,因为可由 files[0] 派生)
+    pub current_file_name: Option<String>,  // 保留,显示"最近加载的文件名"
     pub plot_data: Arc<[Series]>,
     pub plot_full_data: Arc<[Series]>,
     pub plot_zoom_start: Option<f64>,
@@ -415,6 +429,8 @@ pub struct RuntimeState {
     pub active_version_name: Option<String>,
 }
 ```
+
+注意:`current_file_name` 仍保留在 `RuntimeState` 中,因为它表示"最近加载的文件名",用于窗口操作间保持 StatusBar 短摘要显示。`messages` 字段从 `RuntimeState` 删除,因为窗口恢复时可由 `merged.messages` 重新派生为 `CanViewApp.messages` 兼容快照。
 
 ---
 
@@ -472,11 +488,11 @@ pub struct RuntimeState {
 ## 9. 受影响文件清单
 
 ### 新增
-- `src/view/src/app/commands/multi_file.rs`(可选,或合并进 `load.rs`)— `LoadBlfFiles`/`LoadMode`/`RemoveFile`/`RemoveAllFiles`
-- `src/view/src/domain/multi_file.rs`(可选)— `FileSegment`/`MergedView` + `rebuild_merged` 逻辑
+- `src/view/src/domain/multi_file.rs` — `FileSegment`/`MergedView` 结构 + `rebuild_merged` 逻辑(放在 domain 层,与 `log_processor.rs` 同级)
+- `src/view/src/app/commands/multi_file.rs` — `LoadBlfFiles`/`LoadMode`/`RemoveFile`/`RemoveAllFiles` 命令结构(放在 commands 目录,与 `load.rs` 同级)
 
 ### 修改
-- `src/view/src/app/state.rs` — 新增 `FileSegment`/`MergedView`/`LoadingProgress` 结构,`CanViewApp` 新增 `files`/`merged`/`show_files_popover`/`loading_progress` 字段,删除 `is_streaming_mode`;`RuntimeState` 新增 `files`/`merged`,删除 `messages`/`current_file_name`/`is_streaming_mode`
+- `src/view/src/app/state.rs` — 新增 `FileSegment`/`MergedView`/`LoadingProgress` 结构,`CanViewApp` 新增 `files`/`merged`/`show_files_popover`/`loading_progress` 字段,删除 `is_streaming_mode`;`RuntimeState` 新增 `files`/`merged`,删除 `messages`/`is_streaming_mode`(`current_file_name` 保留)
 - `src/view/src/app/commands/load.rs` — 新增 `LoadBlfFiles`/`LoadMode`/`RemoveFile`/`RemoveAllFiles`
 - `src/view/src/app/impls.rs` — `apply_blf_result` → `apply_blf_result_single`;新增 `apply_blf_results_append`/`apply_blf_result_append_one`/`remove_file`/`remove_all_files`/`rebuild_merged`;`save_runtime_state`/`restore_runtime_state` 适配新字段
 - `src/view/src/app/impls_rendering.rs` — File 菜单新增 `Open Multiple BLF...` child;StatusBar 新增 `📁 Files` 按钮和 `Cancel` 按钮;新增文件管理 popover 渲染
