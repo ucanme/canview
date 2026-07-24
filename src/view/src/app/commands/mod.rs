@@ -8,3 +8,4 @@ pub mod config;
 pub mod load;
 pub mod library;
 pub mod server;
+pub mod multi_file;
