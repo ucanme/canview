@@ -368,4 +368,82 @@ mod tests {
         assert_eq!(view_after.messages[1].timestamp(), 300);
         assert_eq!(view_after.source_file_ids, Arc::from([1u32, 3]));
     }
+
+    #[test]
+    fn test_failed_segment_does_not_block_others() {
+        // 一个失败 segment（messages 为空）+ 一个正常 segment
+        // 失败 segment 不贡献 messages，但仍计入 source_file_ids 列表
+        let good = make_seg(1, vec![100, 200]);
+        let failed = Arc::new(FileSegment {
+            file_id: 99,
+            path: PathBuf::from("/tmp/bad.blf"),
+            file_name: "bad.blf".to_string(),
+            start_time: chrono::NaiveDateTime::from_timestamp_opt(0, 0),
+            messages: Arc::from([]),
+            errors: vec!["Parse error".to_string()],
+            bytes_total: 1024,
+            bytes_consumed: 0,
+            object_count: 0,
+            time_min: None,
+            time_max: None,
+        });
+        let view = MergedView::from_segments(&[good, failed]);
+        assert_eq!(view.messages.len(), 2);
+        // 失败 segment 没贡献消息，source_file_ids 全是 good 的
+        assert_eq!(view.source_file_ids, Arc::from([1u32, 1]));
+    }
+
+    #[test]
+    fn test_duplicate_path_coexists_as_independent_segments() {
+        // 同一路径加载两次：两个 segment 独立共存
+        let seg1 = make_seg(1, vec![100]);
+        let seg2 = make_seg(2, vec![200]);
+        let view = MergedView::from_segments(&[seg1, seg2]);
+        assert_eq!(view.messages.len(), 2);
+        assert_eq!(view.source_file_ids, Arc::from([1u32, 2]));
+    }
+
+    #[test]
+    fn test_merged_view_time_range_computed() {
+        // 单 segment：merged 的 time_min/time_max 应等于 segment 的 time_min/time_max
+        let seg = make_seg(1, vec![100, 500]);
+        let view = MergedView::from_segments(&[seg]);
+        assert!(view.time_min.is_some());
+        assert!(view.time_max.is_some());
+        assert!(view.time_min.unwrap() <= view.time_max.unwrap());
+    }
+
+    #[test]
+    fn test_merge_three_segments_preserves_global_order() {
+        // 三 segment 时间戳交错
+        let seg1 = make_seg(1, vec![100, 700]);
+        let seg2 = make_seg(2, vec![200, 800]);
+        let seg3 = make_seg(3, vec![300, 900]);
+        let view = MergedView::from_segments(&[seg1, seg2, seg3]);
+        assert_eq!(view.messages.len(), 6);
+        // 验证全局顺序
+        assert_eq!(view.messages[0].timestamp(), 100);
+        assert_eq!(view.messages[1].timestamp(), 200);
+        assert_eq!(view.messages[2].timestamp(), 300);
+        assert_eq!(view.messages[3].timestamp(), 700);
+        assert_eq!(view.messages[4].timestamp(), 800);
+        assert_eq!(view.messages[5].timestamp(), 900);
+        // 验证 source_file_ids
+        assert_eq!(view.source_file_ids, Arc::from([1u32, 2, 3, 1, 2, 3]));
+    }
+
+    #[test]
+    fn test_merge_preserves_stable_order_for_same_timestamp() {
+        // 同一 timestamp，应按 (file_id, msg_idx) 稳定排序
+        let seg1 = make_seg(1, vec![100, 100]);
+        let seg2 = make_seg(2, vec![100, 100]);
+        let view = MergedView::from_segments(&[seg1, seg2]);
+        assert_eq!(view.messages.len(), 4);
+        // 4 条都是 100ns
+        for msg in view.messages.iter() {
+            assert_eq!(msg.timestamp(), 100);
+        }
+        // 排序：(100, fid=1, idx=0), (100, fid=1, idx=1), (100, fid=2, idx=0), (100, fid=2, idx=1)
+        assert_eq!(view.source_file_ids, Arc::from([1u32, 1, 2, 2]));
+    }
 }
