@@ -1163,7 +1163,8 @@ Edit `src/view/src/app/impls_rendering.rs:1952-1953`，在 `Open BLF...` child �
                                                     });
                                                 });
 
-                                                // 并发解析:对每个 path spawn 一个后台任务
+                                                // 解析:对每个 path spawn 一个后台任务,顺序 await 收集结果
+                                                // 注:Task 7 会改为真正并发(先 spawn 所有任务再 await)
                                                 for path in paths {
                                                     let view = view.clone();
                                                     let result = cx
