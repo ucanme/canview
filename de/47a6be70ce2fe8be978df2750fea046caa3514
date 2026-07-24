@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-07-25-statusbar-multifile-display-design.md
+  s_cf1effe1c663a1::t_cefd93a3e228e8 1-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "de47a6be70ce2fe8be978df2750fea046caa3514",
+  "prompts": {},
+  "sessions": {
+    "s_cf1effe1c663a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df96a42a-2733-4bcd-8cc7-165c4f5077c2",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
