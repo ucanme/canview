@@ -1,0 +1,20 @@
+src/view/src/domain/multi_file.rs
+  s_1d3daf60ddd55b::t_f10210141ccac0 143-144
+  s_1d3daf60ddd55b::t_9b82caa09e39da 278-279,292-311,322-323
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "d1acb8d7822e6629d4e0125590cfc5c2dade8d19",
+  "prompts": {},
+  "sessions": {
+    "s_1d3daf60ddd55b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a97b644-c711-49e0-8a24-5b96aa3c043f",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
