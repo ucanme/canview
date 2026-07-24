@@ -12,6 +12,13 @@ use parser::dbc::DbcDatabase;
 use parser::ldf::LdfDatabase;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU32, Ordering};
+
+static FILE_ID_COUNTER: AtomicU32 = AtomicU32::new(1);
+
+fn next_file_id() -> u32 {
+    FILE_ID_COUNTER.fetch_add(1, Ordering::Relaxed)
+}
 
 impl CanViewApp {
     pub fn new() -> Self {
@@ -236,71 +243,211 @@ impl CanViewApp {
         }
     }
 
-    pub(crate) fn apply_blf_result(&mut self, result: anyhow::Result<BlfResult>, file_name: Option<String>) {
+    /// 单文件 Replace:清空 files,加入单个 segment,重建 merged
+    pub(crate) fn apply_blf_result_single(
+        &mut self,
+        result: anyhow::Result<BlfResult>,
+        path: PathBuf,
+    ) {
         match result {
             Ok(result) => {
                 let error_count = result.errors.len();
-
-                // 如果有解析错误，先打印到控制台
                 if error_count > 0 {
                     Self::log_blf_errors(&result.errors, result.objects.len());
                 }
 
-                // 只有在成功加载后才清空之前的数据
-                self.messages.clear();
+                // Replace 模式：清空所有已有数据
+                self.files.clear();
+                self.merged = crate::domain::multi_file::MergedView::empty();
                 self.plot_data = std::sync::Arc::from([]);
                 self.plot_full_data = std::sync::Arc::from([]);
                 self.selected_signals.clear();
 
-                // 自动切换到数据列表视图
                 self.current_view = AppView::LogView;
 
-                // 根据是否有错误设置不同的状态栏消息
+                let file_id = next_file_id();
+                let file_name = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|s| s.to_string());
+                let segment = crate::domain::multi_file::FileSegment::from_blf_result(
+                    result, file_id, path,
+                );
+
                 if error_count > 0 {
-                    // Keep status_msg short ("⚠️ N parse errors — see details")
-                    // so it fits in the StatusBar. The full error list (with
-                    // structure.field context) is stored in blf_parse_errors
-                    // and shown in a popover when the user clicks "details".
-                    self.blf_parse_errors = result.errors.iter().map(|e| format!("{}", e)).collect();
+                    self.blf_parse_errors = segment.errors.clone();
                     self.status_msg = format!("⚠️ {} parse error(s) — see details", error_count).into();
                 } else {
                     self.blf_parse_errors.clear();
                     self.show_blf_errors_popover = false;
-                    self.status_msg = format!("✅ Loaded {} messages", result.objects.len()).into();
+                    self.status_msg = format!("✅ Loaded {} messages", segment.object_count).into();
                 }
 
-                // === 调试输出：检查时间戳 ===
-                println!("基准时间: {:?}", result.file_stats.measurement_start_time);
-                Self::print_timestamp_diagnostics(&result.objects);
+                self.start_time = segment.start_time;
+                self.blf_bytes_total = segment.bytes_total;
+                self.blf_bytes_consumed = segment.bytes_consumed;
 
-                // Parse start time with nanosecond precision
-                self.start_time = Self::parse_blf_start_time(&result.file_stats.measurement_start_time);
-
-                self.messages = result.objects;
+                self.files.push(std::sync::Arc::new(segment));
+                self.rebuild_merged();
+                self.messages = self.merged.messages.to_vec();
                 self.current_file_name = file_name;
                 self.library_picker_dismissed = false;
                 self.library_picker_selected_version.clear();
-                self.blf_bytes_total = result.bytes_total;
-                self.blf_bytes_consumed = result.bytes_consumed;
             }
             Err(e) => {
-                // 在状态栏显示详细的错误信息（不清空之前的数据）
+                // Replace 模式失败：不清空已有数据，保留旧的 files/messages
                 self.status_msg = format!("❌ File Error: {}", e).into();
-
-                // 保持当前视图不变，不切换到 LogView
-                // 这样用户可以看到之前成功加载的数据
-                // Keep the existing current_file_name on error so status bar shows the last good file
-
-                // 打印详细错误信息到控制台
                 Self::display_blf_load_error(&e);
-
-                // Reset progress on error so StatusBar doesn't show stale bytes
                 self.blf_bytes_total = 0;
                 self.blf_bytes_consumed = 0;
                 self.blf_parse_errors.clear();
                 self.show_blf_errors_popover = false;
             }
         }
+    }
+
+    /// 多文件 Append:单个文件解析完成时调用,追加 segment 后重建 merged
+    pub(crate) fn apply_blf_result_append_one(
+        &mut self,
+        result: anyhow::Result<BlfResult>,
+        path: PathBuf,
+    ) {
+        let file_name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .map(|s| s.to_string());
+
+        match result {
+            Ok(result) => {
+                let error_count = result.errors.len();
+                if error_count > 0 {
+                    Self::log_blf_errors(&result.errors, result.objects.len());
+                }
+
+                let file_id = next_file_id();
+                let segment = crate::domain::multi_file::FileSegment::from_blf_result(
+                    result, file_id, path,
+                );
+
+                let msg_count = segment.object_count;
+                self.files.push(std::sync::Arc::new(segment));
+                self.rebuild_merged();
+                self.messages = self.merged.messages.to_vec();
+
+                // 更新汇总进度
+                if let Some(p) = &mut self.loading_progress {
+                    p.completed_files += 1;
+                    p.total_messages_so_far += msg_count;
+                    p.current_file_name = file_name.clone();
+                }
+
+                // 更新 StatusBar
+                let total_files = self.files.len();
+                let total_msgs = self.messages.len();
+                let failed = self.files.iter().filter(|f| !f.errors.is_empty()).count();
+                if failed > 0 {
+                    self.status_msg = format!(
+                        "⚠️ Loaded {}/{} files ({} failed) — {} messages",
+                        total_files - failed, total_files, failed, total_msgs
+                    ).into();
+                } else if let Some(p) = &self.loading_progress {
+                    if p.completed_files < p.total_files {
+                        self.status_msg = format!(
+                            "⏳ Loading {}/{} files — {} messages",
+                            p.completed_files, p.total_files, total_msgs
+                        ).into();
+                    } else {
+                        self.status_msg = format!(
+                            "✅ Loaded {} files, {} messages",
+                            total_files, total_msgs
+                        ).into();
+                    }
+                } else {
+                    self.status_msg = format!(
+                        "✅ Loaded {} files, {} messages",
+                        total_files, total_msgs
+                    ).into();
+                }
+
+                self.current_file_name = file_name;
+            }
+            Err(e) => {
+                // Append 模式单文件失败:保留失败文件占位,messages 为空
+                let file_id = next_file_id();
+                let segment = crate::domain::multi_file::FileSegment {
+                    file_id,
+                    path: path.clone(),
+                    file_name: file_name.clone().unwrap_or_else(|| "unknown".to_string()),
+                    start_time: None,
+                    messages: std::sync::Arc::from([]),
+                    errors: vec![format!("{}", e)],
+                    bytes_total: 0,
+                    bytes_consumed: 0,
+                    object_count: 0,
+                    time_min: None,
+                    time_max: None,
+                };
+                self.files.push(std::sync::Arc::new(segment));
+
+                if let Some(p) = &mut self.loading_progress {
+                    p.completed_files += 1;
+                    p.current_file_name = file_name;
+                }
+
+                let total_files = self.files.len();
+                let failed = self.files.iter().filter(|f| !f.errors.is_empty()).count();
+                self.status_msg = format!(
+                    "⚠️ Loaded {}/{} files ({} failed) — see Files",
+                    total_files - failed, total_files, failed
+                ).into();
+            }
+        }
+    }
+
+    /// 重建 merged 视图(所有 file 增删后调用)
+    pub(crate) fn rebuild_merged(&mut self) {
+        let segments: Vec<std::sync::Arc<crate::domain::multi_file::FileSegment>> =
+            self.files.iter().cloned().collect();
+        self.merged = crate::domain::multi_file::MergedView::from_segments(&segments);
+    }
+
+    /// 移除单个文件
+    pub(crate) fn remove_file(&mut self, file_id: u32) {
+        self.files.retain(|f| f.file_id != file_id);
+        self.rebuild_merged();
+        self.messages = self.merged.messages.to_vec();
+        let total_files = self.files.len();
+        let total_msgs = self.messages.len();
+        if total_files == 0 {
+            self.status_msg = "Ready".into();
+            self.current_file_name = None;
+            self.start_time = None;
+            self.plot_data = std::sync::Arc::from([]);
+            self.plot_full_data = std::sync::Arc::from([]);
+            self.selected_signals.clear();
+            self.blf_bytes_total = 0;
+            self.blf_bytes_consumed = 0;
+        } else {
+            self.status_msg = format!("✅ Loaded {} files, {} messages", total_files, total_msgs).into();
+        }
+    }
+
+    /// 移除所有文件
+    pub(crate) fn remove_all_files(&mut self) {
+        self.files.clear();
+        self.merged = crate::domain::multi_file::MergedView::empty();
+        self.messages.clear();
+        self.plot_data = std::sync::Arc::from([]);
+        self.plot_full_data = std::sync::Arc::from([]);
+        self.selected_signals.clear();
+        self.current_file_name = None;
+        self.start_time = None;
+        self.blf_bytes_total = 0;
+        self.blf_bytes_consumed = 0;
+        self.blf_parse_errors.clear();
+        self.show_blf_errors_popover = false;
+        self.show_files_popover = false;
+        self.status_msg = "Ready".into();
     }
 
     fn load_config(&mut self, _cx: &mut Context<Self>) {

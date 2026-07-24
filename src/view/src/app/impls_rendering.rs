@@ -1920,10 +1920,7 @@ impl Render for CanViewApp {
                                                 .await
                                             {
                                                 let path = file.path().to_owned();
-                                                let fname = path
-                                                    .file_name()
-                                                    .and_then(|n| n.to_str())
-                                                    .map(|s| s.to_string());
+                                                let path_for_load = path.clone();
                                                 let _ = cx.update(|cx| {
                                                     view.update(cx, |view, _| {
                                                         view.status_msg = "Loading BLF...".into();
@@ -1932,14 +1929,14 @@ impl Render for CanViewApp {
                                                 let result = cx
                                                     .background_executor()
                                                     .spawn(async move {
-                                                        read_blf_from_file(&path).map_err(|e| {
+                                                        read_blf_from_file(&path_for_load).map_err(|e| {
                                                             anyhow::Error::msg(format!("{:?}", e))
                                                         })
                                                     })
                                                     .await;
                                                 let _ = cx.update(|cx| {
                                                     view.update(cx, |view, cx| {
-                                                        view.apply_blf_result(result, fname);
+                                                        view.apply_blf_result_single(result, path.clone());
                                                         cx.notify();
                                                     });
                                                 });
