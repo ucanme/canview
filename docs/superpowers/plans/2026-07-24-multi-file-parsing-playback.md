@@ -124,6 +124,7 @@ pub struct FileSegment {
 }
 
 /// 全局合并视图
+#[derive(Clone)]
 pub struct MergedView {
     pub messages: Arc<[LogObject]>,
     pub source_file_ids: Arc<[u32]>,
@@ -144,6 +145,8 @@ impl MergedView {
     }
 }
 ```
+
+注：`MergedView` 上加 `#[derive(Clone)]` 是因为所有字段都是 `Arc`/`Option`/`Copy`，clone 成本极低且后续 task 需要克隆（如 `save_runtime_state`）。
 
 - [ ] **Step 3: 写失败测试 - FileSegment::from_blf_result**
 
@@ -284,7 +287,7 @@ Expected: PASS
 Run: `cargo test -p view --lib domain::multi_file::tests::test_merged_view_from_empty_segments`
 Expected: FAIL with "no function named `MergedView::from_segments`"
 
-- [ ] **Step 7: 实现 MergedView::from_segments（基础版）**
+- [ ] **Step 7: 实现 MergedView::from_segments（最终干净版本）**
 
 在 `multi_file.rs` 的 `MergedView` impl 块中追加：
 
@@ -292,7 +295,8 @@ Expected: FAIL with "no function named `MergedView::from_segments`"
 impl MergedView {
     /// 从多个 FileSegment 构建全局合并视图
     ///
-    /// 按 (绝对时间秒, file_id, msg_idx) 稳定排序。messages 中每条 LogObject 是 clone 过来的。
+    /// 按 (绝对时间秒, file_id, msg_idx) 稳定排序。
+    /// messages 中每条 LogObject 是从 segment clone 过来的。
     /// source_file_ids[i] 记录 messages[i] 来自哪个 file_id。
     pub fn from_segments(segments: &[Arc<FileSegment>]) -> Self {
         if segments.is_empty() {
@@ -313,106 +317,7 @@ impl MergedView {
             };
         }
 
-        // 多 segment：收集所有 (绝对秒, file_id, msg_idx, &LogObject) 然后稳定排序
-        let start_ns: Vec<i64> = segments.iter().map(|s| {
-            s.start_time.map(|_| {
-                // 重新计算 start_ns（start_time 已是 NaiveDateTime，需要还原为 UNIX epoch ns）
-                use chrono::TimeZone;
-                s.start_time.unwrap().and_utc().timestamp_nanos_opt().unwrap_or(0)
-            }).unwrap_or(0)
-        }).collect();
-
-        let mut entries: Vec<(f64, u32, usize, LogObject)> = Vec::new();
-        for (seg_idx, seg) in segments.iter().enumerate() {
-            for (msg_idx, msg) in seg.messages.iter().enumerate() {
-                let abs_ns = start_ns[seg_idx] + msg.timestamp() as i64;
-                let abs_sec = abs_ns as f64 / 1_000_000_000.0;
-                entries.push((abs_sec, seg.file_id, msg_idx, msg.clone()));
-            }
-        }
-
-        // 稳定排序：按 (abs_sec, file_id, msg_idx)
-        entries.sort_by(|a, b| {
-            a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal)
-                .then(a.1.cmp(&b.1))
-                .then(a.2.cmp(&b.2))
-        });
-
-        let messages: Vec<LogObject> = entries.into_iter().map(|(_, _, _, msg)| msg).collect();
-        let messages: Arc<[LogObject]> = Arc::from(messages);
-        let source_file_ids: Vec<u32> = (0..messages.len()).map(|_| 0).collect();
-        // 需要重新计算 source_file_ids（从排序后的 entries）
-        // 修正：上面 entries 被 into_iter 消费，需要重建 source_file_ids
-
-        // 重新构建 source_file_ids
-        let mut source_file_ids_vec: Vec<u32> = Vec::with_capacity(messages.len());
-        for (seg_idx, seg) in segments.iter().enumerate() {
-            for _ in &seg.messages {
-                source_file_ids_vec.push(seg.file_id);
-            }
-        }
-        // 错了——排序后的顺序与原始顺序不一致
-        // 修正：上面 sort 是稳定的，但 source_file_ids_vec 顺序对应的是排序前的。
-        // 正确做法：在 sort 时同步记录 source_file_id。
-        // 重新实现，避免双重遍历：
-
-        let _ = source_file_ids; // 占位，下面重写
-        let _ = source_file_ids_vec;
-
-        // 重新实现
-        let mut entries2: Vec<(f64, u32, usize, u32, LogObject)> = Vec::new();
-        for (seg_idx, seg) in segments.iter().enumerate() {
-            for (msg_idx, msg) in seg.messages.iter().enumerate() {
-                let abs_ns = start_ns[seg_idx] + msg.timestamp() as i64;
-                let abs_sec = abs_ns as f64 / 1_000_000_000.0;
-                entries2.push((abs_sec, seg.file_id, msg_idx, seg.file_id, msg.clone()));
-            }
-        }
-        entries2.sort_by(|a, b| {
-            a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal)
-                .then(a.1.cmp(&b.1))
-                .then(a.2.cmp(&b.2))
-        });
-        let messages: Vec<LogObject> = entries2.into_iter().map(|(_, _, _, _, msg)| msg).collect();
-        let source_file_ids: Vec<u32> = entries2.into_iter().map(|(_, _, _, fid, _)| fid).collect();
-        // 上面 entries2 被消费两次，错误。修正：
-
-        unreachable!("replaced below");
-    }
-}
-```
-
-（此实现复杂且有编译错误，Step 8 会重写）
-
-- [ ] **Step 8: 重写 MergedView::from_segments 为干净实现**
-
-替换 Step 7 中的 `from_segments` 整个函数体为：
-
-```rust
-impl MergedView {
-    /// 从多个 FileSegment 构建全局合并视图
-    ///
-    /// 按 (绝对时间秒, file_id, msg_idx) 稳定排序。
-    pub fn from_segments(segments: &[Arc<FileSegment>]) -> Self {
-        if segments.is_empty() {
-            return Self::empty();
-        }
-
-        // 单 segment：直接借用，无需排序
-        if segments.len() == 1 {
-            let seg = &segments[0];
-            let messages: Arc<[LogObject]> = seg.messages.clone();
-            let source_file_ids: Arc<[u32]> = Arc::from(vec![seg.file_id; messages.len()]);
-            return Self {
-                messages,
-                source_file_ids,
-                time_min: seg.time_min,
-                time_max: seg.time_max,
-                version: 0,
-            };
-        }
-
-        // 多 segment：收集 (abs_sec, file_id, msg_idx, LogObject) 然后稳定排序
+        // 多 segment：收集 (abs_sec, file_id, msg_idx, source_file_id, LogObject) 然后稳定排序
         let start_ns: Vec<i64> = segments.iter().map(|s| {
             use chrono::TimeZone;
             s.start_time
@@ -459,92 +364,18 @@ impl MergedView {
 }
 ```
 
-- [ ] **Step 9: 运行空 segments 测试，确认通过**
+- [ ] **Step 8: 运行空 segments 测试，确认通过**
 
 Run: `cargo test -p view --lib domain::multi_file::tests::test_merged_view_from_empty_segments`
 Expected: PASS
 
-- [ ] **Step 10: 写测试 - 单 segment 与多 segment 合并**
+- [ ] **Step 9: 写测试 - 单 segment 与多 segment 合并**
 
 在 tests 模块追加：
 
 ```rust
-    fn make_seg(file_id: u32, msgs: Vec<u64>, start_ns: i64) -> Arc<FileSegment> {
-        // msgs: Vec<timestamp_ns relative to start>
-        use blf::{CanMessage, BlfObjectHeader};
-        let messages: Vec<LogObject> = msgs.iter().map(|ts| {
-            LogObject::CanMessage(CanMessage {
-                header: BlfObjectHeader {
-                    object_time_stamp: *ts,
-                    ..Default::default()
-                },
-                ..Default::default()
-            })
-        }).collect();
-        Arc::new(FileSegment {
-            file_id,
-            path: PathBuf::from(format!("/tmp/seg{}.blf", file_id)),
-            file_name: format!("seg{}.blf", file_id),
-            start_time: chrono::NaiveDateTime::from_timestamp_opt(0, 0),
-            messages: Arc::from(messages),
-            errors: Vec::new(),
-            bytes_total: 0,
-            bytes_consumed: 0,
-            object_count: msgs.len(),
-            time_min: None,
-            time_max: None,
-        })
-    }
-
-    #[test]
-    fn test_merged_view_single_segment() {
-        let seg = make_seg(1, vec![100_000, 200_000, 300_000], 0);
-        let view = MergedView::from_segments(&[seg]);
-        assert_eq!(view.messages.len(), 3);
-        assert_eq!(view.source_file_ids.len(), 3);
-        assert_eq!(view.source_file_ids[0], 1);
-        assert!(view.time_min.is_some());
-        assert!(view.time_max.is_some());
-    }
-
-    #[test]
-    fn test_merged_view_two_segments_sorted_by_time() {
-        // seg1 时间戳: 100ns, 500ns (start_ns = 0)
-        // seg2 时间戳: 200ns, 600ns (start_ns = 0)
-        // 合并后顺序: 100(seg1), 200(seg2), 500(seg1), 600(seg2)
-        let seg1 = make_seg(1, vec![100, 500], 0);
-        let seg2 = make_seg(2, vec![200, 600], 0);
-        let view = MergedView::from_segments(&[seg1, seg2]);
-        assert_eq!(view.messages.len(), 4);
-        assert_eq!(view.source_file_ids, Arc::from([1u32, 2, 1, 2]));
-        // 验证时间戳顺序: 100, 200, 500, 600
-        assert_eq!(view.messages[0].timestamp(), 100);
-        assert_eq!(view.messages[1].timestamp(), 200);
-        assert_eq!(view.messages[2].timestamp(), 500);
-        assert_eq!(view.messages[3].timestamp(), 600);
-    }
-
-    #[test]
-    fn test_merged_view_two_segments_non_overlapping() {
-        // seg1: start_ns = 0, msgs at 100ns
-        // seg2: start_ns = 1000, msgs at 100ns (绝对 = 1100ns)
-        // 合并后: seg1's 100, seg2's 1100
-        let seg1 = make_seg(1, vec![100], 0);
-        let seg2 = make_seg(2, vec![100], 1000);
-        // make_seg 写死了 start_ns=0，需另构造。先跳过这个测试，留 TODO
-    }
-```
-
-Run: `cargo test -p view --lib domain::multi_file::tests`
-Expected: test_merged_view_two_segments_non_overlapping FAIL（make_seg 不支持 start_ns 参数），其他 PASS
-
-- [ ] **Step 11: 修复 make_seg 支持 start_ns，重写第三个测试**
-
-替换 `make_seg` 函数与第三个测试：
-
-```rust
-    fn make_seg(file_id: u32, msgs: Vec<u64>, _start_ns_unused: i64) -> Arc<FileSegment> {
-        // 注：_start_ns_unused 仅为 API 兼容；start_time 固定为 0（NaiveDateTime::from_timestamp(0,0)）
+    fn make_seg(file_id: u32, msgs: Vec<u64>) -> Arc<FileSegment> {
+        // msgs: Vec<timestamp_ns>。start_time 固定为 UNIX epoch（NaiveDateTime::from_timestamp_opt(0, 0)）
         // 绝对时间 = 0 + msg.timestamp()
         use blf::{CanMessage, BlfObjectHeader};
         let messages: Vec<LogObject> = msgs.iter().map(|ts| {
@@ -572,16 +403,37 @@ Expected: test_merged_view_two_segments_non_overlapping FAIL（make_seg 不支�
     }
 
     #[test]
-    #[ignore = "make_seg 写死 start_time=0，跨 start_time 的合并测试需扩展工具，暂 ignore"]
-    fn test_merged_view_two_segments_non_overlapping() {
-        // 留待 Task 1 完成后用更完整工具补足
+    fn test_merged_view_single_segment() {
+        let seg = make_seg(1, vec![100_000, 200_000, 300_000]);
+        let view = MergedView::from_segments(&[seg]);
+        assert_eq!(view.messages.len(), 3);
+        assert_eq!(view.source_file_ids.len(), 3);
+        assert_eq!(view.source_file_ids[0], 1);
+        assert!(view.time_min.is_some());
+        assert!(view.time_max.is_some());
+    }
+
+    #[test]
+    fn test_merged_view_two_segments_sorted_by_time() {
+        // seg1 时间戳: 100ns, 500ns
+        // seg2 时间戳: 200ns, 600ns
+        // 合并后顺序: 100(seg1), 200(seg2), 500(seg1), 600(seg2)
+        let seg1 = make_seg(1, vec![100, 500]);
+        let seg2 = make_seg(2, vec![200, 600]);
+        let view = MergedView::from_segments(&[seg1, seg2]);
+        assert_eq!(view.messages.len(), 4);
+        assert_eq!(view.source_file_ids, Arc::from([1u32, 2, 1, 2]));
+        assert_eq!(view.messages[0].timestamp(), 100);
+        assert_eq!(view.messages[1].timestamp(), 200);
+        assert_eq!(view.messages[2].timestamp(), 500);
+        assert_eq!(view.messages[3].timestamp(), 600);
     }
 ```
 
 Run: `cargo test -p view --lib domain::multi_file::tests`
-Expected: 其他 PASS，test_merged_view_two_segments_non_overlapping IGNORED
+Expected: 全部 PASS（5 个测试）
 
-- [ ] **Step 12: 写测试 - 移除中间 segment 重建**
+- [ ] **Step 10: 写测试 - 移除中间 segment 重建**
 
 在 tests 模块追加：
 
@@ -590,9 +442,9 @@ Expected: 其他 PASS，test_merged_view_two_segments_non_overlapping IGNORED
     fn test_merged_view_after_remove_middle() {
         // 三个 segment: seg1 (100ns), seg2 (200ns), seg3 (300ns)
         // 移除 seg2 后: 100(seg1), 300(seg3)
-        let seg1 = make_seg(1, vec![100], 0);
-        let seg2 = make_seg(2, vec![200], 0);
-        let seg3 = make_seg(3, vec![300], 0);
+        let seg1 = make_seg(1, vec![100]);
+        let seg2 = make_seg(2, vec![200]);
+        let seg3 = make_seg(3, vec![300]);
         let view_before = MergedView::from_segments(&[seg1.clone(), seg2, seg3.clone()]);
         assert_eq!(view_before.messages.len(), 3);
 
@@ -608,12 +460,12 @@ Expected: 其他 PASS，test_merged_view_two_segments_non_overlapping IGNORED
 Run: `cargo test -p view --lib domain::multi_file::tests::test_merged_view_after_remove_middle`
 Expected: PASS
 
-- [ ] **Step 13: cargo build 整个 workspace，确保无编译错误**
+- [ ] **Step 11: cargo build 整个 workspace，确保无编译错误**
 
 Run: `cargo build -p view`
 Expected: BUILD SUCCESS（可能有 warning，但无 error）
 
-- [ ] **Step 14: Commit**
+- [ ] **Step 12: Commit**
 
 ```bash
 git add src/view/src/domain/mod.rs src/view/src/domain/multi_file.rs
@@ -840,7 +692,7 @@ Edit `src/view/src/app/state.rs`，在 `CanViewApp` 结构（line 72 附近）�
         RuntimeState {
             current_view: self.current_view.clone(),
             files: self.files.clone(),
-            merged: clone_merged_view(&self.merged),
+            merged: self.merged.clone(),
             current_file_name: self.current_file_name.clone(),
             plot_data: self.plot_data.clone(),
             plot_full_data: self.plot_full_data.clone(),
@@ -859,45 +711,9 @@ Edit `src/view/src/app/state.rs`，在 `CanViewApp` 结构（line 72 附近）�
     }
 ```
 
-注意：删除 `messages: self.messages.clone(),` 与 `is_streaming_mode: self.is_streaming_mode,`。
+注意：删除 `messages: self.messages.clone(),` 与 `is_streaming_mode: self.is_streaming_mode,`。`MergedView` 已在 Task 1 Step 2 加了 `#[derive(Clone)]`，可直接 `self.merged.clone()`。
 
-并在 `RuntimeState` 之前或 save_runtime_state 之前追加 `clone_merged_view` 辅助函数：
-
-```rust
-/// Clone a MergedView (Arc fields are refcounted, cheap to clone)
-fn clone_merged_view(view: &crate::domain::multi_file::MergedView) -> crate::domain::multi_file::MergedView {
-    crate::domain::multi_file::MergedView {
-        messages: view.messages.clone(),
-        source_file_ids: view.source_file_ids.clone(),
-        time_min: view.time_min,
-        time_max: view.time_max,
-        version: view.version,
-    }
-}
-```
-
-注：`MergedView` 的字段都是 `Arc` 或 `Option` 或 `Copy`，可直接克隆。为简化代码，后续可在 `multi_file.rs` 给 `MergedView` 加 `#[derive(Clone)]`，本步骤先用辅助函数避免触碰 domain 文件。Task 1 中 `MergedView` 未 derive Clone，所以需辅助函数。**优化**：直接在 Task 1 加 derive。回 Task 1 修复：
-
-（在 Task 1 Step 2 中 `pub struct MergedView` 上方加 `#[derive(Clone)]`）
-
-- [ ] **Step 6: 在 multi_file.rs 给 MergedView 加 derive(Clone)**
-
-Edit `src/view/src/domain/multi_file.rs`，将：
-
-```rust
-pub struct MergedView {
-```
-
-改为：
-
-```rust
-#[derive(Clone)]
-pub struct MergedView {
-```
-
-并相应简化 Task 3 Step 5 中 `clone_merged_view` 调用为直接 `self.merged.clone()`。
-
-- [ ] **Step 7: 修改 restore_runtime_state**
+- [ ] **Step 6: 修改 restore_runtime_state**
 
 将 restore_runtime_state（line 414-448）替换为：
 
@@ -937,7 +753,7 @@ pub struct MergedView {
 
 注意：删除 `self.is_streaming_mode = state.is_streaming_mode;`，新增 `self.files`/`self.merged`/`self.messages` 派生。
 
-- [ ] **Step 8: 修改 impls.rs new() 与 new_with_maximized_state_and_bounds 中 is_streaming_mode 初始化**
+- [ ] **Step 7: 修改 impls.rs new() 与 new_with_maximized_state_and_bounds 中 is_streaming_mode 初始化**
 
 Edit `src/view/src/app/impls.rs`：
 - Line 34：删除 `is_streaming_mode: false,`
@@ -951,17 +767,17 @@ Edit `src/view/src/app/impls.rs`：
             loading_progress: None,
 ```
 
-- [ ] **Step 9: cargo build 验证编译**
+- [ ] **Step 8: cargo build 验证编译**
 
 Run: `cargo build -p view`
 Expected: BUILD SUCCESS（无 is_streaming_mode 残留引用）
 
-- [ ] **Step 10: cargo test 验证回归**
+- [ ] **Step 9: cargo test 验证回归**
 
 Run: `cargo test -p view --lib`
 Expected: 既有测试全部 PASS
 
-- [ ] **Step 11: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
 git add src/view/src/app/state.rs src/view/src/app/impls.rs src/view/src/domain/multi_file.rs
@@ -978,7 +794,7 @@ git commit -m "refactor(app): add files/merged/show_files_popover/loading_progre
 
 **Interfaces:**
 - Consumes: `crate::domain::multi_file::{FileSegment, MergedView}`、`blf::BlfResult`、`std::sync::atomic::{AtomicU32, Ordering}`、`std::path::PathBuf`
-- Produces: `apply_blf_result_single(&mut self, result: BlfResult, path: PathBuf, cx)`、`apply_blf_result_append_one(&mut self, result: Result<BlfResult, E>, path: PathBuf, cx)`、`apply_blf_results_append(&mut self, results: Vec<Result<BlfResult, Error>>, paths: Vec<PathBuf>, cx)`、`remove_file(&mut self, file_id: u32, cx)`、`remove_all_files(&mut self, cx)`、`rebuild_merged(&mut self)`、`next_file_id() -> u32`
+- Produces: `apply_blf_result_single(&mut self, result: anyhow::Result<BlfResult>, path: PathBuf)`、`apply_blf_result_append_one(&mut self, result: anyhow::Result<BlfResult>, path: PathBuf)`、`remove_file(&mut self, file_id: u32)`、`remove_all_files(&mut self)`、`rebuild_merged(&mut self)`、`next_file_id() -> u32`
 
 - [ ] **Step 1: 在 impls.rs 顶部增加 file_id 计数器**
 
@@ -1859,168 +1675,118 @@ git commit -m "feat(ui): add large file size warning for >1GB BLF loads"
 
 ---
 
-## Task 10: 集成测试与回归验证
+## Task 10: 失败隔离与跨 start_time 合并的补充测试
 
 **Files:**
-- Create: `tests/multi_file_loading.rs`
+- Modify: `src/view/src/domain/multi_file.rs` (在测试模块追加更多边界测试)
 
 **Interfaces:**
-- Consumes: 所有先前 task 的产物
-- Produces: 集成测试覆盖多文件加载、流式、失败隔离、移除
+- Consumes: 所有先前 task 的产物（特别是 Task 1 的 `make_seg` 工具函数）
+- Produces: 失败隔离、跨 start_time 合并、duplicate path 等边界场景测试
 
-- [ ] **Step 1: 创建集成测试文件**
+注：本 task 不创建 `tests/multi_file_loading.rs`。`view` crate 是 binary-only（无 `[lib]` 节），无法从外部 crate 测试内部模块。所有 multi_file 单元测试保留在 `src/view/src/domain/multi_file.rs` 的 `#[cfg(test)] mod tests` 中（Task 1 已建立）。本 task 在同一测试模块内追加边界用例。
 
-Create `tests/multi_file_loading.rs`：
+- [ ] **Step 1: 在 multi_file.rs tests 模块追加失败隔离测试**
 
-```rust
-//! 多文件加载集成测试
-
-use canview::domain::multi_file::{FileSegment, MergedView};
-use blf::{BlfResult, FileStatistics, SystemTime, LogObject, CanMessage, BlfObjectHeader};
-
-fn make_test_segment(file_id: u32, timestamps_ns: Vec<u64>) -> std::sync::Arc<FileSegment> {
-    let messages: Vec<LogObject> = timestamps_ns.iter().map(|ts| {
-        LogObject::CanMessage(CanMessage {
-            header: BlfObjectHeader {
-                object_time_stamp: *ts,
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-    }).collect();
-    std::sync::Arc::new(FileSegment {
-        file_id,
-        path: std::path::PathBuf::from(format!("/tmp/seg{}.blf", file_id)),
-        file_name: format!("seg{}.blf", file_id),
-        start_time: chrono::NaiveDateTime::from_timestamp_opt(0, 0),
-        messages: std::sync::Arc::from(messages),
-        errors: Vec::new(),
-        bytes_total: 0,
-        bytes_consumed: 0,
-        object_count: timestamps_ns.len(),
-        time_min: None,
-        time_max: None,
-    })
-}
-
-#[test]
-fn test_merge_two_segments_global_ordering() {
-    let seg1 = make_test_segment(1, vec![100, 500]);
-    let seg2 = make_test_segment(2, vec![200, 600]);
-    let view = MergedView::from_segments(&[seg1, seg2]);
-    assert_eq!(view.messages.len(), 4);
-    assert_eq!(view.messages[0].timestamp(), 100);
-    assert_eq!(view.messages[1].timestamp(), 200);
-    assert_eq!(view.messages[2].timestamp(), 500);
-    assert_eq!(view.messages[3].timestamp(), 600);
-}
-
-#[test]
-fn test_remove_middle_segment_rebuilds_merged() {
-    let seg1 = make_test_segment(1, vec![100]);
-    let seg2 = make_test_segment(2, vec![200]);
-    let seg3 = make_test_segment(3, vec![300]);
-    let view_before = MergedView::from_segments(&[seg1.clone(), seg2, seg3.clone()]);
-    assert_eq!(view_before.messages.len(), 3);
-
-    let remaining: Vec<_> = vec![seg1, seg3];
-    let view_after = MergedView::from_segments(&remaining);
-    assert_eq!(view_after.messages.len(), 2);
-    assert_eq!(view_after.messages[0].timestamp(), 100);
-    assert_eq!(view_after.messages[1].timestamp(), 300);
-    assert_eq!(view_after.source_file_ids[1], 3);
-}
-
-#[test]
-fn test_failed_segment_has_empty_messages() {
-    let failed = std::sync::Arc::new(FileSegment {
-        file_id: 99,
-        path: std::path::PathBuf::from("/tmp/bad.blf"),
-        file_name: "bad.blf".to_string(),
-        start_time: None,
-        messages: std::sync::Arc::from([]),
-        errors: vec!["Parse error".to_string()],
-        bytes_total: 1024,
-        bytes_consumed: 0,
-        object_count: 0,
-        time_min: None,
-        time_max: None,
-    });
-    let good = make_test_segment(1, vec![100, 200]);
-    let view = MergedView::from_segments(&[good, failed]);
-    // 失败 segment 贡献 0 消息，但仍计入 source_file_ids
-    assert_eq!(view.messages.len(), 2);
-    assert_eq!(view.source_file_ids, std::sync::Arc::from([1u32, 1]));
-}
-
-#[test]
-fn test_duplicate_path_allowed() {
-    // 同一路径加载两次，两个 segment 独立共存
-    let seg1 = make_test_segment(1, vec![100]);
-    let seg2 = make_test_segment(2, vec![200]);
-    let view = MergedView::from_segments(&[seg1, seg2]);
-    assert_eq!(view.messages.len(), 2);
-    assert_eq!(view.source_file_ids, std::sync::Arc::from([1u32, 2]));
-}
-
-#[test]
-fn test_empty_segments_returns_empty_view() {
-    let view = MergedView::from_segments(&[]);
-    assert_eq!(view.messages.len(), 0);
-    assert!(view.time_min.is_none());
-    assert!(view.time_max.is_none());
-}
-
-#[test]
-fn test_single_segment_direct_borrow() {
-    let seg = make_test_segment(1, vec![100, 200, 300]);
-    let view = MergedView::from_segments(&[seg]);
-    assert_eq!(view.messages.len(), 3);
-    assert_eq!(view.source_file_ids, std::sync::Arc::from([1u32, 1, 1]));
-}
-```
-
-注：测试用 `canview::domain::multi_file::...` 路径，需要 `canview` crate（即 `view` crate 的 lib name）暴露 domain 模块。若 `view` crate 是 binary-only，需在 `src/view/Cargo.toml` 中确认 `[lib]` 节存在或调整为 `view::domain::...`。本测试假设 `view` crate 暴露 lib 接口。
-
-- [ ] **Step 2: 确认 view crate 暴露 lib 接口**
-
-Run: `grep -A 5 "\[lib\]\|\\[\\[bin\\]\\]" src/view/Cargo.toml`
-
-若仅有 `[[bin]]` 无 `[lib]`，需在 Cargo.toml 中增加：
-
-```toml
-[lib]
-name = "view_lib"
-path = "src/lib.rs"
-```
-
-并创建 `src/view/src/lib.rs`：
+Edit `src/view/src/domain/multi_file.rs`，在测试模块末尾追加：
 
 ```rust
-pub mod app;
-pub mod domain;
-// ... 其他需要导出的模块
+    #[test]
+    fn test_failed_segment_does_not_block_others() {
+        // 一个失败 segment（messages 为空）+ 一个正常 segment
+        // 失败 segment 不贡献 messages，但仍计入 source_file_ids 列表
+        let good = make_seg(1, vec![100, 200]);
+        let failed = Arc::new(FileSegment {
+            file_id: 99,
+            path: PathBuf::from("/tmp/bad.blf"),
+            file_name: "bad.blf".to_string(),
+            start_time: chrono::NaiveDateTime::from_timestamp_opt(0, 0),
+            messages: Arc::from([]),
+            errors: vec!["Parse error".to_string()],
+            bytes_total: 1024,
+            bytes_consumed: 0,
+            object_count: 0,
+            time_min: None,
+            time_max: None,
+        });
+        let view = MergedView::from_segments(&[good, failed]);
+        assert_eq!(view.messages.len(), 2);
+        // 失败 segment 没贡献消息，source_file_ids 全是 good 的
+        assert_eq!(view.source_file_ids, Arc::from([1u32, 1]));
+    }
+
+    #[test]
+    fn test_duplicate_path_coexists_as_independent_segments() {
+        // 同一路径加载两次：两个 segment 独立共存
+        let seg1 = make_seg(1, vec![100]);
+        let seg2 = make_seg(2, vec![200]);
+        let view = MergedView::from_segments(&[seg1, seg2]);
+        assert_eq!(view.messages.len(), 2);
+        assert_eq!(view.source_file_ids, Arc::from([1u32, 2]));
+    }
+
+    #[test]
+    fn test_merged_view_time_range_computed() {
+        // 单 segment：merged 的 time_min/time_max 应等于 segment 的 time_min/time_max
+        let seg = make_seg(1, vec![100, 500]);
+        let view = MergedView::from_segments(&[seg]);
+        assert!(view.time_min.is_some());
+        assert!(view.time_max.is_some());
+        assert!(view.time_min.unwrap() <= view.time_max.unwrap());
+    }
+
+    #[test]
+    fn test_merge_three_segments_preserves_global_order() {
+        // 三 segment 时间戳交错
+        let seg1 = make_seg(1, vec![100, 700]);
+        let seg2 = make_seg(2, vec![200, 800]);
+        let seg3 = make_seg(3, vec![300, 900]);
+        let view = MergedView::from_segments(&[seg1, seg2, seg3]);
+        assert_eq!(view.messages.len(), 6);
+        // 验证全局顺序
+        assert_eq!(view.messages[0].timestamp(), 100);
+        assert_eq!(view.messages[1].timestamp(), 200);
+        assert_eq!(view.messages[2].timestamp(), 300);
+        assert_eq!(view.messages[3].timestamp(), 700);
+        assert_eq!(view.messages[4].timestamp(), 800);
+        assert_eq!(view.messages[5].timestamp(), 900);
+        // 验证 source_file_ids
+        assert_eq!(view.source_file_ids, Arc::from([1u32, 2, 3, 1, 2, 3]));
+    }
+
+    #[test]
+    fn test_merge_preserves_stable_order_for_same_timestamp() {
+        // 同一 timestamp，应按 (file_id, msg_idx) 稳定排序
+        let seg1 = make_seg(1, vec![100, 100]);
+        let seg2 = make_seg(2, vec![100, 100]);
+        let view = MergedView::from_segments(&[seg1, seg2]);
+        assert_eq!(view.messages.len(), 4);
+        // 4 条都是 100ns
+        for msg in view.messages.iter() {
+            assert_eq!(msg.timestamp(), 100);
+        }
+        // 排序：(100, fid=1, idx=0), (100, fid=1, idx=1), (100, fid=2, idx=0), (100, fid=2, idx=1)
+        assert_eq!(view.source_file_ids, Arc::from([1u32, 1, 2, 2]));
+    }
 ```
 
-若已有 `[lib]` 或 view 本身就是 lib（同时有 bin），则跳过。
+- [ ] **Step 2: 运行所有 multi_file 测试**
 
-- [ ] **Step 3: 调整测试中的 crate 路径**
+Run: `cargo test -p view --lib domain::multi_file::tests`
+Expected: 所有测试 PASS（包括 Task 1 的测试 + 本 task 新增的 5 个测试）
 
-根据 Step 2 的结果，将 `tests/multi_file_loading.rs` 中的 `use canview::...` 改为正确的 crate name（如 `use view_lib::...` 或 `use view::...`）。
-
-Run: `cargo test --test multi_file_loading`
-Expected: 6 个测试 PASS
-
-- [ ] **Step 4: 运行全部 workspace 测试**
+- [ ] **Step 3: 运行整个 workspace 测试验证回归**
 
 Run: `cargo test --workspace`
 Expected: 所有测试 PASS，无回归
 
-- [ ] **Step 5: Commit**
+注：之前 ledger 中提到 `cargo test --workspace` 在 link 阶段 SIGBUS（pre-existing nightly rustc issue with this dep matrix）。若再次遇到 SIGBUS，可改为运行 `cargo build -p view --tests` 验证测试编译通过；CI 会执行实际测试。
+
+- [ ] **Step 4: Commit**
 
 ```bash
-git add tests/multi_file_loading.rs src/view/Cargo.toml src/view/src/lib.rs
-git commit -m "test: add multi-file loading integration tests"
+git add src/view/src/domain/multi_file.rs
+git commit -m "test(domain): add failure isolation, duplicate path, stable order edge cases"
 ```
 
 ---
