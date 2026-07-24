@@ -293,6 +293,47 @@ fn render_blf_errors_popover(app: &CanViewApp, view: Entity<CanViewApp>) -> Opti
     )
 }
 
+/// Render the ❌ Cancel button segment (right side, only during loading).
+///
+/// 仅在 `loading_progress` 显示“正在加载且未取消”时返回 `Some`。点击设置
+/// `is_cancelled = true`,使后续 `apply_blf_result_append_one` 早退,从而
+/// 中止未完成文件的追加。已完成的 segment 保留在 `files` 列表中。
+fn render_cancel_button_segment(app: &CanViewApp, view: Entity<CanViewApp>) -> Option<impl IntoElement> {
+    let is_loading = app
+        .loading_progress
+        .as_ref()
+        .map(|p| p.completed_files < p.total_files && !p.is_cancelled)
+        .unwrap_or(false);
+    if !is_loading {
+        return None;
+    }
+    let view_for_click = view.clone();
+    Some(
+        div()
+            .flex()
+            .items_center()
+            .gap(px(4.))
+            .px(spacing::SM)
+            .py(px(1.))
+            .rounded(px(3.))
+            .text_xs()
+            .text_color(colors::ERROR)
+            .cursor_pointer()
+            .hover(|s| s.bg(colors::SURFACE0))
+            .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                cx.stop_propagation();
+                view_for_click.update(cx, |app, cx| {
+                    if let Some(p) = &mut app.loading_progress {
+                        p.is_cancelled = true;
+                    }
+                    app.status_msg = "❌ Loading cancelled".into();
+                    cx.notify();
+                });
+            })
+            .child("❌ Cancel"),
+    )
+}
+
 /// Render the 📁 Files (N) button segment (right side).
 ///
 /// 仅在 `app.files` 非空时返回 `Some`，与 `render_blf_progress_segment` 的
@@ -739,6 +780,9 @@ pub fn render_status_bar(app: &CanViewApp, view: Entity<CanViewApp>) -> impl Int
                     el.child(status_seg).child(render_separator())
                 })
                 .child(render_lib_badge_segment(app))
+                .when_some(render_cancel_button_segment(app, view.clone()), |el, cancel_btn| {
+                    el.child(render_separator()).child(cancel_btn)
+                })
                 .when_some(render_files_button_segment(app, view.clone()), |el, files_btn| {
                     el.child(render_separator()).child(files_btn)
                 })

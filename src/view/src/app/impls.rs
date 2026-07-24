@@ -312,6 +312,13 @@ impl CanViewApp {
         result: anyhow::Result<BlfResult>,
         path: PathBuf,
     ) {
+        // 检查取消标志:已取消则不再追加新完成的 segment
+        if let Some(p) = &self.loading_progress {
+            if p.is_cancelled {
+                return;
+            }
+        }
+
         let file_name = path
             .file_name()
             .and_then(|n| n.to_str())
