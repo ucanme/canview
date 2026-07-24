@@ -1,0 +1,19 @@
+docs/superpowers/plans/2026-07-24-multi-file-parsing-playback.md
+  s_1d3daf60ddd55b::t_0f41e52d1b607d 731,733
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "ce3534c9f79ac4ea0939336fa931ec971faed46c",
+  "prompts": {},
+  "sessions": {
+    "s_1d3daf60ddd55b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a97b644-c711-49e0-8a24-5b96aa3c043f",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
