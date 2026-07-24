@@ -5,6 +5,7 @@
 
 use crate::app::{AppView, CanViewApp};
 use crate::ui::theme::colors;
+use crate::ui::theme::radius;
 use crate::ui::theme::spacing;
 use gpui::{prelude::*, *};
 
@@ -291,6 +292,246 @@ fn render_blf_errors_popover(app: &CanViewApp, view: Entity<CanViewApp>) -> Opti
     )
 }
 
+/// Render the 📁 Files (N) button segment (right side).
+///
+/// 仅在 `app.files` 非空时返回 `Some`，与 `render_blf_progress_segment` 的
+/// “无文件则隐藏” 模式对称。点击切换 `app.show_files_popover`，由
+/// `render_files_popover` 渲染对应的浮层。
+fn render_files_button_segment(app: &CanViewApp, view: Entity<CanViewApp>) -> Option<impl IntoElement> {
+    if app.files.is_empty() {
+        return None;
+    }
+    let view_for_click = view.clone();
+    Some(
+        div()
+            .flex()
+            .items_center()
+            .gap(px(4.))
+            .px(spacing::SM)
+            .py(px(1.))
+            .rounded(px(3.))
+            .text_color(colors::TEXT_MUTED)
+            .cursor_pointer()
+            .hover(|s| s.bg(colors::SURFACE0).text_color(colors::TEXT_PRIMARY))
+            .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                cx.stop_propagation();
+                view_for_click.update(cx, |app, cx| {
+                    app.show_files_popover = !app.show_files_popover;
+                    cx.notify();
+                });
+            })
+            .child(format!("📁 Files ({})", app.files.len())),
+    )
+}
+
+/// Render the file-management popover as a sibling of the status bar.
+///
+/// 镜像 `render_blf_errors_popover` 的定位方式：全屏绝对定位 + 半透明遮罩
+/// 处理外部点击关闭；实际内容容器锚定到右下角，避免被 status_msg 段的
+/// `truncate()` 裁切。仅当 `show_files_popover && !files.is_empty()` 时
+/// 返回 `Some`；当文件在 popover 打开期间被全部移除时，popover 自动消失。
+fn render_files_popover(app: &CanViewApp, view: Entity<CanViewApp>) -> Option<impl IntoElement> {
+    if !app.show_files_popover || app.files.is_empty() {
+        return None;
+    }
+    let files_count = app.files.len();
+    // 预先把每行渲染成独立的 element，避免 GPUI children() 对 'static 生命周期
+    // 的要求与局部 rows borrow 冲突（E0597）。每行的 on_mouse_down 闭包通过
+    // move 捕获自己的 file_id + view clone，互不借用 rows。
+    let row_elements: Vec<Div> = app
+        .files
+        .iter()
+        .map(|seg| {
+            let file_id = seg.file_id;
+            let file_name = seg.file_name.clone();
+            let msg_count = seg.object_count;
+            let bytes_total = seg.bytes_total;
+            let has_errors = !seg.errors.is_empty();
+            let status_icon = if has_errors { "❌" } else { "✅" };
+            let status_color = if has_errors {
+                colors::WARNING
+            } else {
+                colors::SUCCESS
+            };
+            let row_bg = if has_errors {
+                colors::SURFACE0
+            } else {
+                colors::BG_DEFAULT
+            };
+            let view_for_remove = view.clone();
+            div()
+                .p(spacing::XS)
+                .bg(row_bg)
+                .rounded(radius::MD)
+                .flex()
+                .items_center()
+                .justify_between()
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(6.))
+                        .text_xs()
+                        .truncate()
+                        .child(div().text_color(status_color).child(status_icon))
+                        .child(div().text_color(colors::TEXT_PRIMARY).child(file_name))
+                        .child(
+                            div()
+                                .text_color(colors::TEXT_MUTED)
+                                .child(format!(
+                                    "{} msgs, {}",
+                                    format_count(msg_count),
+                                    format_bytes(bytes_total),
+                                )),
+                        )
+                        .when(has_errors, |el| {
+                            el.child(div().text_color(colors::WARNING).child("(errors)"))
+                        }),
+                )
+                .child(
+                    div()
+                        .px(spacing::SM)
+                        .text_xs()
+                        .text_color(colors::ERROR)
+                        .cursor_pointer()
+                        .hover(|s| s.bg(colors::SURFACE0))
+                        .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                            cx.stop_propagation();
+                            view_for_remove.update(cx, |app, cx| {
+                                app.remove_file(file_id);
+                                cx.notify();
+                            });
+                        })
+                        .child("✕"),
+                )
+        })
+        .collect();
+    let view_for_remove_all = view.clone();
+    let view_for_done = view.clone();
+    let view_for_title_close = view.clone();
+    let view_for_click_outside = view.clone();
+
+    Some(
+        div()
+            .absolute()
+            .top_0()
+            .left_0()
+            .w_full()
+            .h_full()
+            .bg(rgba(0x00000055))
+            .flex()
+            .items_end()
+            .justify_end()
+            .p(spacing::LG)
+            // 点击遮罩外部关闭 popover
+            .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                view_for_click_outside.update(cx, |app, cx| {
+                    app.show_files_popover = false;
+                    cx.notify();
+                });
+            })
+            .child(
+                div()
+                    .w(px(460.))
+                    .max_h(px(360.))
+                    .bg(colors::BG_ELEVATED)
+                    .border_1()
+                    .border_color(colors::BORDER_DEFAULT)
+                    .rounded(radius::LG)
+                    .shadow_lg()
+                    .flex()
+                    .flex_col()
+                    .p(spacing::SM)
+                    .gap(spacing::XS)
+                    // 阻止 popover 内部点击冒泡到遮罩的关闭 handler
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation();
+                    })
+                    // 标题栏：文件数 + ✕ 关闭
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .child(
+                                div()
+                                    .text_color(colors::TEXT_PRIMARY)
+                                    .text_sm()
+                                    .font_weight(FontWeight::SEMIBOLD)
+                                    .child(format!("Loaded Files ({})", files_count)),
+                            )
+                            .child(
+                                div()
+                                    .cursor_pointer()
+                                    .text_color(colors::TEXT_MUTED)
+                                    .hover(|s| s.text_color(colors::TEXT_PRIMARY))
+                                    .child("✕")
+                                    .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                                        cx.stop_propagation();
+                                        view_for_title_close.update(cx, |app, cx| {
+                                            app.show_files_popover = false;
+                                            cx.notify();
+                                        });
+                                    }),
+                            ),
+                    )
+                    // 文件列表（每行：状态图标 + 名称 + msgs + size + ✕ 移除）
+                    .child(
+                        div()
+                            .flex_1()
+                            .flex()
+                            .flex_col()
+                            .gap(px(2.))
+                            .children(row_elements),
+                    )
+                    // 底部：Remove All（左）+ Done（右）
+                    .child(
+                        div()
+                            .mt(px(2.))
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .child(
+                                div()
+                                    .px(spacing::MD)
+                                    .py(px(1.))
+                                    .text_xs()
+                                    .text_color(colors::ERROR)
+                                    .cursor_pointer()
+                                    .rounded(px(3.))
+                                    .hover(|s| s.bg(colors::SURFACE0))
+                                    .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                                        cx.stop_propagation();
+                                        view_for_remove_all.update(cx, |app, cx| {
+                                            app.remove_all_files();
+                                            cx.notify();
+                                        });
+                                    })
+                                    .child("Remove All"),
+                            )
+                            .child(
+                                div()
+                                    .px(spacing::MD)
+                                    .py(px(1.))
+                                    .text_xs()
+                                    .text_color(colors::TEXT_PRIMARY)
+                                    .cursor_pointer()
+                                    .rounded(px(3.))
+                                    .hover(|s| s.bg(colors::SURFACE0))
+                                    .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                                        cx.stop_propagation();
+                                        view_for_done.update(cx, |app, cx| {
+                                            app.show_files_popover = false;
+                                            cx.notify();
+                                        });
+                                    })
+                                    .child("Done"),
+                            ),
+                    ),
+            ),
+    )
+}
+
 /// Render the current view name segment (right side, segment 4).
 fn render_view_name_segment(view_val: AppView) -> impl IntoElement {
     let name = match view_val {
@@ -438,7 +679,7 @@ pub fn render_status_bar(app: &CanViewApp, view: Entity<CanViewApp>) -> impl Int
                         .child(format!("LDF: {}", app.ldf_channels.len())),
                 ),
         )
-        // Right side: server | status_msg | lib badge | view name (separated by vertical bars)
+        // Right side: server | status_msg | lib badge | files btn | view name (separated by vertical bars)
         .child(
             div()
                 .flex()
@@ -450,6 +691,9 @@ pub fn render_status_bar(app: &CanViewApp, view: Entity<CanViewApp>) -> impl Int
                     el.child(status_seg).child(render_separator())
                 })
                 .child(render_lib_badge_segment(app))
+                .when_some(render_files_button_segment(app, view.clone()), |el, files_btn| {
+                    el.child(render_separator()).child(files_btn)
+                })
                 .child(render_separator())
                 .child(render_view_name_segment(current_view)),
         )
@@ -459,6 +703,10 @@ pub fn render_status_bar(app: &CanViewApp, view: Entity<CanViewApp>) -> impl Int
             render_blf_errors_popover(app, view.clone()),
             |el, popover| el.child(popover),
         )
+        // 文件管理 popover，与 blf_errors_popover 同级渲染，避免被 status bar 裁切
+        .when_some(render_files_popover(app, view.clone()), |el, popover| {
+            el.child(popover)
+        })
 }
 
 #[cfg(test)]
