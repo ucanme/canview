@@ -8,6 +8,7 @@ use crate::ui::theme::colors;
 use crate::ui::theme::radius;
 use crate::ui::theme::spacing;
 use gpui::{prelude::*, *};
+use gpui_component::scroll::ScrollableElement;
 
 /// Format a count with thousands separators.
 fn format_count(n: usize) -> String {
@@ -347,6 +348,26 @@ fn render_files_popover(app: &CanViewApp, view: Entity<CanViewApp>) -> Option<im
             let msg_count = seg.object_count;
             let bytes_total = seg.bytes_total;
             let has_errors = !seg.errors.is_empty();
+            // 对相同错误去重（BLF 解析器可能对每个损坏 chunk 重复报相同错误）
+            // 顺序保留用 Vec 去重，避免引入 HashSet 依赖
+            let mut errors_list: Vec<String> = Vec::new();
+            for e in seg.errors.iter() {
+                if !errors_list.iter().any(|existing| existing == e) {
+                    errors_list.push(e.clone());
+                }
+            }
+            // 单条错误截断到 200 字符，超出显示 "..."
+            let errors_list: Vec<String> = errors_list
+                .iter()
+                .map(|e| {
+                    if e.chars().count() > 200 {
+                        let truncated: String = e.chars().take(200).collect();
+                        format!("{}...", truncated)
+                    } else {
+                        e.clone()
+                    }
+                })
+                .collect();
             let status_icon = if has_errors { "❌" } else { "✅" };
             let status_color = if has_errors {
                 colors::WARNING
@@ -364,46 +385,68 @@ fn render_files_popover(app: &CanViewApp, view: Entity<CanViewApp>) -> Option<im
                 .bg(row_bg)
                 .rounded(radius::MD)
                 .flex()
-                .items_center()
-                .justify_between()
+                .flex_col()
+                .gap(px(4.))
                 .child(
                     div()
                         .flex()
                         .items_center()
-                        .gap(px(6.))
-                        .text_xs()
-                        .truncate()
-                        .child(div().text_color(status_color).child(status_icon))
-                        .child(div().text_color(colors::TEXT_PRIMARY).child(file_name))
+                        .justify_between()
                         .child(
                             div()
-                                .text_color(colors::TEXT_MUTED)
-                                .child(format!(
-                                    "{} msgs, {}",
-                                    format_count(msg_count),
-                                    format_bytes(bytes_total),
-                                )),
+                                .flex()
+                                .items_center()
+                                .gap(px(6.))
+                                .text_xs()
+                                .truncate()
+                                .child(div().text_color(status_color).child(status_icon))
+                                .child(div().text_color(colors::TEXT_PRIMARY).child(file_name))
+                                .child(
+                                    div()
+                                        .text_color(colors::TEXT_MUTED)
+                                        .child(format!(
+                                            "{} msgs, {}",
+                                            format_count(msg_count),
+                                            format_bytes(bytes_total),
+                                        )),
+                                )
+                                .when(has_errors, |el| {
+                                    el.child(div().text_color(colors::WARNING).child("(errors)"))
+                                }),
                         )
-                        .when(has_errors, |el| {
-                            el.child(div().text_color(colors::WARNING).child("(errors)"))
-                        }),
+                        .child(
+                            div()
+                                .px(spacing::SM)
+                                .text_xs()
+                                .text_color(colors::ERROR)
+                                .cursor_pointer()
+                                .hover(|s| s.bg(colors::SURFACE0))
+                                .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                                    cx.stop_propagation();
+                                    view_for_remove.update(cx, |app, cx| {
+                                        app.remove_file(file_id);
+                                        cx.notify();
+                                    });
+                                })
+                                .child("✕"),
+                        ),
                 )
-                .child(
-                    div()
-                        .px(spacing::SM)
-                        .text_xs()
-                        .text_color(colors::ERROR)
-                        .cursor_pointer()
-                        .hover(|s| s.bg(colors::SURFACE0))
-                        .on_mouse_down(MouseButton::Left, move |_, _, cx| {
-                            cx.stop_propagation();
-                            view_for_remove.update(cx, |app, cx| {
-                                app.remove_file(file_id);
-                                cx.notify();
-                            });
-                        })
-                        .child("✕"),
-                )
+                .when(has_errors, |el| {
+                    el.child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap(px(2.))
+                            .pl(px(18.))
+                            .text_xs()
+                            .text_color(colors::WARNING)
+                            .children(
+                                errors_list
+                                    .iter()
+                                    .map(|e| div().child(format!("• {}", e))),
+                            ),
+                    )
+                })
         })
         .collect();
     let view_for_remove_all = view.clone();
@@ -433,7 +476,7 @@ fn render_files_popover(app: &CanViewApp, view: Entity<CanViewApp>) -> Option<im
             .child(
                 div()
                     .w(px(460.))
-                    .max_h(px(360.))
+                    .max_h(px(480.))
                     .bg(colors::BG_ELEVATED)
                     .border_1()
                     .border_color(colors::BORDER_DEFAULT)
@@ -479,10 +522,15 @@ fn render_files_popover(app: &CanViewApp, view: Entity<CanViewApp>) -> Option<im
                     .child(
                         div()
                             .flex_1()
-                            .flex()
-                            .flex_col()
-                            .gap(px(2.))
-                            .children(row_elements),
+                            .min_h_0()
+                            .overflow_y_scrollbar()
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .gap(px(2.))
+                                    .children(row_elements),
+                            ),
                     )
                     // 底部：Remove All（左）+ Done（右）
                     .child(
