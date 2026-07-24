@@ -1,0 +1,22 @@
+src/view/src/ui/components/status_bar.rs
+  s_1d3daf60ddd55b::t_b25aca4f56f430 296-336
+  s_1d3daf60ddd55b::t_f6bd5ff64bcb14 783-785
+src/view/src/app/impls.rs
+  s_1d3daf60ddd55b::t_76b24c7c241a02 315-321
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "d26e8b80a79154afbdf30b62779bebee9834b12a",
+  "prompts": {},
+  "sessions": {
+    "s_1d3daf60ddd55b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a97b644-c711-49e0-8a24-5b96aa3c043f",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
