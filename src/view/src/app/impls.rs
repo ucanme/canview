@@ -1605,46 +1605,6 @@ impl CanViewApp {
         }
     }
 
-    /// Print timestamp diagnostics for BLF data
-    ///
-    /// Helper method to validate and print timestamp information
-    /// for loaded BLF objects, helping identify timestamp issues.
-    fn print_timestamp_diagnostics(objects: &[blf::LogObject]) {
-        println!("\n=== BLF 时间戳诊断 ===");
-        println!("总消息数: {}", objects.len());
-
-        // 检查前 10 条消息的时间戳
-        println!("\n前 10 条消息的时间戳:");
-        for (i, obj) in objects.iter().take(10).enumerate() {
-            let ts = obj.timestamp();
-            println!(
-                "  Message {}: {} ns ({:.9} s)",
-                i,
-                ts,
-                ts as f64 / 1_000_000_000.0
-            );
-        }
-
-        // 检查时间戳是否都相同
-        if objects.len() > 1 {
-            let first_ts = objects[0].timestamp();
-            let last_ts = objects.last().unwrap().timestamp();
-            let time_span = (last_ts - first_ts) as f64 / 1_000_000_000.0;
-
-            println!("\n时间跨度分析:");
-            println!("  第一条: {} ns", first_ts);
-            println!("  最后一条: {} ns", last_ts);
-            println!("  时间跨度: {:.6} 秒", time_span);
-
-            if time_span < 0.000001 {
-                println!("  ⚠️  警告: 所有消息的时间戳几乎相同!");
-            } else {
-                println!("  ✅ 时间戳正常变化");
-            }
-        }
-        println!("===================\n");
-    }
-
     /// Log BLF parsing errors to console
     ///
     /// Helper method to print BLF parsing errors in a formatted way.
@@ -1657,35 +1617,6 @@ impl CanViewApp {
             "  ✅ 但仍成功解析了 {} 个对象，这些对象将正常显示\n",
             object_count
         );
-    }
-
-    /// Parse BLF file start time from SystemTime
-    ///
-    /// Helper method to convert BLF file statistics SystemTime
-    /// to chrono NaiveDateTime with nanosecond precision.
-    fn parse_blf_start_time(st: &blf::SystemTime) -> Option<chrono::NaiveDateTime> {
-        println!("\n起始时间解析:");
-        println!("  原始 SystemTime: {:?}", st);
-
-        let date_opt = chrono::NaiveDate::from_ymd_opt(st.year as i32, st.month as u32, st.day as u32);
-        let time_opt = chrono::NaiveTime::from_hms_nano_opt(
-            st.hour as u32,
-            st.minute as u32,
-            st.second as u32,
-            st.milliseconds as u32 * 1_000_000, // Convert milliseconds to nanoseconds
-        );
-
-        match (date_opt, time_opt) {
-            (Some(date), Some(time)) => {
-                let dt = chrono::NaiveDateTime::new(date, time);
-                println!("  ✅ 解析成功: {:?}", dt);
-                Some(dt)
-            }
-            _ => {
-                println!("  ❌ 解析失败");
-                None
-            }
-        }
     }
 
     /// Display BLF file loading error

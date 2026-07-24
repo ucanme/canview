@@ -7,8 +7,6 @@ use super::state::{AppView, CanViewApp, ScrollbarDragState};
 use crate::ChannelType;
 use crate::rendering::{calculate_column_widths, render_message_row_static_with_widths};
 use blf::{LogObject, read_blf_from_file};
-#[allow(unused_imports)]
-use crate::app::commands::multi_file::LoadMode;
 use gpui::{prelude::*, *};
 use smol::Timer;
 use gpui_component::input::{InputEvent, InputState};
