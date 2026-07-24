@@ -1,27 +1,14 @@
 //! TopBar component
 //!
 //! Renders the top bar: File menu button (left) + Library button (right) +
-//! active library badge + window controls (Win/Linux only — macOS uses
-//! system traffic lights). Data view tabs (Log/Plot) live in the StatusBar,
-//! not here.
+//! window controls (Win/Linux only — macOS uses system traffic lights).
+//! Data view tabs (Log/Plot) and the active-library badge live in the
+//! StatusBar, not here.
 
 use crate::app::{AppView, CanViewApp};
 use crate::ui::theme::colors;
 use crate::ui::theme::spacing;
 use gpui::{prelude::*, *};
-
-/// Render the active-library badge shown when a library version is activated.
-/// Returns `None` if no library is active.
-fn active_lib_badge(app: &CanViewApp) -> Option<String> {
-    let lib_id = app.active_library_id.as_ref()?;
-    let ver = app.active_version_name.as_ref()?;
-    let lib_name = app
-        .library_manager
-        .find_library(lib_id)
-        .map(|l| l.name.clone())
-        .unwrap_or_else(|| lib_id.clone());
-    Some(format!("📚 {} / {}", lib_name, ver))
-}
 
 /// Render the top bar.
 pub fn render_top_bar(
@@ -30,7 +17,6 @@ pub fn render_top_bar(
     _cx: &mut Context<CanViewApp>,
 ) -> impl IntoElement {
     let is_macos = cfg!(target_os = "macos");
-    let badge = active_lib_badge(app);
     let show_file_menu = app.show_file_menu;
     let in_library_view = app.current_view == AppView::LibraryView
         || app.current_view == AppView::ConfigView;
@@ -68,32 +54,8 @@ pub fn render_top_bar(
             });
         });
 
-    // Active library badge (shown when a version is activated). Clicking it
-    // jumps to the Library view.
-    let view_for_badge = view.clone();
-    let badge_el = badge.map(|b| {
-        div()
-            .px(spacing::SM)
-            .py(px(2.))
-            .ml(spacing::SM)
-            .bg(colors::ACCENT_GREEN_BG)
-            .border_1()
-            .border_color(colors::ACCENT_GREEN_BORDER)
-            .rounded(px(4.))
-            .text_xs()
-            .text_color(colors::ACCENT_GREEN_LIGHT)
-            .cursor_pointer()
-            .hover(|s| s.bg(colors::SURFACE1))
-            .child(b)
-            .on_mouse_down(MouseButton::Left, move |_, _, cx| {
-                cx.stop_propagation();
-                view_for_badge.update(cx, |app, cx| {
-                    app.current_view = AppView::LibraryView;
-                    app.library_picker_dismissed = false;
-                    cx.notify();
-                });
-            })
-    });
+    // Active library badge moved to the status bar (bottom) to avoid
+    // showing two library references simultaneously. See render_lib_badge_segment.
 
     // Library button (left, next to File). Acts as the configuration entry
     // point. Active state uses a bottom 2px indicator (not background fill)
@@ -144,10 +106,9 @@ pub fn render_top_bar(
         .border_color(colors::BORDER_SUBTLE)
         .window_control_area(WindowControlArea::Drag)
         .when_some(left_pad, |el, pad| el.child(div().w(pad)))
-        // Left: File menu + Library button (config entry) + active library badge
+        // Left: File menu + Library button (config entry)
         .child(file_button)
         .child(library_button)
-        .when_some(badge_el, |el, b| el.child(b))
         // Center: spacer that fills remaining width so the right side sticks to the edge
         .child(div().flex_1())
         // Right: window controls (non-macOS only)
@@ -229,11 +190,6 @@ fn render_window_controls(view: Entity<CanViewApp>) -> impl IntoElement {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
-    fn test_active_lib_badge_none_when_no_active() {
-        let app = CanViewApp::new_state();
-        assert!(active_lib_badge(&app).is_none());
-    }
+    fn placeholder() {}
 }

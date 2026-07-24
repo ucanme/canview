@@ -278,7 +278,7 @@ impl CanViewApp {
 
                 if error_count > 0 {
                     self.blf_parse_errors = segment.errors.clone();
-                    self.status_msg = format!("⚠️ {} parse error(s) — see details", error_count).into();
+                    self.status_msg = format!("{} parse error(s) — see details", error_count).into();
                 } else {
                     self.blf_parse_errors.clear();
                     self.show_blf_errors_popover = false;
@@ -362,7 +362,7 @@ impl CanViewApp {
                 if failed > 0 {
                     if all_done {
                         self.status_msg = format!(
-                            "⚠️ Loaded {}/{} files ({} failed) — {} messages",
+                            "Loaded {}/{} files ({} failed) — {} messages",
                             total_files - failed, total_files, failed, total_msgs
                         ).into();
                     } else {
@@ -428,7 +428,7 @@ impl CanViewApp {
                 let total_files = self.files.len();
                 let failed = self.files.iter().filter(|f| !f.errors.is_empty()).count();
                 self.status_msg = format!(
-                    "⚠️ Loaded {}/{} files ({} failed) — see Files",
+                    "Loaded {}/{} files ({} failed) — see Files",
                     total_files - failed, total_files, failed
                 ).into();
 
@@ -1418,12 +1418,9 @@ impl CanViewApp {
         // Persist active state so it survives restarts
         self.app_config.active_library_id = Some(library_id.to_string());
         self.app_config.active_version_name = Some(version_name.to_string());
-        let lib_name = self
-            .library_manager
-            .find_library(library_id)
-            .map(|l| l.name.clone())
-            .unwrap_or_else(|| library_id.to_string());
-        self.status_msg = format!("✅ Activated: {} / {}", lib_name, version_name).into();
+        // 右侧 lib badge 已经显示 `📚 lib_name / version_name`,
+        // status_msg 不再重复库名,避免激活时出现两个 library 引用。
+        self.status_msg = "✅ Library activated".into();
         self.save_config(cx);
         cx.notify();
     }

@@ -1855,6 +1855,10 @@ impl Render for CanViewApp {
                     ),
             )
             .child(crate::ui::components::render_status_bar(self, view.clone()))
+            // Popovers rendered as siblings of the status bar (not inside it)
+            // so the status bar's border_t_1 stacking context doesn't clip
+            // the popover's top edge.
+            .child(crate::ui::components::render_status_bar_popovers(self, view.clone()))
             .child({
                 // Full-screen overlay to catch clicks outside file dropdown
                 if self.show_file_menu {
