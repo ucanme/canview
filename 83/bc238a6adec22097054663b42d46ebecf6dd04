@@ -1,0 +1,25 @@
+README_zh.md
+  s_b76bcc8c672156::t_c4a961eaef6046 75-76
+docs/USAGE_zh.md
+  s_b76bcc8c672156::t_937da8cdc92407 1-378
+docs/USAGE.md
+  s_b76bcc8c672156::t_5c53dc858794f4 1-378
+README.md
+  s_b76bcc8c672156::t_72dc2d84ad2503 75-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "83bc238a6adec22097054663b42d46ebecf6dd04",
+  "prompts": {},
+  "sessions": {
+    "s_b76bcc8c672156": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d81496b9-8e8a-4aa6-839a-c357d355192f",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
