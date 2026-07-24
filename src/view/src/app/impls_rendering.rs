@@ -1923,6 +1923,26 @@ impl Render for CanViewApp {
                                             {
                                                 let path = file.path().to_owned();
                                                 let path_for_load = path.clone();
+
+                                                // 大文件保护
+                                                const FILE_SIZE_THRESHOLD: u64 = 1_000_000_000; // 1 GB
+                                                if let Ok(meta) = std::fs::metadata(&path) {
+                                                    if meta.len() > FILE_SIZE_THRESHOLD {
+                                                        let confirmed = rfd::AsyncMessageDialog::new()
+                                                            .set_title("Large File Warning")
+                                                            .set_description(&format!(
+                                                                "File is {:.2} GB. Loading may take significant time. Continue?",
+                                                                meta.len() as f64 / 1_000_000_000.0
+                                                            ))
+                                                            .set_buttons(rfd::MessageButtons::YesNo)
+                                                            .show()
+                                                            .await;
+                                                        if confirmed != rfd::MessageDialogResult::Yes {
+                                                            return Ok::<(), anyhow::Error>(());
+                                                        }
+                                                    }
+                                                }
+
                                                 let _ = cx.update(|cx| {
                                                     view.update(cx, |view, _| {
                                                         view.status_msg = "Loading BLF...".into();
@@ -1977,6 +1997,33 @@ impl Render for CanViewApp {
                                                 let paths: Vec<std::path::PathBuf> =
                                                     files.into_iter().map(|f| f.path().to_owned()).collect();
                                                 if paths.is_empty() { return Ok::<(), anyhow::Error>(()); }
+
+                                                // 大文件保护：检查总大小
+                                                const FILE_SIZE_THRESHOLD: u64 = 1_000_000_000; // 1 GB
+                                                let total_size: u64 = paths.iter()
+                                                    .filter_map(|p| std::fs::metadata(p).ok())
+                                                    .map(|m| m.len())
+                                                    .sum();
+                                                if total_size > FILE_SIZE_THRESHOLD {
+                                                    let confirmed = rfd::AsyncMessageDialog::new()
+                                                        .set_title("Large File Warning")
+                                                        .set_description(&format!(
+                                                            "You are about to load {:.2} GB of BLF files. This may take significant time and memory. Continue?",
+                                                            total_size as f64 / 1_000_000_000.0
+                                                        ))
+                                                        .set_buttons(rfd::MessageButtons::YesNo)
+                                                        .show()
+                                                        .await;
+                                                    if confirmed != rfd::MessageDialogResult::Yes {
+                                                        let _ = cx.update(|cx| {
+                                                            view.update(cx, |view, cx| {
+                                                                view.status_msg = "Loading cancelled".into();
+                                                                cx.notify();
+                                                            });
+                                                        });
+                                                        return Ok::<(), anyhow::Error>(());
+                                                    }
+                                                }
 
                                                 // 初始化 loading_progress
                                                 let total = paths.len();
