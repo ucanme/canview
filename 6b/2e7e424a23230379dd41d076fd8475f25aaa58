@@ -1,0 +1,21 @@
+src/view/src/app/impls_rendering.rs
+  s_1d3daf60ddd55b::t_1d7d6f381ca4f6 10-11
+  s_1d3daf60ddd55b::t_19c1ecc1033a6b 2000,2004
+  s_1d3daf60ddd55b::t_28aaebe2e6a2ad 1953-1999,2001-2003,2005-2023
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "6b2e7e424a23230379dd41d076fd8475f25aaa58",
+  "prompts": {},
+  "sessions": {
+    "s_1d3daf60ddd55b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a97b644-c711-49e0-8a24-5b96aa3c043f",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
