@@ -137,38 +137,11 @@ impl MergedView {
             let seg = &segments[0];
             let messages: Arc<[LogObject]> = seg.messages.clone();
             let source_file_ids: Arc<[u32]> = Arc::from(vec![seg.file_id; messages.len()]);
-            // 优先使用 segment 已计算的 time_min/time_max；若为 None（如手动构造的测试 segment），
-            // 则从 messages 现场计算。
-            let (time_min, time_max) = if messages.is_empty() {
-                (None, None)
-            } else if let (Some(tmn), Some(tmx)) = (seg.time_min, seg.time_max) {
-                (Some(tmn), Some(tmx))
-            } else {
-                let start_ns = seg
-                    .start_time
-                    .map(|ndt| ndt.and_utc().timestamp_nanos_opt().unwrap_or(0))
-                    .unwrap_or(0);
-                let mut min_ns = i64::MAX;
-                let mut max_ns = i64::MIN;
-                for msg in messages.iter() {
-                    let abs_ns = start_ns + msg.timestamp() as i64;
-                    if abs_ns < min_ns {
-                        min_ns = abs_ns;
-                    }
-                    if abs_ns > max_ns {
-                        max_ns = abs_ns;
-                    }
-                }
-                (
-                    Some(min_ns as f64 / 1_000_000_000.0),
-                    Some(max_ns as f64 / 1_000_000_000.0),
-                )
-            };
             return Self {
                 messages,
                 source_file_ids,
-                time_min,
-                time_max,
+                time_min: seg.time_min,
+                time_max: seg.time_max,
                 version: 0,
             };
         }
@@ -302,8 +275,8 @@ mod tests {
     }
 
     fn make_seg(file_id: u32, msgs: Vec<u64>) -> Arc<FileSegment> {
-        // msgs: Vec<timestamp_ns>。start_time 固定为 UNIX epoch（NaiveDateTime::from_timestamp_opt(0, 0)）
-        // 绝对时间 = 0 + msg.timestamp()
+        // msgs: Vec<timestamp_ns>。start_time 固定为 UNIX epoch（DateTime::from_timestamp(0, 0)）
+        // 绝对时间 = 0 + msg.timestamp()，与 from_blf_result 计算方式一致
         let messages: Vec<LogObject> = msgs
             .iter()
             .map(|ts| {
@@ -316,6 +289,26 @@ mod tests {
                 })
             })
             .collect();
+        // 与 from_blf_result 保持一致：start_ns = 0，abs_ns = start_ns + msg.timestamp()
+        let (time_min, time_max) = if msgs.is_empty() {
+            (None, None)
+        } else {
+            let mut min_ns = i64::MAX;
+            let mut max_ns = i64::MIN;
+            for ts in msgs.iter() {
+                let abs_ns = *ts as i64;
+                if abs_ns < min_ns {
+                    min_ns = abs_ns;
+                }
+                if abs_ns > max_ns {
+                    max_ns = abs_ns;
+                }
+            }
+            (
+                Some(min_ns as f64 / 1_000_000_000.0),
+                Some(max_ns as f64 / 1_000_000_000.0),
+            )
+        };
         Arc::new(FileSegment {
             file_id,
             path: PathBuf::from(format!("/tmp/seg{}.blf", file_id)),
@@ -326,8 +319,8 @@ mod tests {
             bytes_total: 0,
             bytes_consumed: 0,
             object_count: msgs.len(),
-            time_min: None,
-            time_max: None,
+            time_min,
+            time_max,
         })
     }
 
