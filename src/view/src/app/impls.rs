@@ -262,6 +262,8 @@ impl CanViewApp {
                 self.plot_data = std::sync::Arc::from([]);
                 self.plot_full_data = std::sync::Arc::from([]);
                 self.selected_signals.clear();
+                // 清理可能残留的 loading_progress（多文件加载未完成时单选触发）
+                self.loading_progress = None;
 
                 self.current_view = AppView::LogView;
 
@@ -340,6 +342,8 @@ impl CanViewApp {
                 self.files.push(std::sync::Arc::new(segment));
                 self.rebuild_merged();
                 self.messages = self.merged.messages.to_vec();
+                // 更新 start_time 为所有文件中最早的 measurement_start_time
+                self.start_time = self.files.iter().filter_map(|f| f.start_time).min();
 
                 // 更新汇总进度
                 if let Some(p) = &mut self.loading_progress {
@@ -352,11 +356,23 @@ impl CanViewApp {
                 let total_files = self.files.len();
                 let total_msgs = self.messages.len();
                 let failed = self.files.iter().filter(|f| !f.errors.is_empty()).count();
+                let all_done = self.loading_progress.as_ref()
+                    .map(|p| p.completed_files >= p.total_files)
+                    .unwrap_or(true);
                 if failed > 0 {
-                    self.status_msg = format!(
-                        "⚠️ Loaded {}/{} files ({} failed) — {} messages",
-                        total_files - failed, total_files, failed, total_msgs
-                    ).into();
+                    if all_done {
+                        self.status_msg = format!(
+                            "⚠️ Loaded {}/{} files ({} failed) — {} messages",
+                            total_files - failed, total_files, failed, total_msgs
+                        ).into();
+                    } else {
+                        self.status_msg = format!(
+                            "⏳ Loading {}/{} files ({} failed so far) — {} messages",
+                            self.loading_progress.as_ref().map(|p| p.completed_files).unwrap_or(0),
+                            self.loading_progress.as_ref().map(|p| p.total_files).unwrap_or(0),
+                            failed, total_msgs
+                        ).into();
+                    }
                 } else if let Some(p) = &self.loading_progress {
                     if p.completed_files < p.total_files {
                         self.status_msg = format!(
@@ -374,6 +390,11 @@ impl CanViewApp {
                         "✅ Loaded {} files, {} messages",
                         total_files, total_msgs
                     ).into();
+                }
+
+                // 所有文件加载完成:清理 loading_progress
+                if all_done {
+                    self.loading_progress = None;
                 }
 
                 self.current_file_name = file_name;
@@ -396,10 +417,13 @@ impl CanViewApp {
                 };
                 self.files.push(std::sync::Arc::new(segment));
 
-                if let Some(p) = &mut self.loading_progress {
+                let all_done = if let Some(p) = &mut self.loading_progress {
                     p.completed_files += 1;
                     p.current_file_name = file_name;
-                }
+                    p.completed_files >= p.total_files
+                } else {
+                    true
+                };
 
                 let total_files = self.files.len();
                 let failed = self.files.iter().filter(|f| !f.errors.is_empty()).count();
@@ -407,6 +431,11 @@ impl CanViewApp {
                     "⚠️ Loaded {}/{} files ({} failed) — see Files",
                     total_files - failed, total_files, failed
                 ).into();
+
+                // 所有文件加载完成:清理 loading_progress
+                if all_done {
+                    self.loading_progress = None;
+                }
             }
         }
     }
@@ -423,6 +452,8 @@ impl CanViewApp {
         self.files.retain(|f| f.file_id != file_id);
         self.rebuild_merged();
         self.messages = self.merged.messages.to_vec();
+        // 更新 start_time 为剩余文件中最早的 measurement_start_time
+        self.start_time = self.files.iter().filter_map(|f| f.start_time).min();
         let total_files = self.files.len();
         let total_msgs = self.messages.len();
         if total_files == 0 {
@@ -441,6 +472,11 @@ impl CanViewApp {
 
     /// 移除所有文件
     pub(crate) fn remove_all_files(&mut self) {
+        // 若正在加载,标记取消以阻止待处理任务重新填充 files
+        if let Some(p) = &mut self.loading_progress {
+            p.is_cancelled = true;
+        }
+        self.loading_progress = None;
         self.files.clear();
         self.merged = crate::domain::multi_file::MergedView::empty();
         self.messages.clear();
