@@ -143,9 +143,3 @@ pub fn import_database_file(app: &mut CanViewApp, _cx: &mut Context<CanViewApp>)
     app.status_msg = "Import database - file dialog not yet implemented".into();
     eprintln!("⚠️  Import database: file dialog not yet implemented");
 }
-
-/// Apply BLF file loading result
-pub fn apply_blf_result(app: &mut CanViewApp, result: anyhow::Result<blf::BlfResult>) {
-    // Delegate to the impl method, with no file name (controller path doesn't have it)
-    app.apply_blf_result(result, None);
-}

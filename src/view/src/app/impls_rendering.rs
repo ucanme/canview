@@ -1855,6 +1855,10 @@ impl Render for CanViewApp {
                     ),
             )
             .child(crate::ui::components::render_status_bar(self, view.clone()))
+            // Popovers rendered as siblings of the status bar (not inside it)
+            // so the status bar's border_t_1 stacking context doesn't clip
+            // the popover's top edge.
+            .child(crate::ui::components::render_status_bar_popovers(self, view.clone()))
             .child({
                 // Full-screen overlay to catch clicks outside file dropdown
                 if self.show_file_menu {
@@ -1920,10 +1924,27 @@ impl Render for CanViewApp {
                                                 .await
                                             {
                                                 let path = file.path().to_owned();
-                                                let fname = path
-                                                    .file_name()
-                                                    .and_then(|n| n.to_str())
-                                                    .map(|s| s.to_string());
+                                                let path_for_load = path.clone();
+
+                                                // 大文件保护
+                                                const FILE_SIZE_THRESHOLD: u64 = 1_000_000_000; // 1 GB
+                                                if let Ok(meta) = std::fs::metadata(&path) {
+                                                    if meta.len() > FILE_SIZE_THRESHOLD {
+                                                        let confirmed = rfd::AsyncMessageDialog::new()
+                                                            .set_title("Large File Warning")
+                                                            .set_description(&format!(
+                                                                "File is {:.2} GB. Loading may take significant time. Continue?",
+                                                                meta.len() as f64 / 1_000_000_000.0
+                                                            ))
+                                                            .set_buttons(rfd::MessageButtons::YesNo)
+                                                            .show()
+                                                            .await;
+                                                        if confirmed != rfd::MessageDialogResult::Yes {
+                                                            return Ok::<(), anyhow::Error>(());
+                                                        }
+                                                    }
+                                                }
+
                                                 let _ = cx.update(|cx| {
                                                     view.update(cx, |view, _| {
                                                         view.status_msg = "Loading BLF...".into();
@@ -1932,14 +1953,14 @@ impl Render for CanViewApp {
                                                 let result = cx
                                                     .background_executor()
                                                     .spawn(async move {
-                                                        read_blf_from_file(&path).map_err(|e| {
+                                                        read_blf_from_file(&path_for_load).map_err(|e| {
                                                             anyhow::Error::msg(format!("{:?}", e))
                                                         })
                                                     })
                                                     .await;
                                                 let _ = cx.update(|cx| {
                                                     view.update(cx, |view, cx| {
-                                                        view.apply_blf_result(result, fname);
+                                                        view.apply_blf_result_single(result, path.clone());
                                                         cx.notify();
                                                     });
                                                 });
@@ -1950,6 +1971,109 @@ impl Render for CanViewApp {
                                     }
                                 })
                                 .child("Open BLF..."),
+                        )
+                        // Open Multiple BLF... (multi-select append)
+                        .child(
+                            div()
+                                .px_3()
+                                .py_1()
+                                .text_xs()
+                                .text_color(rgb(0xcdd6f4))
+                                .hover(|style| style.bg(rgb(0x45475a)))
+                                .cursor_pointer()
+                                .on_mouse_down(gpui::MouseButton::Left, {
+                                    let view = view.clone();
+                                    move |_event, _window, cx| {
+                                        cx.stop_propagation();
+                                        view.update(cx, |this, cx| {
+                                            this.show_file_menu = false;
+                                            cx.notify();
+                                        });
+                                        let view = view.clone();
+                                        cx.spawn(async move |cx| {
+                                            let files = rfd::AsyncFileDialog::new()
+                                                .add_filter("BLF Files", &["blf", "bin"])
+                                                .pick_files()
+                                                .await;
+                                            if let Some(files) = files {
+                                                let paths: Vec<std::path::PathBuf> =
+                                                    files.into_iter().map(|f| f.path().to_owned()).collect();
+                                                if paths.is_empty() { return Ok::<(), anyhow::Error>(()); }
+
+                                                // 大文件保护：检查总大小
+                                                const FILE_SIZE_THRESHOLD: u64 = 1_000_000_000; // 1 GB
+                                                let total_size: u64 = paths.iter()
+                                                    .filter_map(|p| std::fs::metadata(p).ok())
+                                                    .map(|m| m.len())
+                                                    .sum();
+                                                if total_size > FILE_SIZE_THRESHOLD {
+                                                    let confirmed = rfd::AsyncMessageDialog::new()
+                                                        .set_title("Large File Warning")
+                                                        .set_description(&format!(
+                                                            "You are about to load {:.2} GB of BLF files. This may take significant time and memory. Continue?",
+                                                            total_size as f64 / 1_000_000_000.0
+                                                        ))
+                                                        .set_buttons(rfd::MessageButtons::YesNo)
+                                                        .show()
+                                                        .await;
+                                                    if confirmed != rfd::MessageDialogResult::Yes {
+                                                        let _ = cx.update(|cx| {
+                                                            view.update(cx, |view, cx| {
+                                                                view.status_msg = "Loading cancelled".into();
+                                                                cx.notify();
+                                                            });
+                                                        });
+                                                        return Ok::<(), anyhow::Error>(());
+                                                    }
+                                                }
+
+                                                // 初始化 loading_progress
+                                                let total = paths.len();
+                                                let _ = cx.update(|cx| {
+                                                    view.update(cx, |view, cx| {
+                                                        view.loading_progress = Some(crate::app::state::LoadingProgress {
+                                                            total_files: total,
+                                                            completed_files: 0,
+                                                            current_file_name: None,
+                                                            total_messages_so_far: 0,
+                                                            is_cancelled: false,
+                                                        });
+                                                        view.status_msg = format!("⏳ Loading 0/{} files...", total).into();
+                                                        cx.notify();
+                                                    });
+                                                });
+
+                                                // 并发解析:spawn 所有任务,顺序收集结果（GPUI Task 并发执行）
+                                                let mut tasks = Vec::new();
+                                                for path in paths.clone() {
+                                                    let path = path.clone();
+                                                    let task = cx.background_executor().spawn(async move {
+                                                        let result = read_blf_from_file(&path).map_err(|e| {
+                                                            anyhow::Error::msg(format!("{:?}", e))
+                                                        });
+                                                        (path, result)
+                                                    });
+                                                    tasks.push(task);
+                                                }
+
+                                                // 顺序 await 但每个任务在后台已开始执行
+                                                for task in tasks {
+                                                    let (path, result) = task.await;
+                                                    let view = view.clone();
+                                                    let _ = cx.update(|cx| {
+                                                        view.update(cx, |view, cx| {
+                                                            view.apply_blf_result_append_one(result, path);
+                                                            cx.notify();
+                                                        });
+                                                    });
+                                                }
+                                            }
+                                            Ok::<(), anyhow::Error>(())
+                                        })
+                                        .detach();
+                                    }
+                                })
+                                .child("Open Multiple BLF..."),
                         )
                 } else {
                     div().hidden()

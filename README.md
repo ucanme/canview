@@ -72,6 +72,8 @@ Pre-built binaries: [Releases](https://github.com/ucanme/canview/releases) (Wind
 
 Configuration is auto-saved to `multi_channel_config.json`.
 
+📖 **Full user guide:** [docs/USAGE.md](docs/USAGE.md) — window layout, log/plot views, library management, LAN sharing, keyboard shortcuts, troubleshooting.
+
 ---
 
 ## Roadmap
@@ -82,6 +84,7 @@ Configuration is auto-saved to `multi_channel_config.json`.
 - [x] Message filtering and signal decoding
 - [x] Signal waveform plot (zoom, hover, absolute time)
 - [x] Multi-version signal library management (create / activate / share via LAN)
+- [x] Multi-file loading (Open BLF... replaces, Open Multiple BLF... appends) with merged timeline
 - [ ] Live streaming mode
 - [ ] Export CSV / JSON
 - [ ] Diagnostic rule DSL

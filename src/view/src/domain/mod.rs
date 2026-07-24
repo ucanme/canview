@@ -18,6 +18,9 @@ pub mod log_processor;
 pub mod signal_decoder;
 pub mod time_handler;
 
+// Multi-file loading and global merged view
+pub mod multi_file;
+
 // Re-export domain models
 pub use self::models::{
     Message, MessageType, MessageData, Direction,

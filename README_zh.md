@@ -72,6 +72,8 @@ cargo run --release --bin view
 
 配置自动保存至 `multi_channel_config.json`。
 
+📖 **完整使用文档：** [docs/USAGE_zh.md](docs/USAGE_zh.md) — 窗口布局、日志/波形视图、信号库管理、局域网共享、键盘快捷键、故障排查。
+
 ---
 
 ## 路线图
@@ -82,6 +84,7 @@ cargo run --release --bin view
 - [x] 消息过滤与信号解码
 - [x] 信号波形图（缩放、悬停、绝对时间）
 - [x] 多版本信号库管理（创建/激活/局域网共享/一键导入）
+- [x] 多文件加载（Open BLF... 替换，Open Multiple BLF... 追加）按时间合并
 - [ ] 实时流模式
 - [ ] 导出 CSV / JSON
 - [ ] 诊断规则 DSL

@@ -2,6 +2,16 @@
 //!
 //! This module contains the core application state structures.
 
+/// 多文件加载进度
+#[derive(Clone, Debug, Default)]
+pub struct LoadingProgress {
+    pub total_files: usize,
+    pub completed_files: usize,
+    pub current_file_name: Option<String>,
+    pub total_messages_so_far: usize,
+    pub is_cancelled: bool,
+}
+
 /// Simple deprecated input state for backward compatibility
 #[derive(Clone, Debug, Default)]
 pub struct SimpleDeprecatedInputState {
@@ -13,7 +23,9 @@ pub struct SimpleDeprecatedInputState {
 /// This data is NOT stored in config files but needs to survive window recreate
 pub struct RuntimeState {
     pub current_view: AppView,
-    pub messages: Vec<LogObject>,
+    pub files: Vec<std::sync::Arc<crate::domain::multi_file::FileSegment>>,
+    pub merged: crate::domain::multi_file::MergedView,
+    pub current_file_name: Option<String>,
     pub plot_data: std::sync::Arc<[crate::models::Series]>,
     /// Full (unfiltered) decoded data cache — used for fast zoom-only re-filter
     pub plot_full_data: std::sync::Arc<[crate::models::Series]>,
@@ -26,8 +38,6 @@ pub struct RuntimeState {
     pub dbc_channels: HashMap<u16, DbcDatabase>,
     pub ldf_channels: HashMap<u16, LdfDatabase>,
     pub start_time: Option<chrono::NaiveDateTime>,
-    pub is_streaming_mode: bool,
-    pub current_file_name: Option<String>,
     pub active_library_id: Option<String>,
     pub active_version_name: Option<String>,
 }
@@ -93,9 +103,13 @@ pub struct CanViewApp {
 
     // Window state
     pub is_maximized: bool,
-    pub is_streaming_mode: bool,
     // Currently loaded BLF file name (for StatusBar display)
     pub current_file_name: Option<String>,
+    // 多文件加载状态
+    pub files: Vec<std::sync::Arc<crate::domain::multi_file::FileSegment>>,
+    pub merged: crate::domain::multi_file::MergedView,
+    pub show_files_popover: bool,
+    pub loading_progress: Option<crate::app::state::LoadingProgress>,
     // Library picker UI state (not persisted to config)
     pub library_picker_dismissed: bool,
     pub library_picker_selected_version: std::collections::HashMap<String, String>,
@@ -277,8 +291,11 @@ impl CanViewApp {
             config_file_path: None,
             signal_storage: crate::library::SignalLibraryStorage::new().ok(),
             is_maximized,
-            is_streaming_mode: false,
             current_file_name: None,
+            files: Vec::new(),
+            merged: crate::domain::multi_file::MergedView::empty(),
+            show_files_popover: false,
+            loading_progress: None,
             library_picker_dismissed: false,
             library_picker_selected_version: std::collections::HashMap::new(),
             blf_bytes_total: 0,
@@ -383,14 +400,16 @@ impl CanViewApp {
     /// Save runtime state that needs to be preserved across window operations
     /// This includes loaded data and messages
     pub fn save_runtime_state(&self) -> RuntimeState {
-        eprintln!("💾 Saving runtime state: {:?} view, {} messages, {} plot series, zoom: {:?}-{:?}, {} signals, {} DBC, {} LDF",
-            self.current_view, self.messages.len(), self.plot_data.len(),
+        eprintln!("💾 Saving runtime state: {:?} view, {} files, {} plot series, zoom: {:?}-{:?}, {} signals, {} DBC, {} LDF",
+            self.current_view, self.files.len(), self.plot_data.len(),
             self.plot_zoom_start, self.plot_zoom_end,
             self.selected_signals.len(),
             self.dbc_channels.len(), self.ldf_channels.len());
         RuntimeState {
             current_view: self.current_view.clone(),
-            messages: self.messages.clone(),
+            files: self.files.clone(),
+            merged: self.merged.clone(),
+            current_file_name: self.current_file_name.clone(),
             plot_data: self.plot_data.clone(),
             plot_full_data: self.plot_full_data.clone(),
             plot_zoom_start: self.plot_zoom_start,
@@ -402,8 +421,6 @@ impl CanViewApp {
             dbc_channels: self.dbc_channels.clone(),
             ldf_channels: self.ldf_channels.clone(),
             start_time: self.start_time,
-            is_streaming_mode: self.is_streaming_mode,
-            current_file_name: self.current_file_name.clone(),
             active_library_id: self.active_library_id.clone(),
             active_version_name: self.active_version_name.clone(),
         }
@@ -412,15 +429,19 @@ impl CanViewApp {
     /// Restore runtime state after window operations
     /// This preserves the loaded configuration and messages when maximizing/restoring windows
     pub fn restore_runtime_state(&mut self, state: RuntimeState) {
-        eprintln!("♻️  Restoring runtime state: {:?} view, {} messages, {} plot series, zoom: {:?}-{:?}, {} signals, {} DBC, {} LDF",
+        eprintln!("♻️  Restoring runtime state: {:?} view, {} files, {} plot series, zoom: {:?}-{:?}, {} signals, {} DBC, {} LDF",
             state.current_view,
-            state.messages.len(),
+            state.files.len(),
             state.plot_data.len(),
             state.plot_zoom_start, state.plot_zoom_end,
             state.selected_signals.len(),
             state.dbc_channels.len(), state.ldf_channels.len());
         self.current_view = state.current_view;
-        self.messages = state.messages;
+        self.files = state.files;
+        // 兼容字段：从 merged.messages 派生 messages 快照（必须在 move 之前读取）
+        self.messages = state.merged.messages.to_vec();
+        self.merged = state.merged;
+        self.current_file_name = state.current_file_name;
         self.plot_data = state.plot_data;
         self.plot_full_data = state.plot_full_data;
         self.plot_zoom_start = state.plot_zoom_start;
@@ -434,16 +455,9 @@ impl CanViewApp {
         self.dbc_channels = state.dbc_channels;
         self.ldf_channels = state.ldf_channels;
         self.start_time = state.start_time;
-        self.is_streaming_mode = state.is_streaming_mode;
-        self.current_file_name = state.current_file_name;
         self.active_library_id = state.active_library_id;
         self.active_version_name = state.active_version_name;
-        eprintln!("✅ State restored. Now have: {:?} view, {} messages, {} plot series, zoom: {:?}-{:?}, {} signals, {} DBC, {} LDF",
-            self.current_view,
-            self.messages.len(),
-            self.plot_data.len(),
-            self.plot_zoom_start, self.plot_zoom_end,
-            self.selected_signals.len(),
-            self.dbc_channels.len(), self.ldf_channels.len());
+        eprintln!("✅ State restored. Now have: {:?} view, {} files, {} messages, {} plot series",
+            self.current_view, self.files.len(), self.messages.len(), self.plot_data.len());
     }
 }
