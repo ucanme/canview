@@ -1,0 +1,27 @@
+docs/superpowers/plans/2026-07-24-multi-file-parsing-playback.md
+  s_1d3daf60ddd55b::t_a6709dcfc21cfd 1678,1681,1684-1685,1687,1689,1691,1693-1716,1718-1726,1728-1736,1738-1755,1757-1770,1773,1775-1776,1778,1783-1785,1788-1789
+  s_1d3daf60ddd55b::t_5ce5d3fe79aaca 770,775,780
+  s_1d3daf60ddd55b::t_3bfc94a32562a4 797
+  s_1d3daf60ddd55b::t_f698d8b8cd877e 445-447,463,468
+  s_1d3daf60ddd55b::t_6ddacce7f0762d 127,149
+  s_1d3daf60ddd55b::t_2f5495dbc559f6 695,714
+  s_1d3daf60ddd55b::t_5c1c85d0d263e9 290,299-300,320,367,372,377-379,407,418-419,421-422,434,436
+  s_1d3daf60ddd55b::t_01a3894e430a3e 716
+  s_1d3daf60ddd55b::t_c03ea2aa3376ea 756
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "e2ed9bb8290d481c6fd25d76f8d8388b89a894e0",
+  "prompts": {},
+  "sessions": {
+    "s_1d3daf60ddd55b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a97b644-c711-49e0-8a24-5b96aa3c043f",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
