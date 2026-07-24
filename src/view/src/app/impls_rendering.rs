@@ -7,6 +7,8 @@ use super::state::{AppView, CanViewApp, ScrollbarDragState};
 use crate::ChannelType;
 use crate::rendering::{calculate_column_widths, render_message_row_static_with_widths};
 use blf::{LogObject, read_blf_from_file};
+#[allow(unused_imports)]
+use crate::app::commands::multi_file::LoadMode;
 use gpui::{prelude::*, *};
 use smol::Timer;
 use gpui_component::input::{InputEvent, InputState};
@@ -1947,6 +1949,77 @@ impl Render for CanViewApp {
                                     }
                                 })
                                 .child("Open BLF..."),
+                        )
+                        // Open Multiple BLF... (multi-select append)
+                        .child(
+                            div()
+                                .px_3()
+                                .py_1()
+                                .text_xs()
+                                .text_color(rgb(0xcdd6f4))
+                                .hover(|style| style.bg(rgb(0x45475a)))
+                                .cursor_pointer()
+                                .on_mouse_down(gpui::MouseButton::Left, {
+                                    let view = view.clone();
+                                    move |_event, _window, cx| {
+                                        cx.stop_propagation();
+                                        view.update(cx, |this, cx| {
+                                            this.show_file_menu = false;
+                                            cx.notify();
+                                        });
+                                        let view = view.clone();
+                                        cx.spawn(async move |cx| {
+                                            let files = rfd::AsyncFileDialog::new()
+                                                .add_filter("BLF Files", &["blf", "bin"])
+                                                .pick_files()
+                                                .await;
+                                            if let Some(files) = files {
+                                                let paths: Vec<std::path::PathBuf> =
+                                                    files.into_iter().map(|f| f.path().to_owned()).collect();
+                                                if paths.is_empty() { return Ok::<(), anyhow::Error>(()); }
+
+                                                // 初始化 loading_progress
+                                                let total = paths.len();
+                                                let _ = cx.update(|cx| {
+                                                    view.update(cx, |view, cx| {
+                                                        view.loading_progress = Some(crate::app::state::LoadingProgress {
+                                                            total_files: total,
+                                                            completed_files: 0,
+                                                            current_file_name: None,
+                                                            total_messages_so_far: 0,
+                                                            is_cancelled: false,
+                                                        });
+                                                        view.status_msg = format!("⏳ Loading 0/{} files...", total).into();
+                                                        cx.notify();
+                                                    });
+                                                });
+
+                                                // 并发解析:对每个 path spawn 一个后台任务
+                                                for path in paths {
+                                                    let view = view.clone();
+                                                    let path_for_load = path.clone();
+                                                    let result = cx
+                                                        .background_executor()
+                                                        .spawn(async move {
+                                                            read_blf_from_file(&path_for_load).map_err(|e| {
+                                                                anyhow::Error::msg(format!("{:?}", e))
+                                                            })
+                                                        })
+                                                        .await;
+                                                    let _ = cx.update(|cx| {
+                                                        view.update(cx, |view, cx| {
+                                                            view.apply_blf_result_append_one(result, path);
+                                                            cx.notify();
+                                                        });
+                                                    });
+                                                }
+                                            }
+                                            Ok::<(), anyhow::Error>(())
+                                        })
+                                        .detach();
+                                    }
+                                })
+                                .child("Open Multiple BLF..."),
                         )
                 } else {
                     div().hidden()
