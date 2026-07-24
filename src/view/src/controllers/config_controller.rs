@@ -143,11 +143,3 @@ pub fn import_database_file(app: &mut CanViewApp, _cx: &mut Context<CanViewApp>)
     app.status_msg = "Import database - file dialog not yet implemented".into();
     eprintln!("⚠️  Import database: file dialog not yet implemented");
 }
-
-/// Apply BLF file loading result
-pub fn apply_blf_result(app: &mut CanViewApp, result: anyhow::Result<blf::BlfResult>) {
-    // 兼容旧接口:使用空路径调用 apply_blf_result_single
-    // 注意:此调用方提供的是无路径场景,使用占位路径
-    let path = std::path::PathBuf::from("unknown.blf");
-    app.apply_blf_result_single(result, path);
-}
