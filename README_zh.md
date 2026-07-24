@@ -72,6 +72,8 @@ cargo run --release --bin view
 
 配置自动保存至 `multi_channel_config.json`。
 
+📖 **完整使用文档：** [docs/USAGE_zh.md](docs/USAGE_zh.md) — 窗口布局、日志/波形视图、信号库管理、局域网共享、键盘快捷键、故障排查。
+
 ---
 
 ## 路线图

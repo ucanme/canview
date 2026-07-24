@@ -72,6 +72,8 @@ Pre-built binaries: [Releases](https://github.com/ucanme/canview/releases) (Wind
 
 Configuration is auto-saved to `multi_channel_config.json`.
 
+📖 **Full user guide:** [docs/USAGE.md](docs/USAGE.md) — window layout, log/plot views, library management, LAN sharing, keyboard shortcuts, troubleshooting.
+
 ---
 
 ## Roadmap
