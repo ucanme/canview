@@ -1,0 +1,63 @@
+src/view/src/app/impls.rs
+  s_b76bcc8c672156::t_e383cc1faee238 365
+  s_b76bcc8c672156::t_84e3db0538f4c2 281
+  s_b76bcc8c672156::t_3d2c4a259e748b 431
+  s_b76bcc8c672156::t_0e3173ab8d0de7 1421-1423
+src/view/src/ui/components/top_bar.rs
+  s_b76bcc8c672156::t_20626a4db0b613 57-58
+  s_b76bcc8c672156::t_e622ea39486167 109
+  s_b76bcc8c672156::t_1c27aef5482201 4-6
+  s_b76bcc8c672156::t_4e86afe89c8af7 194
+src/view/src/app/impls_rendering.rs
+  s_1d3daf60ddd55b::t_ead0bcedc9d57f 1858-1861
+src/view/src/ui/components/mod.rs
+  s_1d3daf60ddd55b::t_9a62ca6d5a85f4 20
+src/view/src/ui/components/status_bar.rs
+  s_1d3daf60ddd55b::t_30feb171ebe865 549
+  s_cf1effe1c663a1::t_6e384eb0ab57cb 209
+  s_b76bcc8c672156::t_ac2a9ee9533a26 65-68
+  s_1d3daf60ddd55b::t_de0652282e648b 841-855
+  s_cf1effe1c663a1::t_5f3556e77312ee 548
+  s_cf1effe1c663a1::t_38539a962f81f5 373
+  s_cf1effe1c663a1::t_c54e2366df2a8c 592-597,599-623
+  s_cf1effe1c663a1::t_e97ee301cc8174 13-20
+  s_cf1effe1c663a1::t_da2d545247edb7 828
+  s_cf1effe1c663a1::t_198a0c9ec36965 210-213,226
+  s_cf1effe1c663a1::t_1e46f7f70381cf 51-55,57,59,63-64,69-74,76-78,80-81,83-84,89-102,105-107
+  s_cf1effe1c663a1::t_307aaca1b6f656 56,58,60-62,104
+  s_cf1effe1c663a1::t_38c132e13951eb 797
+  s_cf1effe1c663a1::t_c8bbcf868fa3dd 388-408
+  s_cf1effe1c663a1::t_6f86113fbc40ec 369-372,374
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "88af2cf4ee0e26827e396c30dd9983c4eebf1138",
+  "prompts": {},
+  "sessions": {
+    "s_1d3daf60ddd55b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a97b644-c711-49e0-8a24-5b96aa3c043f",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    },
+    "s_b76bcc8c672156": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d81496b9-8e8a-4aa6-839a-c357d355192f",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    },
+    "s_cf1effe1c663a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df96a42a-2733-4bcd-8cc7-165c4f5077c2",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
