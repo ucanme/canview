@@ -1994,18 +1994,23 @@ impl Render for CanViewApp {
                                                     });
                                                 });
 
-                                                // 并发解析:对每个 path spawn 一个后台任务
-                                                for path in paths {
+                                                // 并发解析:spawn 所有任务,顺序收集结果（GPUI Task 并发执行）
+                                                let mut tasks = Vec::new();
+                                                for path in paths.clone() {
+                                                    let path = path.clone();
+                                                    let task = cx.background_executor().spawn(async move {
+                                                        let result = read_blf_from_file(&path).map_err(|e| {
+                                                            anyhow::Error::msg(format!("{:?}", e))
+                                                        });
+                                                        (path, result)
+                                                    });
+                                                    tasks.push(task);
+                                                }
+
+                                                // 顺序 await 但每个任务在后台已开始执行
+                                                for task in tasks {
+                                                    let (path, result) = task.await;
                                                     let view = view.clone();
-                                                    let path_for_load = path.clone();
-                                                    let result = cx
-                                                        .background_executor()
-                                                        .spawn(async move {
-                                                            read_blf_from_file(&path_for_load).map_err(|e| {
-                                                                anyhow::Error::msg(format!("{:?}", e))
-                                                            })
-                                                        })
-                                                        .await;
                                                     let _ = cx.update(|cx| {
                                                         view.update(cx, |view, cx| {
                                                             view.apply_blf_result_append_one(result, path);
