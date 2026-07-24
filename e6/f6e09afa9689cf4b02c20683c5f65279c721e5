@@ -1,0 +1,26 @@
+src/view/src/ui/components/status_bar.rs
+  s_1d3daf60ddd55b::t_0dec7822f8c6ae 351-370
+  s_1d3daf60ddd55b::t_e0b9467435ac58 527-533
+  s_1d3daf60ddd55b::t_fe7b6e2beb58e6 525
+  s_1d3daf60ddd55b::t_b969b630384a79 446
+  s_1d3daf60ddd55b::t_6c800bb7366a88 11
+  s_1d3daf60ddd55b::t_15ad272ee491f7 526
+  s_1d3daf60ddd55b::t_bfbb0bb5bb0214 479
+  s_1d3daf60ddd55b::t_b25098cc8ea507 388-389,394,397-415,417-432,434-445,447-449
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "e6f6e09afa9689cf4b02c20683c5f65279c721e5",
+  "prompts": {},
+  "sessions": {
+    "s_1d3daf60ddd55b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a97b644-c711-49e0-8a24-5b96aa3c043f",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
