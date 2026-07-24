@@ -1,0 +1,23 @@
+docs/superpowers/specs/2026-07-24-multi-file-parsing-playback-design.md
+  s_1d3daf60ddd55b::t_d063d42268624b 205-206,208
+  s_1d3daf60ddd55b::t_036292d4849d9a 80,82-83,93-103
+  s_1d3daf60ddd55b::t_3b6a2015fd766f 71-72
+  s_1d3daf60ddd55b::t_8e1f246c3dad2f 417-419,433
+  s_1d3daf60ddd55b::t_81961e44e8285c 491-492,495
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "369595eea49b73b1918c9dd159e93e126b4d87cc",
+  "prompts": {},
+  "sessions": {
+    "s_1d3daf60ddd55b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a97b644-c711-49e0-8a24-5b96aa3c043f",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
