@@ -728,9 +728,9 @@ Edit `src/view/src/app/state.rs`，在 `CanViewApp` 结构（line 72 附近）�
             state.dbc_channels.len(), state.ldf_channels.len());
         self.current_view = state.current_view;
         self.files = state.files;
-        self.merged = state.merged;
-        // 兼容字段：从 merged.messages 派生 messages 快照
+        // 兼容字段：从 merged.messages 派生 messages 快照（必须在 state.merged 被 move 之前完成借用）
         self.messages = state.merged.messages.to_vec();
+        self.merged = state.merged;
         self.current_file_name = state.current_file_name;
         self.plot_data = state.plot_data;
         self.plot_full_data = state.plot_full_data;
