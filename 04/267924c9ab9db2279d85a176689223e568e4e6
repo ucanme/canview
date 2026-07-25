@@ -1,0 +1,23 @@
+src/view/src/handlers/drag_drop.rs
+  s_cf1effe1c663a1::t_c92f92441a9c1a 231-241
+src/view/src/app/impls_rendering.rs
+  s_cf1effe1c663a1::t_84adeb6ca42862 1695-1697
+src/view/src/main.rs
+  s_cf1effe1c663a1::t_530732af4834f0 23-48,61-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "04267924c9ab9db2279d85a176689223e568e4e6",
+  "prompts": {},
+  "sessions": {
+    "s_cf1effe1c663a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df96a42a-2733-4bcd-8cc7-165c4f5077c2",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
