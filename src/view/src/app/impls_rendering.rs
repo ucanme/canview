@@ -1692,6 +1692,9 @@ impl Render for CanViewApp {
 
         let view = cx.entity().clone();
 
+        // Drain pending drag-drop paths now that any in-flight load is done.
+        crate::handlers::drag_drop::drain_pending_drop(self, cx);
+
         div()
             .size_full()
             .flex()
