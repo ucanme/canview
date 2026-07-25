@@ -1,0 +1,65 @@
+src/view/src/app/impls.rs
+  s_cf1effe1c663a1::t_02c0ab9723ae8b 510-512
+  s_cf1effe1c663a1::t_1a4ee8ab8a69e6 513-514
+  s_cf1effe1c663a1::t_549c358a76a668 411
+src/view/src/app/impls_rendering.rs
+  s_cf1effe1c663a1::t_a852595841a392 1852
+  s_cf1effe1c663a1::t_e2d311e86ee7fe 510-511
+src/blf/src/parser.rs
+  s_cf1effe1c663a1::t_9f48999c748280 163-164
+  s_cf1effe1c663a1::t_fbad820779c8c6 149-159
+  s_cf1effe1c663a1::t_9aaf1839efeabc 123-148,165-176
+  s_cf1effe1c663a1::t_37829b62d48a33 160-162
+  s_cf1effe1c663a1::t_d1deb2b669420b 177
+src/view/src/handlers/drag_drop.rs
+  s_cf1effe1c663a1::t_1af160a5bdce3f 125-126
+  s_cf1effe1c663a1::t_63c78fb7a79a7e 195
+  s_cf1effe1c663a1::t_c3cd3f5d6766a5 181
+docs/superpowers/plans/2026-07-25-drag-drop-blf-loading.md
+  s_cf1effe1c663a1::t_1b9537ef944d8c 27-28,32-37,43-44,48-49,51,56,62,66,76-77,83
+  s_cf1effe1c663a1::t_ab1d94928b49de 299,305-306,308,310,320-325,328,334,339-340,342-346,350,354,358-359,361,363,369
+src/view/src/app/mod.rs
+  s_cf1effe1c663a1::t_7b32c80ddb937a 12
+src/view/src/domain/multi_file.rs
+  s_cf1effe1c663a1::t_1fbbdb82581d3f 147-148
+  s_cf1effe1c663a1::t_1c4337d6a438c9 150,155-161,169,178
+  s_cf1effe1c663a1::t_49366d700df649 140-144
+  s_cf1effe1c663a1::t_69e7a90a55c21c 21-24
+  s_cf1effe1c663a1::t_52d545a4eba3e9 314
+  s_cf1effe1c663a1::t_a29b08db644323 380
+  s_cf1effe1c663a1::t_82bcc692e1a26a 117
+src/view/src/rendering/utils.rs
+  s_cf1effe1c663a1::t_dcb07f5c49d08a 28-29
+  s_cf1effe1c663a1::t_1002a463caa887 23-27
+src/view/src/rendering/message.rs
+  s_cf1effe1c663a1::t_a11801a982a62f 298
+  s_cf1effe1c663a1::t_3fd792ea2e261e 37
+  s_cf1effe1c663a1::t_97dce33bf8d63a 241
+  s_cf1effe1c663a1::t_58184c21697150 162
+  s_cf1effe1c663a1::t_6bfe5bda66ac3c 39-40
+  s_cf1effe1c663a1::t_a239f0dee119b4 219
+  s_cf1effe1c663a1::t_8ff89574aa4547 206
+  s_cf1effe1c663a1::t_ab6b46ef5f000a 263
+  s_cf1effe1c663a1::t_cfb529c31f0286 184
+  s_cf1effe1c663a1::t_2f60cfdc824a6c 276
+  s_cf1effe1c663a1::t_a032876ddad955 33-36,38,41-42
+src/view/src/views/log_view.rs
+  s_cf1effe1c663a1::t_2f3432137bd068 470-476
+  s_cf1effe1c663a1::t_1b22164f7d22b1 477-478
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "cdfa0d03d581e29434f51e22269a7c46cc5558ed",
+  "prompts": {},
+  "sessions": {
+    "s_cf1effe1c663a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df96a42a-2733-4bcd-8cc7-165c4f5077c2",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
