@@ -507,6 +507,8 @@ impl CanViewApp {
                     eprintln!("Global mouse_up: show_id={}, show_ch={}",
                         app.show_id_filter_input, app.show_channel_filter_input);
                 });
+                eprintln!("🔍 mouse_up: active_drag={}",
+                    if cx.has_active_drag() { "Some" } else { "None" });
             })
             .child(
                 // TODO: remove once FilterBar dropdowns are wired up
@@ -1692,6 +1694,11 @@ impl Render for CanViewApp {
 
         let view = cx.entity().clone();
 
+        // Pull Dock-icon drops into pending_drop_paths, then drain if no
+        // load is in flight.
+        crate::handlers::drag_drop::drain_dock_drop_queue(self);
+        crate::handlers::drag_drop::drain_pending_drop(self, cx);
+
         div()
             .size_full()
             .flex()
@@ -1833,10 +1840,19 @@ impl Render for CanViewApp {
             .child(
                 // Content area - Zed style
                 div()
+                    .id("content-area")
                     .flex_1()
                     .bg(rgb(0x0c0c0e)) // Zed's main background
                     .overflow_hidden()
                     .relative()
+                    .drag_over::<gpui::ExternalPaths>(|style, _paths, _window, _cx| {
+                        style.bg(gpui::rgba(0x00000022))
+                    })
+                    .on_drop(cx.listener(move |this, paths: &gpui::ExternalPaths, _window, cx| {
+                        eprintln!("📥 on_drop fired with {} paths", paths.paths().len());
+                        let stash: Vec<std::path::PathBuf> = paths.paths().to_vec();
+                        crate::handlers::drag_drop::handle_drop(this, cx, stash);
+                    }))
                     .child(match self.current_view {
                         AppView::LogView => {
                             self.render_log_view(cx.entity().clone()).into_any_element()

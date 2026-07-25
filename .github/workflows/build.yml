@@ -2,7 +2,7 @@ name: Build Multi-Platform Binaries
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ main, dev, 'feat/**' ]
   pull_request:
     branches: [ main, dev ]
   workflow_dispatch:
@@ -44,18 +44,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           target: ${{ matrix.target }}
           components: rustfmt, clippy
-
-      - name: Switch to nightly (required for edition 2024 + recursion_limit)
-        run: |
-          rustup toolchain install nightly --profile minimal --component rustfmt clippy
-          rustup target add --toolchain nightly ${{ matrix.target }}
-          rustup default nightly
+          # Edition 2024 was stabilized in Rust 1.85 (Feb 2025);
+          # `#![recursion_limit]` has been stable since 1.0. Stable Rust
+          # is sufficient. We previously used nightly for edition-2024
+          # support, but recent nightlies removed `simd_fmin`/`simd_fmax`
+          # intrinsics, which breaks pathfinder_simd 0.5.5 (a transitive
+          # dep of gpui via pathfinder_geometry). Staying on stable
+          # avoids that.
 
       - name: Setup Rust cache
         uses: swatinem/rust-cache@v2

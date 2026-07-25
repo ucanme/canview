@@ -4,4 +4,5 @@
 
 pub mod file;
 pub mod filter;
+pub mod drag_drop;
 

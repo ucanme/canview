@@ -18,6 +18,10 @@ pub struct FileSegment {
     pub path: PathBuf,
     pub file_name: String,
     pub start_time: Option<NaiveDateTime>,
+    /// 文件起始的绝对 Unix 纳秒(包含毫秒,精确到 ns)。
+    /// 用于合并时把每条消息的相对 timestamp 重写为全局绝对纳秒。
+    /// 优先于 start_time,因为 start_time (NaiveDateTime) 只到秒精度。
+    pub start_ns: i64,
     pub messages: Arc<[LogObject]>,
     pub errors: Vec<String>,
     pub bytes_total: u64,
@@ -110,6 +114,7 @@ impl FileSegment {
             path,
             file_name,
             start_time,
+            start_ns,
             messages,
             errors,
             bytes_total: result.bytes_total,
@@ -132,44 +137,36 @@ impl MergedView {
             return Self::empty();
         }
 
-        // 单 segment：直接借用，无需排序
-        if segments.len() == 1 {
-            let seg = &segments[0];
-            let messages: Arc<[LogObject]> = seg.messages.clone();
-            let source_file_ids: Arc<[u32]> = Arc::from(vec![seg.file_id; messages.len()]);
-            return Self {
-                messages,
-                source_file_ids,
-                time_min: seg.time_min,
-                time_max: seg.time_max,
-                version: 0,
-            };
-        }
+        // 单 segment 与多 segment 统一路径:把每条消息的 timestamp
+        // 重写为全局绝对纳秒 (abs_ns = seg.start_ns + msg.timestamp()),
+        // 这样后续渲染调用 msg.timestamp() 拿到的就是 abs_ns,无需再
+        // 加 start_time。单文件时 abs_ns 就是该文件内的绝对纳秒
+        // (因为 start_ns 直接由 measurement_start_time 转换)。
 
         // 多 segment：收集 (abs_sec, file_id, msg_idx, source_file_id, LogObject) 然后稳定排序
-        let start_ns: Vec<i64> = segments
-            .iter()
-            .map(|s| {
-                s.start_time
-                    .map(|ndt| ndt.and_utc().timestamp_nanos_opt().unwrap_or(0))
-                    .unwrap_or(0)
-            })
-            .collect();
+        // 用 seg.start_ns (精确到 ns, 包含 ms) 而不是 start_time (只到秒)。
+        let start_ns: Vec<i64> = segments.iter().map(|s| s.start_ns).collect();
 
-        let mut entries: Vec<(f64, u32, usize, u32, LogObject)> = Vec::new();
+        let mut entries: Vec<(f64, i64, u32, usize, u32, LogObject)> = Vec::new();
         for (seg_idx, seg) in segments.iter().enumerate() {
             for (msg_idx, msg) in seg.messages.iter().enumerate() {
                 let abs_ns = start_ns[seg_idx] + msg.timestamp() as i64;
                 let abs_sec = abs_ns as f64 / 1_000_000_000.0;
-                entries.push((abs_sec, seg.file_id, msg_idx, seg.file_id, msg.clone()));
+                let mut cloned = msg.clone();
+                // 把每条消息的 timestamp 重写为全局绝对纳秒,这样后续
+                // 调用 msg.timestamp() 拿到的是 abs_ns,排序和显示都基于
+                // 全局时间。单文件路径(start_ns = file_start)也走这条
+                // 路径,行为与之前一致 —— abs_ns 就是该文件内的绝对纳秒。
+                cloned.set_timestamp(abs_ns as u64);
+                entries.push((abs_sec, abs_ns, seg.file_id, msg_idx, seg.file_id, cloned));
             }
         }
 
         entries.sort_by(|a, b| {
             a.0.partial_cmp(&b.0)
                 .unwrap_or(std::cmp::Ordering::Equal)
-                .then(a.1.cmp(&b.1))
                 .then(a.2.cmp(&b.2))
+                .then(a.3.cmp(&b.3))
         });
 
         let total = entries.len();
@@ -178,7 +175,7 @@ impl MergedView {
         let mut min_sec = f64::INFINITY;
         let mut max_sec = f64::NEG_INFINITY;
 
-        for (abs_sec, _fid, _idx, src_fid, msg) in entries {
+        for (abs_sec, _abs_ns, _fid, _idx, src_fid, msg) in entries {
             if abs_sec < min_sec {
                 min_sec = abs_sec;
             }
@@ -314,6 +311,7 @@ mod tests {
             path: PathBuf::from(format!("/tmp/seg{}.blf", file_id)),
             file_name: format!("seg{}.blf", file_id),
             start_time: chrono::DateTime::from_timestamp(0, 0).map(|dt| dt.naive_utc()),
+            start_ns: 0,
             messages: Arc::from(messages),
             errors: Vec::new(),
             bytes_total: 0,
@@ -379,6 +377,7 @@ mod tests {
             path: PathBuf::from("/tmp/bad.blf"),
             file_name: "bad.blf".to_string(),
             start_time: chrono::NaiveDateTime::from_timestamp_opt(0, 0),
+            start_ns: 0,
             messages: Arc::from([]),
             errors: vec!["Parse error".to_string()],
             bytes_total: 1024,

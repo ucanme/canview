@@ -120,6 +120,10 @@ pub struct CanViewApp {
     pub blf_parse_errors: Vec<String>,
     // Controls the BLF errors details popover in the StatusBar
     pub show_blf_errors_popover: bool,
+    // Drag-and-drop state
+    /// Validated BLF paths waiting for an in-flight load to finish.
+    /// Drained by the render tick when `loading_progress` is None.
+    pub pending_drop_paths: Vec<std::path::PathBuf>,
     pub saved_window_bounds: Option<Bounds<Pixels>>,
     pub display_bounds: Option<Bounds<Pixels>>,
 
@@ -302,6 +306,7 @@ impl CanViewApp {
             blf_bytes_consumed: 0,
             blf_parse_errors: Vec::new(),
             show_blf_errors_popover: false,
+            pending_drop_paths: Vec::new(),
             saved_window_bounds,
             display_bounds: None,
             list_scroll_handle: UniformListScrollHandle::new(),
