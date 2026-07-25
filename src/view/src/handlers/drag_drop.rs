@@ -122,7 +122,8 @@ pub fn handle_drop(
     if total_size > FILE_SIZE_THRESHOLD {
         let view_handle = cx.entity().clone();
         let paths_for_dialog = blf_paths.clone();
-        cx.spawn(async move |cx| {
+        cx.spawn(async move |this, cx| {
+            let _ = this;
             let confirmed = rfd::AsyncMessageDialog::new()
                 .set_title("Large File Warning")
                 .set_description(&format!(
@@ -177,7 +178,7 @@ fn start_concurrent_load(
     cx: &mut gpui::Context<crate::app::CanViewApp>,
     paths: Vec<PathBuf>,
 ) {
-    use crate::app::state::LoadingProgress;
+    use crate::app::LoadingProgress;
     use blf::read_blf_from_file;
 
     let total = paths.len();
@@ -191,7 +192,7 @@ fn start_concurrent_load(
     app.status_msg = format!("⏳ Loading 0/{} files...", total).into();
 
     let view = cx.entity().clone();
-    cx.spawn(async move |cx| {
+    cx.spawn(async move |_this, cx| {
         let mut tasks = Vec::new();
         for path in paths.clone() {
             let task = cx.background_executor().spawn(async move {

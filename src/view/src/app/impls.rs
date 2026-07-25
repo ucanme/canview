@@ -408,6 +408,7 @@ impl CanViewApp {
                     path: path.clone(),
                     file_name: file_name.clone().unwrap_or_else(|| "unknown".to_string()),
                     start_time: None,
+                    start_ns: 0,
                     messages: std::sync::Arc::from([]),
                     errors: vec![format!("{}", e)],
                     bytes_total: 0,
@@ -506,14 +507,11 @@ impl CanViewApp {
             "Database import temporarily unavailable. Please use library management.".into();
     }
     pub(crate) fn get_timestamp_string(&self, timestamp: u64) -> String {
-        if let Some(start) = &self.start_time {
-            let msg_time = *start + chrono::Duration::nanoseconds(timestamp as i64);
-            // Format: YYYY-MM-DD HH:MM:SS.mmmmmm (microseconds)
-            msg_time.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
-        } else {
-            // If no start time, show nanoseconds as seconds with microsecond precision
-            format!("{:.6}", timestamp as f64 / 1_000_000_000.0)
-        }
+        // `timestamp` 现在是绝对 Unix 纳秒(abs_ns),由 MergedView::from_segments
+        // 在合并时写入 LogObject.timestamp()。把它直接转成 NaiveDateTime 显示。
+        use chrono::{TimeZone, Utc};
+        let dt = Utc.timestamp_nanos(timestamp as i64);
+        dt.naive_utc().format("%Y-%m-%d %H:%M:%S%.6f").to_string()
     }
 
     /// Handle pending file dialog result

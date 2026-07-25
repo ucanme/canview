@@ -24,53 +24,48 @@
 
 - **Create** `src/view/src/handlers/drag_drop.rs` — entry point `handle_drop` + `filter_blf_paths` + `expand_folders`.
 - **Modify** `src/view/src/handlers/mod.rs` — add `pub mod drag_drop;` re-export.
-- **Modify** `src/view/src/app/state.rs` — add `drag_drop_hover: Option<usize>`, `pending_drop_stash: Vec<PathBuf>`, `pending_drop_paths: Vec<PathBuf>`; init in `Default`/`new`.
-- **Modify** `src/view/src/app/impls_rendering.rs` — attach `.on_drop` to content-area div (around line 1834); add hover overlay rendering as another child of the content-area div; add tick-loop check at top of `render` to drain `pending_drop_paths`.
+- **Modify** `src/view/src/app/state.rs` — add `pending_drop_paths: Vec<PathBuf>`; init in every constructor.
+- **Modify** `src/view/src/app/impls_rendering.rs` — attach `.on_drop::<ExternalPaths>(cx.listener(...))` to content-area div (around line 1834); add `.drag_over::<ExternalPaths>(...)` for hover bg tint; add tick-loop check at top of `render` to drain `pending_drop_paths`.
 - **Modify** `src/view/src/main.rs` — register `Application::on_open_urls` handler for macOS Dock-icon drop.
 - **Test** `src/view/src/handlers/drag_drop.rs` — `#[cfg(test)] mod tests` for `filter_blf_paths` and `expand_folders`.
+
+## API corrections (verified against GPUI source)
+
+- `.on_drop` is a `Div` builder method that takes `cx.listener(|this, paths: &ExternalPaths, window, cx| { ... })`. Fires on Submit only. `ExternalPaths::paths() -> &[PathBuf]` extracts the paths.
+- `FileDropEvent::Entered`/`Exited` are NOT directly subscribable — GPUI internally translates Entered into `cx.active_drag = Some(AnyDrag { value: ExternalPaths, ... })` and Exited clears it. To show a hover overlay without subscribing to Entered, use `.drag_over::<ExternalPaths>(move |style, _paths, _w, _cx| style.bg(rgba(0x00000022)))` on the content-area div. No centered text overlay (paths aren't accessible during render without stashing, which we can't do without Entered).
+- `pending_drop_stash` and `drag_drop_hover` state fields are NOT needed. Only `pending_drop_paths` is needed (for cancel-and-queue path).
 
 ---
 
 ### Task 1: State additions for drag-drop
 
 **Files:**
-- Modify: `src/view/src/app/state.rs:111-122` (add 3 fields after `show_blf_errors_popover`)
-- Modify: `src/view/src/app/state.rs:297-310` (init in `Default::default` impl)
-- Modify: `src/view/src/app/impls.rs:44-55` and `:800-810` (init in `new` and any other constructors)
+- Modify: `src/view/src/app/state.rs` (add 1 field after `show_blf_errors_popover`)
+- Modify: `src/view/src/app/state.rs`, `src/view/src/app/impls.rs` (every struct initializer)
 
 **Interfaces:**
 - Consumes: existing `LoadingProgress` struct from `state.rs`.
-- Produces: three new public fields on `CanViewApp`:
-  - `pub drag_drop_hover: Option<usize>` — `Some(n)` while drag-over is active; `n` = count of BLF files in the drag (0 means all non-BLF).
-  - `pub pending_drop_stash: Vec<std::path::PathBuf>` — raw paths from `FileDropEvent::Entered`, drained on `Submit` or `Exited`.
-  - `pub pending_drop_paths: Vec<std::path::PathBuf>` — validated BLF paths waiting for an in-flight load to finish; drained by the tick loop.
+- Produces: one new public field on `CanViewApp`:
+  - `pub pending_drop_paths: Vec<std::path::PathBuf>` — validated BLF paths waiting for an in-flight load to finish; drained by the render tick when `loading_progress` is `None`.
 
-- [ ] **Step 1: Add fields to struct**
+- [ ] **Step 1: Add field to struct**
 
 Edit `src/view/src/app/state.rs` after line 122 (`show_blf_errors_popover`):
 
 ```rust
-    // Drag-and-drop state (in-window + Dock icon)
-    /// `Some(n)` while FileDropEvent::Entered is active; `n` is the BLF
-    /// file count (0 = all non-BLF). Cleared on Exited or Submit.
-    pub drag_drop_hover: Option<usize>,
-    /// Raw paths from FileDropEvent::Entered — Submit doesn't carry
-    /// paths, so we stash them here on Entered and read on Submit.
-    pub pending_drop_stash: Vec<std::path::PathBuf>,
+    // Drag-and-drop state
     /// Validated BLF paths waiting for an in-flight load to finish.
     /// Drained by the render tick when `loading_progress` is None.
     pub pending_drop_paths: Vec<std::path::PathBuf>,
 ```
 
-- [ ] **Step 2: Find every struct initializer and add the fields**
+- [ ] **Step 2: Find every struct initializer and add the field**
 
 Run: `grep -n "show_blf_errors_popover: false" src/view/src/app/`
 
-For each match, add three lines right after it:
+For each match, add one line right after it:
 
 ```rust
-            drag_drop_hover: None,
-            pending_drop_stash: Vec::new(),
             pending_drop_paths: Vec::new(),
 ```
 
@@ -78,14 +73,14 @@ For each match, add three lines right after it:
 
 - [ ] **Step 3: Verify it compiles**
 
-Run: `cargo build --release` from `src/view/`
-Expected: 0 errors. Warnings OK.
+Run: `cd src/view && cargo build --release 2>&1 | grep -E "^error|error\[" | head -5`
+Expected: no errors.
 
 - [ ] **Step 4: Commit**
 
 ```bash
 git add src/view/src/app/state.rs src/view/src/app/impls.rs
-git commit -m "feat(drag-drop): add state fields for hover, stash, pending paths
+git commit -m "feat(drag-drop): add pending_drop_paths state field
 
 Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"
 ```
@@ -301,31 +296,18 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"
 
 ---
 
-### Task 3: In-window drop overlay (visual feedback only, no load yet)
+### Task 3: In-window drop handler + hover bg tint
 
 **Files:**
 - Modify: `src/view/src/app/impls_rendering.rs:1833-1856` (content-area div)
 
 **Interfaces:**
-- Consumes: `app.drag_drop_hover` from Task 1.
-- Produces: visual overlay during `FileDropEvent::Entered`; cleared on `Exited` or `Submit`.
+- Consumes: `ExternalPaths` from GPUI; `crate::handlers::drag_drop::handle_drop`.
+- Produces: `.on_drop` listener on the content-area div that calls `handle_drop` with the dropped paths; `.drag_over::<ExternalPaths>(...)` applies a translucent bg tint during hover.
 
-- [ ] **Step 1: Attach `.on_drop` to the content-area div**
+- [ ] **Step 1: Attach `.on_drop` and `.drag_over` to the content-area div**
 
-Find the content-area div around line 1834 in `impls_rendering.rs`:
-
-```rust
-            .child(
-                // Content area - Zed style
-                div()
-                    .flex_1()
-                    .bg(rgb(0x0c0c0e))
-                    .overflow_hidden()
-                    .relative()
-                    .child(match self.current_view {
-```
-
-Add an `.on_drop` handler and a hover overlay as a second child of the content-area div. Use `gpui::FileDropEvent`. The handler needs `view` cloned from the top of `render` (already available as `let view = cx.entity().clone();` at line ~1693).
+Find the content-area div around line 1834 in `impls_rendering.rs`. The current shape:
 
 ```rust
             .child(
@@ -335,85 +317,56 @@ Add an `.on_drop` handler and a hover overlay as a second child of the content-a
                     .bg(rgb(0x0c0c0e))
                     .overflow_hidden()
                     .relative()
-                    .on_drop::<gpui::FileDropEvent>({
-                        let view = view.clone();
-                        move |event: gpui::FileDropEvent, _window, cx| {
-                            view.update(cx, |app, cx| {
-                                match event {
-                                    gpui::FileDropEvent::Entered { paths, .. } => {
-                                        let (blf, _) = crate::handlers::drag_drop::filter_blf_paths(paths.clone());
-                                        app.drag_drop_hover = Some(blf.len());
-                                        app.pending_drop_stash = paths;
-                                        cx.notify();
-                                    }
-                                    gpui::FileDropEvent::Exited => {
-                                        app.drag_drop_hover = None;
-                                        app.pending_drop_stash.clear();
-                                        cx.notify();
-                                    }
-                                    gpui::FileDropEvent::Submit { .. } => {
-                                        let stash = std::mem::take(&mut app.pending_drop_stash);
-                                        app.drag_drop_hover = None;
-                                        crate::handlers::drag_drop::handle_drop(app, cx, stash);
-                                        cx.notify();
-                                    }
-                                    _ => {}
-                                }
-                            });
-                            gpui::DropDownResult::default()
-                        }
-                    })
-                    .child(match self.current_view {
-                        AppView::LogView => { /* ... unchanged ... */ }
-                        // ...
-                    })
-                    // Library picker overlay — covers only the content area
+                    .child(match self.current_view { /* ... */ })
                     .when_some(
                         crate::ui::components::render_library_picker_overlay(self, view.clone()),
                         |el, picker| el.child(picker),
-                    )
-                    // Drag-drop hover overlay — covers only the content area
-                    .when_some(self.drag_drop_hover, |el, n| {
-                        el.child(
-                            div()
-                                .absolute()
-                                .top_0()
-                                .left_0()
-                                .w_full()
-                                .h_full()
-                                .bg(gpui::rgba(0x00000022))
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .child(
-                                    if *n > 0 {
-                                        format!("📂 Drop to load {} BLF file(s)", n)
-                                    } else {
-                                        "⚠️ No BLF files in drop".to_string()
-                                    },
-                                )
-                                .pointer_events_none(),
-                        )
-                    }),
+                    ),
             )
 ```
 
-Note: `gpui::DropDownResult` may be `gpui::DropResult` — verify against the GPUI version. Run `grep -n "pub enum DropResult\|pub enum FileDropEvent\|pub type DropDownResult" ~/.cargo/git/checkouts/zed-a70e2ad075855582/ee0e370/crates/gpui/src/` to find the correct return type for `.on_drop`. Adjust the closure to return that type.
+Add `.id("content-area")` (required for `on_drop`/`drag_over` to take effect — they need an interactivity id), `.drag_over::<ExternalPaths>(...)` for the hover tint, and `.on_drop(cx.listener(...))` for the drop:
+
+```rust
+            .child(
+                // Content area - Zed style
+                div()
+                    .id("content-area")
+                    .flex_1()
+                    .bg(rgb(0x0c0c0e))
+                    .overflow_hidden()
+                    .relative()
+                    .drag_over::<gpui::ExternalPaths>(|style, _paths, _window, _cx| {
+                        style.bg(gpui::rgba(0x00000022))
+                    })
+                    .on_drop(cx.listener(move |this, paths: &gpui::ExternalPaths, _window, cx| {
+                        let stash: Vec<std::path::PathBuf> = paths.paths().to_vec();
+                        crate::handlers::drag_drop::handle_drop(this, cx, stash);
+                    }))
+                    .child(match self.current_view { /* unchanged */ })
+                    .when_some(
+                        crate::ui::components::render_library_picker_overlay(self, view.clone()),
+                        |el, picker| el.child(picker),
+                    ),
+            )
+```
+
+Verify `gpui::ExternalPaths` is in the prelude — if not, add `use gpui::ExternalPaths;` at the top of the file (the file already uses `gpui::*` via `prelude::*` so it should be in scope).
 
 - [ ] **Step 2: Verify it compiles**
 
-Run: `cd src/view && cargo build --release 2>&1 | grep -E "^error|error\[" | head -10`
-Expected: no errors (or only type-name errors you fix in this step).
+Run: `cd src/view && cargo build --release 2>&1 | grep -E "^error|error\[" | head -20`
+Expected: no errors. If `apply_blf_result_append_one` is `pub(crate)`, the drag_drop module (a sibling of `app`) can't see it — change visibility to `pub` in `impls.rs:312`. (Done in Task 4, but fix now if build fails here.)
 
-- [ ] **Step 3: Manually verify the overlay**
+- [ ] **Step 3: Manually verify hover tint**
 
-Build and run. Drag a `.blf` file over the window without releasing. Expected: a translucent overlay with "📂 Drop to load 1 BLF file(s)" appears over the content area only; the top bar and status bar remain visible. Drag away without dropping — overlay clears. (Submit does nothing yet because `handle_drop` is a stub.)
+Build and run. Drag a `.blf` file over the window without releasing. Expected: the content area gets a translucent dark tint; the top bar and status bar remain visible. Drag away without dropping — tint clears. (Submit does nothing yet because `handle_drop` is a stub; you may see status_msg unchanged.)
 
 - [ ] **Step 4: Commit**
 
 ```bash
 git add src/view/src/app/impls_rendering.rs
-git commit -m "feat(drag-drop): add in-window hover overlay and on_drop handler
+git commit -m "feat(drag-drop): add on_drop + drag_over hover tint on content area
 
 Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"
 ```

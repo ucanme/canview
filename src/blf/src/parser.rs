@@ -120,6 +120,61 @@ impl LogObject {
         }
     }
 
+    /// Overwrite the timestamp stored in this log object. Used by
+    /// multi-file merge to rewrite each message's relative timestamp
+    /// to a global absolute timestamp (in nanoseconds since Unix epoch)
+    /// so that messages from different files sort and display uniformly.
+    pub fn set_timestamp(&mut self, ts: u64) {
+        match self {
+            LogObject::CanMessage(msg) => msg.header.object_time_stamp = ts,
+            LogObject::CanMessage2(msg) => msg.header.object_time_stamp = ts,
+            LogObject::CanErrorFrame(msg) => msg.header.object_time_stamp = ts,
+            LogObject::CanFdMessage(msg) => msg.header.object_time_stamp = ts,
+            LogObject::CanFdMessage64(msg) => msg.header.object_time_stamp = ts,
+            LogObject::CanOverloadFrame(msg) => msg.header.object_time_stamp = ts,
+            LogObject::CanDriverStatistic(msg) => msg.header.object_time_stamp = ts,
+            LogObject::CanDriverError(msg) => msg.header.object_time_stamp = ts,
+            LogObject::LinMessage(msg) => msg.header.object_time_stamp = ts,
+            LogObject::LinMessage2(msg) => msg.header.object_time_stamp = ts,
+            LogObject::LinCrcError(msg) => msg.header.object_time_stamp = ts,
+            LogObject::LinDlcInfo(msg) => msg.header.object_time_stamp = ts,
+            LogObject::LinReceiveError(msg) => msg.header.object_time_stamp = ts,
+            LogObject::LinSendError(msg) => msg.header.object_time_stamp = ts,
+            LogObject::LinSlaveTimeout(msg) => msg.header.object_time_stamp = ts,
+            LogObject::LinSchedulerModeChange(msg) => msg.header.object_time_stamp = ts,
+            LogObject::LinSyncError(msg) => msg.header.object_time_stamp = ts,
+            LogObject::LinBaudrateEvent(msg) => msg.header.object_time_stamp = ts,
+            LogObject::LinSleepModeEvent(msg) => msg.header.object_time_stamp = ts,
+            LogObject::LinWakeupEvent(msg) => msg.header.object_time_stamp = ts,
+            LogObject::FlexRayData(msg) => msg.timestamp = ts,
+            LogObject::FlexRaySync(msg) => msg.timestamp = ts,
+            LogObject::FlexRayV6Message(msg) => msg.timestamp = ts,
+            LogObject::FlexRayV6StartCycleEvent(msg) => msg.timestamp = ts,
+            LogObject::FlexRayStatusEvent(msg) => msg.timestamp = ts,
+            LogObject::FlexRayVFrError(msg) => msg.timestamp = ts,
+            LogObject::FlexRayVFrStatus(msg) => msg.timestamp = ts,
+            LogObject::FlexRayVFrStartCycle(msg) => msg.timestamp = ts,
+            LogObject::FlexRayVFrReceiveMsg(msg) => msg.timestamp = ts,
+            LogObject::FlexRayVFrReceiveMsgEx(msg) => msg.timestamp = ts,
+            LogObject::EthernetFrame(msg) => msg.timestamp = ts,
+            LogObject::AppTrigger(msg) => msg.timestamp = ts,
+            LogObject::EventComment(msg) => msg.timestamp = ts,
+            LogObject::GlobalMarker(msg) => msg.timestamp = ts,
+            LogObject::MostSpy(msg) => msg.timestamp = ts,
+            LogObject::MostCtrl(msg) => msg.timestamp = ts,
+            LogObject::MostPkt2(msg) => msg.timestamp = ts,
+            LogObject::MostLightLock(msg) => msg.timestamp = ts,
+            LogObject::MostStatistic(msg) => msg.timestamp = ts,
+            LogObject::MostHwMode(msg) => msg.timestamp = ts,
+            LogObject::MostReg(msg) => msg.timestamp = ts,
+            LogObject::MostGenReg(msg) => msg.timestamp = ts,
+            LogObject::MostNetState(msg) => msg.timestamp = ts,
+            LogObject::MostDataLost(msg) => msg.timestamp = ts,
+            LogObject::MostTrigger(msg) => msg.timestamp = ts,
+            LogObject::Unhandled { timestamp, .. } => *timestamp = ts,
+        }
+    }
+
     /// Returns the channel ID of the log object (if applicable)
     pub fn channel(&self) -> Option<u16> {
         match self {

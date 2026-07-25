@@ -507,6 +507,8 @@ impl CanViewApp {
                     eprintln!("Global mouse_up: show_id={}, show_ch={}",
                         app.show_id_filter_input, app.show_channel_filter_input);
                 });
+                eprintln!("🔍 mouse_up: active_drag={}",
+                    if cx.has_active_drag() { "Some" } else { "None" });
             })
             .child(
                 // TODO: remove once FilterBar dropdowns are wired up
@@ -1847,6 +1849,7 @@ impl Render for CanViewApp {
                         style.bg(gpui::rgba(0x00000022))
                     })
                     .on_drop(cx.listener(move |this, paths: &gpui::ExternalPaths, _window, cx| {
+                        eprintln!("📥 on_drop fired with {} paths", paths.paths().len());
                         let stash: Vec<std::path::PathBuf> = paths.paths().to_vec();
                         crate::handlers::drag_drop::handle_drop(this, cx, stash);
                     }))
