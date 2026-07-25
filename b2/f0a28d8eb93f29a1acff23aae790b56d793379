@@ -1,0 +1,23 @@
+docs/superpowers/specs/2026-07-25-drag-drop-load-design.md
+  s_b76bcc8c672156::t_63eb542e1e8d78 165
+  s_b76bcc8c672156::t_a9cbfb1b59ff69 185
+  s_b76bcc8c672156::t_772efff3f1b435 77
+  s_b76bcc8c672156::t_5b9493399b74a5 16,24-25,28
+  s_b76bcc8c672156::t_63c96fda61881b 113,117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "b2f0a28d8eb93f29a1acff23aae790b56d793379",
+  "prompts": {},
+  "sessions": {
+    "s_b76bcc8c672156": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d81496b9-8e8a-4aa6-839a-c357d355192f",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
