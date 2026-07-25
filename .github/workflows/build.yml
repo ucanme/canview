@@ -2,7 +2,7 @@ name: Build Multi-Platform Binaries
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ main, dev, 'feat/**' ]
   pull_request:
     branches: [ main, dev ]
   workflow_dispatch:
@@ -44,6 +44,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -53,7 +55,7 @@ jobs:
 
       - name: Switch to nightly (required for edition 2024 + recursion_limit)
         run: |
-          rustup toolchain install nightly --profile minimal --component rustfmt clippy
+          rustup toolchain install nightly --profile minimal --component rustfmt --component clippy
           rustup target add --toolchain nightly ${{ matrix.target }}
           rustup default nightly
 
