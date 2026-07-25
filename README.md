@@ -29,6 +29,9 @@ CANVIEW is a high-performance automotive bus analysis tool built in Rust. It int
 - 📚 **Signal library management** — multi-version DBC/LDF libraries, one-click activation, auto-load
 - 🔗 **LAN sharing** — share signal libraries within your local network via HTTP
 - 🔌 **Multi-bus support** — CAN / CAN FD / LIN / FlexRay / Ethernet
+- 🖱️ **Drag-and-drop loading** — drop `.blf` files (or a folder) onto the window; macOS Dock-icon drop also supported
+- 📁 **Multi-file merged timeline** — load multiple BLF files in parallel; messages are sorted by absolute timestamp (`measurement_start_time + object_time_stamp`), so files recorded at different times line up correctly
+- ⚠️ **Parse-error surfacing** — failed parses show a warning in the status bar; the Loaded Files popover lists per-file errors with `❌`
 - 🌐 **Cross-platform** — Windows, macOS, Linux
 
 ---
@@ -65,10 +68,13 @@ Pre-built binaries: [Releases](https://github.com/ucanme/canview/releases) (Wind
 
 ## Usage
 
-1. **Open log** — click File, select a `.blf` file
+1. **Open log** — click File → Open BLF… (single file), or Open Multiple BLF… (append). You can also **drag-and-drop** `.blf` files onto the window — dropping always clears the current session and reloads. On macOS, dropping on the Dock icon also works.
 2. **Manage signal libraries** — switch to the Library tab, add DBC/LDF files, activate a version
 3. **Browse log** — switch to the Log tab to view decoded signal values
 4. **Plot waveforms** — switch to Signal Plot, select signals; supports zoom and hover
+5. **Manage loaded files** — when ≥ 2 files are loaded (or any file has errors), click the **📂 N files** segment in the bottom-left status bar to open the Loaded Files popover. Remove individual files with ✕, or **Remove All** to clear.
+
+Drop semantics: only `.blf` is accepted (`.bin` is ignored via drag — use File menu for `.bin`); folders are expanded one level deep; total > 1 GB triggers a confirmation prompt; mid-load drops cancel the in-flight load and queue the new one.
 
 Configuration is auto-saved to `multi_channel_config.json`.
 
@@ -85,6 +91,8 @@ Configuration is auto-saved to `multi_channel_config.json`.
 - [x] Signal waveform plot (zoom, hover, absolute time)
 - [x] Multi-version signal library management (create / activate / share via LAN)
 - [x] Multi-file loading (Open BLF... replaces, Open Multiple BLF... appends) with merged timeline
+- [x] Drag-and-drop BLF loading (in-window + macOS Dock-icon), folder expansion, large-file guard
+- [x] Status bar multi-file segment with ⚠️ parse-error indicator and Loaded Files popover
 - [ ] Live streaming mode
 - [ ] Export CSV / JSON
 - [ ] Diagnostic rule DSL
