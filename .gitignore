@@ -6,3 +6,4 @@ multi_channel_config.json
 .idea/
 .agent/
 .claude/
+.DS_Store
