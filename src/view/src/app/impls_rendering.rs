@@ -1833,10 +1833,18 @@ impl Render for CanViewApp {
             .child(
                 // Content area - Zed style
                 div()
+                    .id("content-area")
                     .flex_1()
                     .bg(rgb(0x0c0c0e)) // Zed's main background
                     .overflow_hidden()
                     .relative()
+                    .drag_over::<gpui::ExternalPaths>(|style, _paths, _window, _cx| {
+                        style.bg(gpui::rgba(0x00000022))
+                    })
+                    .on_drop(cx.listener(move |this, paths: &gpui::ExternalPaths, _window, cx| {
+                        let stash: Vec<std::path::PathBuf> = paths.paths().to_vec();
+                        crate::handlers::drag_drop::handle_drop(this, cx, stash);
+                    }))
                     .child(match self.current_view {
                         AppView::LogView => {
                             self.render_log_view(cx.entity().clone()).into_any_element()
