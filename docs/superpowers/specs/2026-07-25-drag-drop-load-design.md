@@ -13,7 +13,7 @@ Users should be able to load BLF files by dragging them onto the app window or o
 
 ### Extension filter
 
-Only `.blf` and `.bin` are accepted (same as the existing File → Open BLF… dialog filter). Files with other extensions are skipped, and `status_msg` reports the count and names of skipped files:
+Only `.blf` is accepted. Files with other extensions (including `.bin`) are skipped, and `status_msg` reports the count and names of skipped files:
 
 ```
 Skipped 2 non-BLF file(s): report.pdf, notes.txt
@@ -21,9 +21,11 @@ Skipped 2 non-BLF file(s): report.pdf, notes.txt
 
 Skipped files don't block the rest of the drop — if a drop contains 3 BLF + 2 non-BLF, the 3 BLF still load.
 
+> Note: The File menu's `Open BLF…` / `Open Multiple BLF…` dialogs still accept `.bin` (Vector's legacy BLF extension). Drag-and-drop is stricter per the user's request — `.blf` only. Updating the File menu to match is out of scope for this spec.
+
 ### Folder handling
 
-Folders are expanded **one level deep only** (no recursion). The top-level contents of any dropped folder are scanned for `.blf` / `.bin` files; subfolders inside it are skipped. This matches "拖文件夹 → 展开顶层". A `status_msg` line lists folders that were expanded:
+Folders are expanded **one level deep only** (no recursion). The top-level contents of any dropped folder are scanned for `.blf` files; subfolders inside it are skipped. This matches "拖文件夹 → 展开顶层". A `status_msg` line lists folders that were expanded:
 
 ```
 Expanded folder: /path/to/logs/ (3 BLF found)
@@ -72,7 +74,7 @@ The overlay should NOT cover the top bar or status bar (so the user can still se
 `Application::on_open_urls` receives a `Vec<String>` of URL strings. On macOS, dropping files on the Dock icon produces `file://` URLs.
 
 Plan:
-1. In `main.rs`, register an `on_open_urls` handler that parses each URL, filters to `.blf` / `.bin`, and stores the resulting paths in a global pending queue (`Rc<RefCell<Vec<PathBuf>>>`).
+1. In `main.rs`, register an `on_open_urls` handler that parses each URL, filters to `.blf`, and stores the resulting paths in a global pending queue (`Rc<RefCell<Vec<PathBuf>>>`).
 2. After the main window's `CanViewApp` is created, check the queue and trigger the same drop-load path as in-window drag.
 3. If the app is already running with a window, the handler uses `cx.windows()` to find the main window's view entity and dispatches the drop to it.
 
@@ -108,11 +110,11 @@ pub struct CanViewApp {
 A single entry point that both the in-window drag handler and the Dock-icon URL handler call:
 
 ```rust
-/// Filter paths to .blf / .bin and return (blf_paths, skipped_names).
+/// Filter paths to .blf and return (blf_paths, skipped_names).
 pub fn filter_blf_paths(paths: Vec<PathBuf>) -> (Vec<PathBuf>, Vec<String>);
 
 /// Expand top-level folders: for each directory in `paths`, list its
-/// immediate .blf/.bin children. Returns (expanded_paths, folder_summaries).
+/// immediate .blf children. Returns (expanded_paths, folder_summaries).
 pub fn expand_folders(paths: Vec<PathBuf>) -> (Vec<PathBuf>, Vec<String>);
 
 /// Entry point called from the drop handler. Sets `pending_drop_paths`
@@ -160,7 +162,7 @@ The `Submit` event doesn't include paths — only `Entered` does. So `handle_dro
 
 Register `app.on_open_urls` once at startup. The handler:
 1. Parses each URL string as a file path (`file://` prefix stripped).
-2. Filters to `.blf` / `.bin`.
+2. Filters to `.blf`.
 3. Stashes the paths in a `Rc<RefCell<Vec<PathBuf>>>` shared with the window-creation closure.
 4. If a window already exists (the handler can be called after startup), uses `cx.windows()` + `window.entity()` to get the `Entity<CanViewApp>` and dispatches `handle_drop` to it.
 
@@ -180,7 +182,7 @@ File drop (in-window)
 
 File drop (Dock icon, macOS)
   → Application::on_open_urls(urls)
-    → parse file:// URLs → filter .blf/.bin
+    → parse file:// URLs → filter .blf
     → if window exists: dispatch handle_drop(paths)
     → else: stash paths; consumed by first window's construction
 ```
