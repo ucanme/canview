@@ -1,0 +1,19 @@
+.gitignore
+  s_b76bcc8c672156::t_2763f6b5e5dcdb 8-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "f2dc9a3d42cc109972b7f2b3bff8382ab79f7bc2",
+  "prompts": {},
+  "sessions": {
+    "s_b76bcc8c672156": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d81496b9-8e8a-4aa6-839a-c357d355192f",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
