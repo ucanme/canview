@@ -49,6 +49,7 @@ impl CanViewApp {
             blf_bytes_consumed: 0,
             blf_parse_errors: Vec::new(),
             show_blf_errors_popover: false,
+            pending_drop_paths: Vec::new(),
             saved_window_bounds: None,
             display_bounds: None,
             // Initialize uniform list scroll handle
@@ -805,6 +806,7 @@ impl CanViewApp {
             blf_bytes_consumed: 0,
             blf_parse_errors: Vec::new(),
             show_blf_errors_popover: false,
+            pending_drop_paths: Vec::new(),
             saved_window_bounds,
             display_bounds,
             list_scroll_handle: gpui::UniformListScrollHandle::new(),
