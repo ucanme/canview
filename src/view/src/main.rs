@@ -20,6 +20,32 @@ use app::CanViewApp;
 // Re-export common types from models for use in other modules
 pub use models::{AppConfig, ChannelMapping, ChannelType};
 
+// Shared stash of paths dropped on the Dock icon while no window was
+// available to dispatch them. Drained by the render tick via
+// `crate::handlers::drag_drop::drain_dock_drop_queue` (registered below
+// as an cx observer on each new CanViewApp). The callback signature for
+// `Application::on_open_urls` is `FnMut(Vec<String>)` with no cx arg,
+// so we can't dispatch directly — stash and drain instead.
+static DOCK_DROP_QUEUE: std::sync::Mutex<Vec<std::path::PathBuf>> = std::sync::Mutex::new(Vec::new());
+
+/// Parse `file://` URL strings to PathBuf. Strips `file://localhost/` or
+/// `file:///` prefix and percent-decodes the rest. Non-`file://` schemes
+/// are skipped (silently).
+fn parse_file_urls(urls: Vec<String>) -> Vec<std::path::PathBuf> {
+    let mut paths = Vec::new();
+    for u in urls {
+        let u = u.strip_prefix("file://").unwrap_or(&u);
+        // After stripping `file://`, the remainder is `localhost/path` or `/path`.
+        let path_str = u.strip_prefix("localhost/").map(|p| format!("/{}", p))
+            .unwrap_or_else(|| u.to_string());
+        match urlencoding::decode(&path_str) {
+            Ok(cow) => paths.push(std::path::PathBuf::from(cow.into_owned())),
+            Err(_) => eprintln!("⚠️ failed to decode dropped URL: {}", u),
+        }
+    }
+    paths
+}
+
 fn main() {
     // Capture panics with a full backtrace so crashes can be diagnosed.
     // Set RUST_BACKTRACE=1 (or =full) in the environment for symbol names.
@@ -32,6 +58,16 @@ fn main() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).init();
 
     let app = Application::new();
+    // macOS Dock-icon drop → on_open_urls fires with file:// URLs.
+    // The callback has no cx, so we stash paths to a global queue. The
+    // first CanViewApp's render tick drains it via drain_dock_drop_queue.
+    app.on_open_urls(move |urls: Vec<String>| {
+        let paths = parse_file_urls(urls);
+        if paths.is_empty() { return; }
+        if let Ok(mut q) = DOCK_DROP_QUEUE.lock() {
+            q.extend(paths);
+        }
+    });
     // When the user clicks the Dock icon while the app is already running
     // but no windows are visible (minimized, hidden, or on another space),
     // GPUI fires on_reopen. Without a handler, the app appears "stuck open

@@ -1692,7 +1692,9 @@ impl Render for CanViewApp {
 
         let view = cx.entity().clone();
 
-        // Drain pending drag-drop paths now that any in-flight load is done.
+        // Pull Dock-icon drops into pending_drop_paths, then drain if no
+        // load is in flight.
+        crate::handlers::drag_drop::drain_dock_drop_queue(self);
         crate::handlers::drag_drop::drain_pending_drop(self, cx);
 
         div()

@@ -228,6 +228,17 @@ pub fn drain_pending_drop(
     }
 }
 
+/// Pull paths dropped on the Dock icon (stashed by `main.rs`'s
+/// `on_open_urls` handler) into `pending_drop_paths` so the regular
+/// tick drain will pick them up. Called from the render tick.
+pub fn drain_dock_drop_queue(app: &mut crate::app::CanViewApp) {
+    if let Ok(mut q) = crate::DOCK_DROP_QUEUE.lock() {
+        if !q.is_empty() {
+            app.pending_drop_paths.extend(q.drain(..));
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
