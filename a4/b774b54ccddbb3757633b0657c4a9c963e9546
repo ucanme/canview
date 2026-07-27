@@ -1,0 +1,31 @@
+src/view/src/main.rs
+  s_4b597d79f57a41::t_70b22081cc0dcf 96,151
+  s_4b597d79f57a41::t_0093fbc8df0bb0 127
+  s_4b597d79f57a41::t_2444d8da207fde 121
+  s_4b597d79f57a41::t_b1d75171fa5b3e 135
+scripts/make-app-bundle.sh
+  s_4b597d79f57a41::t_1b802f3ba086b9 37
+  s_4b597d79f57a41::t_dd06749f55b86e 13
+scripts/package-macos.sh
+  s_4b597d79f57a41::t_c174a19976b909 8
+  s_4b597d79f57a41::t_d1b98d129a9048 216
+  s_4b597d79f57a41::t_a7f85c40e184e6 219
+src/view/src/app/impls_rendering.rs
+  s_4b597d79f57a41::t_02c867739ddc13 2170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "a4b774b54ccddbb3757633b0657c4a9c963e9546",
+  "prompts": {},
+  "sessions": {
+    "s_4b597d79f57a41": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04c31b32-2394-4f75-84b4-cfe6d2d76705",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
