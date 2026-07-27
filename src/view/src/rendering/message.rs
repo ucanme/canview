@@ -421,7 +421,7 @@ pub fn render_message_row_static_with_widths(
                 .text_color(rgb(0x9ca3af))
                 .whitespace_nowrap()
                 .overflow_hidden()
-                .child(time_str),
+                .child(time_str.clone()),
         )
         .child(
             div()
@@ -447,7 +447,7 @@ pub fn render_message_row_static_with_widths(
                 .text_color(type_color)
                 .whitespace_nowrap()
                 .overflow_hidden()
-                .child(msg_type),
+                .child(msg_type.clone()),
         )
         .child(
             div()
@@ -460,7 +460,25 @@ pub fn render_message_row_static_with_widths(
                 .text_color(rgb(0xfbbf24))
                 .whitespace_nowrap()
                 .overflow_hidden()
-                .child(id_str),
+                .cursor_pointer()
+                .hover(|s| s.bg(rgb(0x374151)))
+                .on_mouse_down(gpui::MouseButton::Left, {
+                    let row_str = format!(
+                        "{} | {} | {} | {} | {} | {} | {}",
+                        time_str.clone(),
+                        channel_id,
+                        msg_type.clone(),
+                        id_str.clone(),
+                        dlc_str.clone(),
+                        dlc_str.clone(),
+                        data_str.clone()
+                    );
+                    move |_, _window, cx| {
+                        cx.stop_propagation();
+                        cx.write_to_clipboard(gpui::ClipboardItem::new_string(row_str.clone()));
+                    }
+                })
+                .child(id_str.clone()),
         )
         .child(
             div()
@@ -483,7 +501,16 @@ pub fn render_message_row_static_with_widths(
                 .items_center()
                 .text_color(rgb(0xa78bfa))
                 .whitespace_nowrap()
-                .child(data_str),
+                .cursor_pointer()
+                .hover(|s| s.bg(rgb(0x374151)))
+                .on_mouse_down(gpui::MouseButton::Left, {
+                    let data_clone = data_str.clone();
+                    move |_, _window, cx| {
+                        cx.stop_propagation();
+                        cx.write_to_clipboard(gpui::ClipboardItem::new_string(data_clone.clone()));
+                    }
+                })
+                .child(data_str.clone()),
         )
         .into_any_element()
 }

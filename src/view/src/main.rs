@@ -93,7 +93,7 @@ fn main() {
                     },
                 })),
                 titlebar: Some(TitlebarOptions {
-                    title: Some("canview - Bus Data Analyzer".into()),
+                    title: Some("canview".into()),
                     appears_transparent: true,
                     traffic_light_position: None,
                 }),
@@ -148,7 +148,7 @@ fn main() {
                     },
                 })),
                 titlebar: Some(TitlebarOptions {
-                    title: Some("canview - Bus Data Analyzer".into()),
+                    title: Some("canview".into()),
                     appears_transparent: true,
                     traffic_light_position: None,
                 }),
