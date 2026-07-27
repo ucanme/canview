@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-07-27-help-button-design.md
+  s_4b597d79f57a41::t_1f7c351e169af6 1-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "fc8271c4eef7b412db583a24237052ad8c3a2fac",
+  "prompts": {},
+  "sessions": {
+    "s_4b597d79f57a41": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04c31b32-2394-4f75-84b4-cfe6d2d76705",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
