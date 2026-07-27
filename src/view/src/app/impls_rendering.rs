@@ -2376,7 +2376,7 @@ impl Render for CanViewApp {
                             div()
                                 .text_xs()
                                 .text_color(rgb(0xa6adc8))
-                                .child("Paste the share URL from another CANVIEW instance:"),
+                                .child("Paste the share URL from another canview instance:"),
                         )
                         .child(
                             div()

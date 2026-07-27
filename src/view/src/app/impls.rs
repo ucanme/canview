@@ -700,7 +700,7 @@ impl CanViewApp {
                     WindowOptions {
                         window_bounds: Some(WindowBounds::Windowed(saved_bounds)),
                         titlebar: Some(TitlebarOptions {
-                            title: Some("CANVIEW - Bus Data Analyzer".into()),
+                            title: Some("canview".into()),
                             appears_transparent: true,
                             traffic_light_position: None,
                         }),
@@ -737,7 +737,7 @@ impl CanViewApp {
                     WindowOptions {
                         window_bounds: Some(WindowBounds::Windowed(display_bounds)),
                         titlebar: Some(TitlebarOptions {
-                            title: Some("CANVIEW - Bus Data Analyzer".into()),
+                            title: Some("canview".into()),
                             appears_transparent: true,
                             traffic_light_position: None,
                         }),

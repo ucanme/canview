@@ -38,7 +38,7 @@ pub fn render_status_view(
                 .text_xl()
                 .font_weight(FontWeight::BOLD)
                 .text_color(rgb(0xffffff))
-                .child("CANVIEW Status"),
+                .child("canview Status"),
         )
         .child(
             div()
