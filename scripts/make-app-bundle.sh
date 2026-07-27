@@ -10,7 +10,7 @@ cd "$(dirname "$0")/.."
 echo "🛠  Building view (debug)..."
 cargo +nightly build -p view
 
-APP_DIR="./target/debug/CANVIEW.app"
+APP_DIR="./target/debug/canview.app"
 CONTENTS="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS/MacOS"
 RESOURCES_DIR="$CONTENTS/Resources"
@@ -34,7 +34,7 @@ cat > "$CONTENTS/Info.plist" <<EOF
     <key>CFBundleExecutable</key><string>canview</string>
     <key>CFBundleIdentifier</key><string>com.canview.app</string>
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-    <key>CFBundleName</key><string>CANVIEW</string>
+    <key>CFBundleName</key><string>canview</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>0.1.0</string>
     <key>CFBundleVersion</key><string>0.1.0</string>

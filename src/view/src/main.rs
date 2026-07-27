@@ -93,7 +93,7 @@ fn main() {
                     },
                 })),
                 titlebar: Some(TitlebarOptions {
-                    title: Some("CANVIEW - Bus Data Analyzer".into()),
+                    title: Some("canview - Bus Data Analyzer".into()),
                     appears_transparent: true,
                     traffic_light_position: None,
                 }),
@@ -118,13 +118,13 @@ fn main() {
         // those platforms — see top_bar.rs + impls_rendering.rs).
         cx.set_menus(vec![
             gpui::Menu {
-                name: "CANVIEW".into(),
+                name: "canview".into(),
                 items: vec![
                     gpui::MenuItem::action("View on GitHub", help::OpenGitHubUrl),
                     gpui::MenuItem::separator(),
                     gpui::MenuItem::action("Send Feedback", help::SendFeedbackEmail),
                     gpui::MenuItem::separator(),
-                    gpui::MenuItem::action("Quit CANVIEW", help::QuitApp),
+                    gpui::MenuItem::action("Quit canview", help::QuitApp),
                 ],
             },
         ]);
@@ -132,7 +132,7 @@ fn main() {
             cx.open_url("https://github.com/ucanme/canview");
         });
         cx.on_action(|_action: &help::SendFeedbackEmail, cx| {
-            cx.open_url("mailto:admin@ucan.me?subject=CANVIEW%20Feedback");
+            cx.open_url("mailto:admin@ucan.me?subject=canview%20Feedback");
         });
         cx.on_action(|_action: &help::QuitApp, cx| {
             cx.quit();
@@ -148,7 +148,7 @@ fn main() {
                     },
                 })),
                 titlebar: Some(TitlebarOptions {
-                    title: Some("CANVIEW - Bus Data Analyzer".into()),
+                    title: Some("canview - Bus Data Analyzer".into()),
                     appears_transparent: true,
                     traffic_light_position: None,
                 }),

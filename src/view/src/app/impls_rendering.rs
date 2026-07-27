@@ -2167,7 +2167,7 @@ impl Render for CanViewApp {
                                 .cursor_pointer()
                                 .on_mouse_down(gpui::MouseButton::Left, move |_event, _window, cx| {
                                     cx.stop_propagation();
-                                    cx.open_url("mailto:admin@ucan.me?subject=CANVIEW%20Feedback");
+                                    cx.open_url("mailto:admin@ucan.me?subject=canview%20Feedback");
                                     view_for_feedback.update(cx, |app, cx| {
                                         app.show_help_menu = false;
                                         cx.notify();

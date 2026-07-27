@@ -5,7 +5,7 @@
 set -e
 
 VERSION="${1:-1.0.0}"
-APP_NAME="CANVIEW"
+APP_NAME="canview"
 BUNDLE_ID="com.canview.app"
 OUTPUT_DIR="./release-package"
 
@@ -213,8 +213,8 @@ echo "  tar.gz: $TAR_PATH"
 echo ""
 echo "安装方法:"
 echo "  1. 双击 .dmg 文件"
-echo "  2. 将 CANVIEW.app 拖到 Applications 文件夹"
+echo "  2. 将 canview.app 拖到 Applications 文件夹"
 echo "  或者"
 echo "  1. 解压 .tar.gz 文件"
-echo "  2. 将 CANVIEW.app 移动到 Applications 文件夹"
+echo "  2. 将 canview.app 移动到 Applications 文件夹"
 echo ""
