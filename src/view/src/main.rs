@@ -46,6 +46,14 @@ fn parse_file_urls(urls: Vec<String>) -> Vec<std::path::PathBuf> {
     paths
 }
 
+// Actions for the Help menu (top-bar dropdown + native macOS app menu).
+// Declared at module scope so the `set_menus` call and `on_action` handlers
+// can reference them by name. The `help` module groups them so callers can
+// use the qualified paths `help::OpenGitHubUrl`, etc.
+mod help {
+    gpui::actions!(help, [OpenGitHubUrl, SendFeedbackEmail, QuitApp]);
+}
+
 fn main() {
     // Capture panics with a full backtrace so crashes can be diagnosed.
     // Set RUST_BACKTRACE=1 (or =full) in the environment for symbol names.
@@ -103,6 +111,32 @@ fn main() {
     app.run(move |cx| {
         // This must be called before using any GPUI Component features
         gpui_component::init(cx);
+
+        // Wire up the native app menu. On macOS this populates the menu bar
+        // next to the Apple menu; on Windows/Linux GPUI stores the menus but
+        // does not render them visually (the top-bar Help dropdown covers
+        // those platforms — see top_bar.rs + impls_rendering.rs).
+        cx.set_menus(vec![
+            gpui::Menu {
+                name: "CANVIEW".into(),
+                items: vec![
+                    gpui::MenuItem::action("View on GitHub", help::OpenGitHubUrl),
+                    gpui::MenuItem::separator(),
+                    gpui::MenuItem::action("Send Feedback", help::SendFeedbackEmail),
+                    gpui::MenuItem::separator(),
+                    gpui::MenuItem::action("Quit CANVIEW", help::QuitApp),
+                ],
+            },
+        ]);
+        cx.on_action(|_action: &help::OpenGitHubUrl, cx| {
+            cx.open_url("https://github.com/ucanme/canview");
+        });
+        cx.on_action(|_action: &help::SendFeedbackEmail, cx| {
+            cx.open_url("mailto:admin@ucan.me?subject=CANVIEW%20Feedback");
+        });
+        cx.on_action(|_action: &help::QuitApp, cx| {
+            cx.quit();
+        });
 
         cx.spawn(async move |cx| {
             let options = WindowOptions {
