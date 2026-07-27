@@ -95,24 +95,27 @@ pub fn calculate_column_widths(
         let (time_str, channel_id, msg_type, id_str, dlc_str, _data_str) =
             get_message_strings(msg, start_time, true); // Use decimal for width calculation
 
-        // Calculate exact width needed for each column
-        // Using 8.0 pixels per character (monospace font approximation)
-        // Add padding: px_2 = 8px (4px each side) + 2px margin = 10px total
-        max_time_width = max_time_width.max(time_str.len() as f32 * 8.0 + 10.0);
-        max_ch_width = max_ch_width.max(channel_id.to_string().len() as f32 * 8.0 + 10.0);
-        max_type_width = max_type_width.max(msg_type.len() as f32 * 8.0 + 10.0);
-        max_id_width = max_id_width.max(id_str.len() as f32 * 8.0 + 10.0);
-        max_dlc_width = max_dlc_width.max(dlc_str.len() as f32 * 8.0 + 10.0);
+        // Calculate exact width needed for each column.
+        // Mono char width at text_xs is ~7px. Use 7px/char and add 16px
+        // total padding (4px each side + 8px inter-column gap) so text
+        // never visually abuts the next column.
+        max_time_width = max_time_width.max(time_str.len() as f32 * 7.0 + 16.0);
+        max_ch_width = max_ch_width.max(channel_id.to_string().len() as f32 * 7.0 + 16.0);
+        max_type_width = max_type_width.max(msg_type.len() as f32 * 7.0 + 16.0);
+        max_id_width = max_id_width.max(id_str.len() as f32 * 7.0 + 16.0);
+        max_dlc_width = max_dlc_width.max(dlc_str.len() as f32 * 7.0 + 16.0);
     }
 
     // Apply maximum limits to prevent columns from becoming too wide.
     // Keep non-data columns compact so the DATA column has room to display
     // full 64-byte payloads (up to ~128 hex chars without separators).
-    max_time_width = max_time_width.min(220.0);
-    max_ch_width = max_ch_width.min(30.0);
-    max_type_width = max_type_width.min(60.0);
-    max_id_width = max_id_width.min(50.0);
-    max_dlc_width = max_dlc_width.min(30.0);
+    // Each column also has px_2 padding (16px total), so visible gap between
+    // adjacent column text is the sum of half-padding on each side (~8px).
+    max_time_width = max_time_width.min(200.0);
+    max_ch_width = max_ch_width.min(40.0);
+    max_type_width = max_type_width.min(70.0);
+    max_id_width = max_id_width.min(60.0);
+    max_dlc_width = max_dlc_width.min(40.0);
 
     // Round to integer pixels to ensure consistency across all rows
     // This prevents rounding errors that can cause misalignment
