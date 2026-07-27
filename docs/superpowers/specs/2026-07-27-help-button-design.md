@@ -63,19 +63,24 @@ Add `pub show_help_menu: bool` to `CanViewApp` in `src/view/src/app/state.rs`, n
 
 In `src/view/src/main.rs`, inside `app.run(move |cx| { ... })` after `gpui_component::init(cx)`:
 
-1. Define two GPUI actions near the top of the file (next to the existing `library_input` actions at `app/mod.rs`):
+1. Define three GPUI actions in `src/view/src/main.rs` at module scope (mirrors the `gpui::actions!(library_input, [...])` declaration at `src/view/src/app/mod.rs:35`):
    ```rust
-   gpui::actions!(help, [OpenGitHubUrl, SendFeedbackEmail]);
+   gpui::actions!(help, [OpenGitHubUrl, SendFeedbackEmail, QuitApp]);
    ```
 2. Call `cx.set_menus(vec![Menu { name: "CANVIEW".into(), items: vec![
        MenuItem::action("View on GitHub", OpenGitHubUrl),
        MenuItem::separator(),
        MenuItem::action("Send Feedback", SendFeedbackEmail),
+       MenuItem::separator(),
+       MenuItem::action("Quit CANVIEW", QuitApp),
    ] }])`.
-   - Note: GPUI on macOS automatically adds standard items (About, Hide, Quit) to the app menu. We only need to add our custom entries.
-3. Register `cx.on_action(|_: &OpenGitHubUrl, cx| { cx.open_url("https://github.com/ucanme/canview"); })` and the same for `SendFeedbackEmail` with the `mailto:` URL.
+   - Note: GPUI does **not** auto-inject About/Hide/Quit — only the menus we pass to `set_menus` are shown. We add a `Quit CANVIEW` entry so the macOS app menu has the expected standard item below our custom entries. About/Hide are skipped for now (Out of Scope).
+3. Register action handlers inside `app.run`:
+   - `cx.on_action(|_: &OpenGitHubUrl, cx| { cx.open_url("https://github.com/ucanme/canview"); })`
+   - `cx.on_action(|_: &SendFeedbackEmail, cx| { cx.open_url("mailto:admin@ucan.me?subject=CANVIEW%20Feedback"); })`
+   - `cx.on_action(|_: &QuitApp, cx| { cx.quit(); })` — `App::quit` is exposed at `gpui::app.rs:749`.
 
-The menus are set once at startup. They live alongside whatever default menus GPUI adds (Quit, About, etc. on macOS). On Windows/Linux, `set_menus` is a no-op visually.
+The menus are set once at startup. Only the menus we pass are shown — GPUI does not add its own. On Windows/Linux, `set_menus` is a no-op visually (no native menu bar rendered).
 
 ### URL Schemes
 
