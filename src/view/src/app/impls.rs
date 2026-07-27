@@ -561,7 +561,7 @@ impl CanViewApp {
             .take(actual_data_len)
             .map(|b| format!("{:02X}", b))
             .collect::<Vec<_>>()
-            .join(" ")
+            .join("")
     }
 
     /// Extract and format CAN signals from DBC database

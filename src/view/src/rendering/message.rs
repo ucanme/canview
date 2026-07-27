@@ -172,7 +172,7 @@ pub fn get_message_strings(
                 .take(actual_data_len)
                 .map(|b| format!("{:02X}", b))
                 .collect::<Vec<_>>()
-                .join(" ");
+                .join("");
 
             (
                 time_str,
@@ -194,7 +194,7 @@ pub fn get_message_strings(
                 .take(actual_data_len)
                 .map(|b| format!("{:02X}", b))
                 .collect::<Vec<_>>()
-                .join(" ");
+                .join("");
 
             (
                 time_str,
@@ -229,7 +229,7 @@ pub fn get_message_strings(
                 .take(actual_data_len)
                 .map(|b| format!("{:02X}", b))
                 .collect::<Vec<_>>()
-                .join(" ");
+                .join("");
 
             (
                 time_str,
@@ -251,7 +251,7 @@ pub fn get_message_strings(
                 .take(actual_data_len)
                 .map(|b| format!("{:02X}", b))
                 .collect::<Vec<_>>()
-                .join(" ");
+                .join("");
 
             (
                 time_str,
@@ -286,7 +286,7 @@ pub fn get_message_strings(
                 .take(actual_data_len)
                 .map(|b| format!("{:02X}", b))
                 .collect::<Vec<_>>()
-                .join(" ");
+                .join("");
 
             (
                 time_str,
@@ -307,7 +307,7 @@ pub fn get_message_strings(
                 .iter()
                 .map(|b| format!("{:02X}", b))
                 .collect::<Vec<_>>()
-                .join(" ");
+                .join("");
 
             (
                 time_str,
@@ -352,8 +352,6 @@ pub fn get_message_strings(
 /// * `disable_hover` - If true, disable hover effect
 ///
 /// # Returns
-/// A GPUI element that can be rendered in the message table
-#[allow(dead_code)]
 pub fn render_message_row_static_with_widths(
     msg: &LogObject,
     index: usize,
