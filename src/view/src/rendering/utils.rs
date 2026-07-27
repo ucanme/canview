@@ -41,13 +41,13 @@ pub fn format_timestamp(timestamp: u64, _start_time: Option<chrono::NaiveDateTim
 /// ```
 /// let data = vec![0x12, 0x34, 0xAB];
 /// let formatted = format_hex_data(&data);
-/// assert_eq!(formatted, "12 34 AB");
+/// assert_eq!(formatted, "1234AB");
 /// ```
 pub fn format_hex_data(data: &[u8]) -> String {
     data.iter()
         .map(|b| format!("{:02X}", b))
         .collect::<Vec<_>>()
-        .join(" ")
+        .join("")
 }
 
 /// Format a CAN ID as a hexadecimal string
@@ -75,7 +75,7 @@ mod tests {
     fn test_format_hex_data() {
         let data = vec![0x12, 0x34, 0xAB, 0xFF];
         let result = format_hex_data(&data);
-        assert_eq!(result, "12 34 AB FF");
+        assert_eq!(result, "1234ABFF");
     }
 
     #[test]
