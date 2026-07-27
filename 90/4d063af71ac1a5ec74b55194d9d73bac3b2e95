@@ -1,0 +1,19 @@
+docs/superpowers/plans/2026-07-27-help-button.md
+  s_4b597d79f57a41::t_5acd112d41c4dd 1-522
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "904d063af71ac1a5ec74b55194d9d73bac3b2e95",
+  "prompts": {},
+  "sessions": {
+    "s_4b597d79f57a41": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04c31b32-2394-4f75-84b4-cfe6d2d76705",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
