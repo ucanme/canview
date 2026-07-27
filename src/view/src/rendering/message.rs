@@ -105,13 +105,14 @@ pub fn calculate_column_widths(
         max_dlc_width = max_dlc_width.max(dlc_str.len() as f32 * 8.0 + 10.0);
     }
 
-    // Apply maximum limits to prevent columns from becoming too wide
-    // This ensures the table remains readable even with very long content
-    max_time_width = max_time_width.min(300.0);
-    max_ch_width = max_ch_width.min(80.0);
-    max_type_width = max_type_width.min(120.0);
-    max_id_width = max_id_width.min(100.0);
-    max_dlc_width = max_dlc_width.min(80.0);
+    // Apply maximum limits to prevent columns from becoming too wide.
+    // Keep non-data columns compact so the DATA column has room to display
+    // full 64-byte payloads (up to ~191 hex chars with space separators).
+    max_time_width = max_time_width.min(160.0);
+    max_ch_width = max_ch_width.min(30.0);
+    max_type_width = max_type_width.min(60.0);
+    max_id_width = max_id_width.min(50.0);
+    max_dlc_width = max_dlc_width.min(30.0);
 
     // Round to integer pixels to ensure consistency across all rows
     // This prevents rounding errors that can cause misalignment

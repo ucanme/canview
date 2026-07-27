@@ -164,7 +164,7 @@ fn render_log_header(
         .text_xs()
         .font_weight(FontWeight::MEDIUM)
         .text_color(rgb(0x9ca3af))
-        .child(div().w(px(60.)).px_3().py_1().child("#"))
+        .child(div().w(px(50.)).px_3().py_1().child("#"))
         .child(div().w(time_width).px_3().py_1().child("TIME"))
         .child({
             let view_clone = view.clone();
@@ -212,9 +212,9 @@ fn render_log_header(
         .child(div().w(type_width).px_2().py_1().child("TYPE"))
         .child(div().w(id_width).px_2().py_1().child("ID"))
         .child(div().w(_dlc_width).px_2().py_1().child("DLC"))
-        .child(div().w(px(60.)).px_2().py_1().child("LENGTH"))
+        .child(div().w(px(30.)).px_2().py_1().child("LENGTH"))
         .child(div().flex_1().px_2().child("DATA"))
-        .child(div().flex_1().px_2().child("SIGNALS"))
+        .child(div().w(px(250.)).flex_shrink_0().px_2().child("SIGNALS"))
         .when(show_channel_filter_input, |this| {
             this.child(div().child("Channel filter dropdown"))
         })
@@ -260,8 +260,8 @@ pub fn render_message_row(
         .hover(|style| style.bg(rgb(0x1a1a1a)))
         .child(
             div()
-                .w(px(80.))
-                .px_3()
+                .w(px(50.))
+                .px_2()
                 .flex_shrink_0()
                 .text_color(rgb(0x6b7280))
                 .child(index.to_string()),
@@ -308,7 +308,7 @@ pub fn render_message_row(
         )
         .child(
             div()
-                .w(px(60.))
+                .w(px(30.))
                 .px_2()
                 .flex_shrink_0()
                 .text_color(rgb(0x9ca3af))
@@ -324,9 +324,12 @@ pub fn render_message_row(
         )
         .child(
             div()
-                .flex_1()
+                .w(px(250.))
+                .flex_shrink_0()
                 .px_2()
                 .text_color(rgb(0x8b5cf6))
+                .whitespace_nowrap()
+                .overflow_hidden()
                 .child(signals_str),
         )
 }
@@ -350,7 +353,8 @@ fn parse_message_data(
                 format!("{:03X}", can_msg.id)
             };
             let dlc_str = can_msg.dlc.to_string();
-            let data_str = format!("{:02X?}", can_msg.data);
+            let data_len = can_msg.data.len().min(can_msg.dlc as usize);
+            let data_str = crate::rendering::format_hex_data(&can_msg.data[..data_len]);
 
             let signals_str = decode_can_signals(can_msg, dbc_channels);
 
@@ -370,7 +374,8 @@ fn parse_message_data(
             let msg_type = "LIN";
             let id_str = lin_msg.id.to_string();
             let dlc_str = lin_msg.dlc.to_string();
-            let data_str = format!("{:02X?}", lin_msg.data);
+            let data_len = lin_msg.data.len().min(lin_msg.dlc as usize);
+            let data_str = crate::rendering::format_hex_data(&lin_msg.data[..data_len]);
 
             let signals_str = decode_lin_signals(lin_msg, ldf_channels);
 
@@ -394,7 +399,8 @@ fn parse_message_data(
                 format!("{:03X}", can_msg.id)
             };
             let dlc_str = can_msg.dlc.to_string();
-            let data_str = format!("{:02X?}", can_msg.data);
+            let data_len = can_msg.data.len().min(can_msg.dlc as usize);
+            let data_str = crate::rendering::format_hex_data(&can_msg.data[..data_len]);
             let signals_str = decode_can2_signals(can_msg, dbc_channels);
             (
                 time_str,
@@ -416,7 +422,8 @@ fn parse_message_data(
                 format!("{:03X}", fd_msg.id)
             };
             let dlc_str = fd_msg.dlc.to_string();
-            let data_str = format!("{:02X?}", fd_msg.data);
+            let data_len = fd_msg.data.len().min(fd_msg.dlc as usize);
+            let data_str = crate::rendering::format_hex_data(&fd_msg.data[..data_len]);
             let signals_str = decode_can_fd_signals(fd_msg, dbc_channels);
             (
                 time_str,
@@ -438,7 +445,8 @@ fn parse_message_data(
                 format!("{:03X}", fd_msg.id)
             };
             let dlc_str = fd_msg.dlc.to_string();
-            let data_str = format!("{:02X?}", fd_msg.data);
+            let data_len = fd_msg.data.len().min(fd_msg.valid_data_bytes as usize);
+            let data_str = crate::rendering::format_hex_data(&fd_msg.data[..data_len]);
             let signals_str = decode_can_fd_signals_64(fd_msg, dbc_channels);
             (
                 time_str,
@@ -616,8 +624,8 @@ pub fn render_message_row_static(
         .hover(|style| style.bg(rgb(0x1a1a1a)))
         .child(
             div()
-                .w(px(80.))
-                .px_3()
+                .w(px(50.))
+                .px_2()
                 .flex_shrink_0()
                 .text_color(rgb(0x6b7280))
                 .child(index.to_string()),
@@ -664,7 +672,7 @@ pub fn render_message_row_static(
         )
         .child(
             div()
-                .w(px(60.))
+                .w(px(30.))
                 .px_2()
                 .flex_shrink_0()
                 .text_color(rgb(0x9ca3af))
@@ -680,9 +688,12 @@ pub fn render_message_row_static(
         )
         .child(
             div()
-                .flex_1()
+                .w(px(250.))
+                .flex_shrink_0()
                 .px_2()
                 .text_color(rgb(0x8b5cf6))
+                .whitespace_nowrap()
+                .overflow_hidden()
                 .child(signals_str),
         )
 }
@@ -723,8 +734,8 @@ pub fn render_message_row_static_with_widths(
         .hover(|style| style.bg(rgb(0x1a1a1a)))
         .child(
             div()
-                .w(px(80.))
-                .px_3()
+                .w(px(50.))
+                .px_2()
                 .flex_shrink_0()
                 .text_color(rgb(0x6b7280))
                 .child(index.to_string()),
@@ -777,7 +788,7 @@ pub fn render_message_row_static_with_widths(
         )
         .child(
             div()
-                .w(px(60.))
+                .w(px(30.))
                 .px_2()
                 .flex_shrink_0()
                 .text_color(rgb(0x9ca3af))
@@ -796,10 +807,12 @@ pub fn render_message_row_static_with_widths(
         )
         .child(
             div()
-                .flex_1()
+                .w(px(250.))
+                .flex_shrink_0()
                 .px_2()
                 .text_color(rgb(0x8b5cf6))
                 .whitespace_nowrap()
+                .overflow_hidden()
                 .child(signals_str),
         )
 }
