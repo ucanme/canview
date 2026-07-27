@@ -1,0 +1,21 @@
+src/view/src/main.rs
+  s_4b597d79f57a41::t_c273e248a7b7be 115-140
+  s_4b597d79f57a41::t_883715f0d28270 51-55
+  s_4b597d79f57a41::t_a433d15f45624f 49-50,56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "78c0fe752a10b1b962ee684cc060effecaf00f31",
+  "prompts": {},
+  "sessions": {
+    "s_4b597d79f57a41": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04c31b32-2394-4f75-84b4-cfe6d2d76705",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
