@@ -317,8 +317,8 @@ pub fn render_message_row(
         .child(
             div()
                 .flex_1()
-                .px_2()
-                .text_xs()
+                .px_1()
+                .text_size(px(10.0))
                 .text_color(rgb(0x10b981))
                 .font_family("Mono")
                 .child(data_str),
@@ -682,8 +682,8 @@ pub fn render_message_row_static(
         .child(
             div()
                 .flex_1()
-                .px_2()
-                .text_xs()
+                .px_1()
+                .text_size(px(10.0))
                 .text_color(rgb(0x10b981))
                 .font_family("Mono")
                 .child(data_str),
@@ -801,8 +801,8 @@ pub fn render_message_row_static_with_widths(
         .child(
             div()
                 .flex_1()
-                .px_2()
-                .text_xs()
+                .px_1()
+                .text_size(px(10.0))
                 .text_color(rgb(0x10b981))
                 .font_family("Mono")
                 .whitespace_nowrap()
