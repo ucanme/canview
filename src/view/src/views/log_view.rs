@@ -318,6 +318,7 @@ pub fn render_message_row(
             div()
                 .flex_1()
                 .px_2()
+                .text_xs()
                 .text_color(rgb(0x10b981))
                 .font_family("Mono")
                 .child(data_str),
@@ -682,6 +683,7 @@ pub fn render_message_row_static(
             div()
                 .flex_1()
                 .px_2()
+                .text_xs()
                 .text_color(rgb(0x10b981))
                 .font_family("Mono")
                 .child(data_str),
@@ -800,6 +802,7 @@ pub fn render_message_row_static_with_widths(
             div()
                 .flex_1()
                 .px_2()
+                .text_xs()
                 .text_color(rgb(0x10b981))
                 .font_family("Mono")
                 .whitespace_nowrap()
