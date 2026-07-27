@@ -164,8 +164,8 @@ fn render_log_header(
         .text_xs()
         .font_weight(FontWeight::MEDIUM)
         .text_color(rgb(0x9ca3af))
-        .child(div().w(px(50.)).px_3().py_1().child("#"))
-        .child(div().w(time_width).px_3().py_1().child("TIME"))
+        .child(div().w(px(50.)).px_2().py_1().child("#"))
+        .child(div().w(time_width).px_2().py_1().child("TIME"))
         .child({
             let view_clone = view.clone();
             div()
@@ -745,7 +745,7 @@ pub fn render_message_row_static_with_widths(
         .child(
             div()
                 .w(time_width)
-                .px_3()
+                .px_2()
                 .flex_shrink_0()
                 .text_color(rgb(0x60a5fa))
                 .child(time_str),
