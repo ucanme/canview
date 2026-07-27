@@ -1,0 +1,19 @@
+src/view/src/app/impls_rendering.rs
+  s_4b597d79f57a41::t_48bbb50235252f 2098-2181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "f5c0c55bb4546b1710e55d6aba91eb0cc70c5037",
+  "prompts": {},
+  "sessions": {
+    "s_4b597d79f57a41": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04c31b32-2394-4f75-84b4-cfe6d2d76705",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
