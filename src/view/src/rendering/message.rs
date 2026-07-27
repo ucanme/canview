@@ -365,6 +365,7 @@ pub fn render_message_row_static_with_widths(
     start_time: Option<chrono::NaiveDateTime>,
     decimal: bool,
     disable_hover: bool,
+    view: gpui::Entity<crate::app::CanViewApp>,
 ) -> gpui::AnyElement {
     use gpui::{div, prelude::*, rgb};
 
@@ -473,9 +474,25 @@ pub fn render_message_row_static_with_widths(
                         dlc_str.clone(),
                         data_str.clone()
                     );
+                    let view_for_row = view.clone();
                     move |_, _window, cx| {
                         cx.stop_propagation();
                         cx.write_to_clipboard(gpui::ClipboardItem::new_string(row_str.clone()));
+                        view_for_row.update(cx, |app, cx| {
+                            app.status_msg = "✓ Copied row".into();
+                            cx.notify();
+                        });
+                        let reset_view = view_for_row.clone();
+                        cx.spawn(async move |cx| {
+                            smol::Timer::after(std::time::Duration::from_secs(2)).await;
+                            let _ = cx.update(|cx| {
+                                reset_view.update(cx, |app, cx| {
+                                    app.status_msg = "".into();
+                                    cx.notify();
+                                });
+                            });
+                        })
+                        .detach();
                     }
                 })
                 .child(id_str.clone()),
@@ -505,9 +522,25 @@ pub fn render_message_row_static_with_widths(
                 .hover(|s| s.bg(rgb(0x374151)))
                 .on_mouse_down(gpui::MouseButton::Left, {
                     let data_clone = data_str.clone();
+                    let view_for_data = view.clone();
                     move |_, _window, cx| {
                         cx.stop_propagation();
                         cx.write_to_clipboard(gpui::ClipboardItem::new_string(data_clone.clone()));
+                        view_for_data.update(cx, |app, cx| {
+                            app.status_msg = "✓ Copied data".into();
+                            cx.notify();
+                        });
+                        let reset_view = view_for_data.clone();
+                        cx.spawn(async move |cx| {
+                            smol::Timer::after(std::time::Duration::from_secs(2)).await;
+                            let _ = cx.update(|cx| {
+                                reset_view.update(cx, |app, cx| {
+                                    app.status_msg = "".into();
+                                    cx.notify();
+                                });
+                            });
+                        })
+                        .detach();
                     }
                 })
                 .child(data_str.clone()),

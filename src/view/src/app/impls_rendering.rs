@@ -775,6 +775,7 @@ impl CanViewApp {
                                                     start_time,
                                                     id_display_decimal,
                                                     view_entity.read(cx).show_id_filter_input,
+                                                    view_entity.clone(),
                                                 )
                                             } else {
                                                 div().into_any_element()
