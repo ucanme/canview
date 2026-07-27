@@ -142,6 +142,8 @@ impl CanViewApp {
             plot_width_px: px(0.0),
             // File menu dropdown state
             show_file_menu: false,
+            // Help menu dropdown state
+            show_help_menu: false,
             // Server state
             server_handle: None,
             show_share_dialog: false,
@@ -887,6 +889,8 @@ impl CanViewApp {
             plot_width_px: px(0.0),
             // File menu dropdown state
             show_file_menu: false,
+            // Help menu dropdown state
+            show_help_menu: false,
             // Server state
             server_handle: None,
             show_share_dialog: false,
