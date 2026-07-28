@@ -64,7 +64,7 @@ fn emit_version() {
     println!("cargo:rerun-if-changed=../../.git/refs/tags");
 
     let version = std::process::Command::new("git")
-        .args(["describe", "--tags", "--always", "--dirty"])
+        .args(["describe", "--tags", "--always"])
         .output()
         .ok()
         .and_then(|o| {
