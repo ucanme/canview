@@ -447,13 +447,174 @@ pub fn extract_signal_items(app: &CanViewApp) -> Vec<SidebarItem> {
     items
 }
 
+/// Render the signal selection sidebar: header + search box + virtualized list
+/// + bottom action bar with "Clear all" and "Plot N signals" buttons.
 pub fn render_signal_sidebar(
     _window: &mut Window,
-    _app: &CanViewApp,
-    _view: Entity<CanViewApp>,
-    _cx: &mut Context<CanViewApp>,
+    app: &CanViewApp,
+    view: Entity<CanViewApp>,
+    cx: &mut Context<CanViewApp>,
 ) -> impl IntoElement {
-    div().size_full()
+    let items = extract_signal_items(app);
+    let item_count = items.len();
+    let selected_count = app.selected_signals.len();
+    let items_arc = std::sync::Arc::new(items);
+
+    div()
+        .size_full()
+        .flex()
+        .flex_col()
+        .bg(rgb(0x0a0a0b))
+        .child(
+            // Sidebar Header
+            div()
+                .px_4()
+                .py_2()
+                .bg(rgb(0x131314))
+                .border_b_1()
+                .border_color(rgb(0x27272a))
+                .flex()
+                .items_center()
+                .justify_between()
+                .child(
+                    div()
+                        .text_xs()
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(rgb(0xe4e4e7))
+                        .child("信号选择 (Signals)")
+                )
+                .child(
+                    div()
+                        .text_xs()
+                        .text_color(rgb(0x71717a))
+                        .child(format!("{}", item_count))
+                )
+        )
+        .child(
+            // Search Box
+            div()
+                .w_full()
+                .px_4()
+                .py_2()
+                .border_b_1()
+                .border_color(rgb(0x27272a))
+                .flex()
+                .items_center()
+                .child(
+                    if let Some(input) = &app.signal_search_input {
+                        div()
+                            .flex_1()
+                            .h(px(32.0))
+                            .flex()
+                            .items_center()
+                            .child(gpui_component::input::Input::new(input).appearance(true))
+                            .into_any_element()
+                    } else {
+                        div()
+                            .flex_1()
+                            .h(px(32.0))
+                            .flex()
+                            .items_center()
+                            .px_2()
+                            .text_xs()
+                            .text_color(rgb(0x888888))
+                            .child("Search signals...")
+                            .into_any_element()
+                    }
+                )
+        )
+        .child(
+            // Virtualized list
+            div()
+                .flex_1()
+                .child(
+                    if item_count == 0 {
+                        div()
+                            .p_4()
+                            .text_xs()
+                            .text_color(rgb(0x52525b))
+                            .text_center()
+                            .child("No matches found")
+                            .into_any_element()
+                    } else {
+                        let view_entity = view.clone();
+                        gpui::uniform_list(
+                            "signal-list",
+                            item_count,
+                            move |range, _window, _cx| {
+                                let items = items_arc.clone();
+                                range.map(|i| render_sidebar_item(&items[i], view_entity.clone()))
+                                    .collect::<Vec<_>>()
+                            }
+                        )
+                        .size_full()
+                        .into_any_element()
+                    }
+                )
+        )
+        .child(
+            // Bottom Action Bar: Clear all | Plot N signals
+            if selected_count > 0 {
+                div()
+                    .p_2()
+                    .bg(rgb(0x131314))
+                    .border_t_1()
+                    .border_color(rgb(0x27272a))
+                    .flex()
+                    .gap_2()
+                    .child(
+                        // Clear all button
+                        div()
+                            .px_3()
+                            .py_1p5()
+                            .bg(rgb(0x3f3f46))
+                            .rounded(px(4.0))
+                            .cursor_pointer()
+                            .hover(|s| s.bg(rgb(0x52525b)))
+                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                this.clear_selected_signals(cx);
+                            }))
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(rgb(0xffffff))
+                                    .child(format!("清除全部 ({})", selected_count))
+                            )
+                    )
+                    .child(
+                        // Plot button
+                        div()
+                            .flex_1()
+                            .px_3()
+                            .py_1p5()
+                            .bg(rgb(0x3b82f6))
+                            .rounded(px(4.0))
+                            .cursor_pointer()
+                            .hover(|s| s.bg(rgb(0x2563eb)))
+                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                crate::ui::views::chart_view::extract_and_update_series_data(this);
+                                cx.notify();
+                            }))
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .gap_2()
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .font_weight(FontWeight::BOLD)
+                                            .text_color(rgb(0xffffff))
+                                            .child(format!("绘制 {} 个信号 (Plot)", selected_count))
+                                    )
+                            )
+                    )
+            } else {
+                div()
+            }
+        )
 }
 
 #[cfg(test)]
