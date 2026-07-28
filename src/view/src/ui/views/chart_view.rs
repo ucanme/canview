@@ -188,8 +188,12 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                 .size_full()
                 .gap_4()
                 .child(render_legend(&series_data))
-                .children(series_data.iter().map(|series| {
-                    render_single_chart(series, start_time, show_points)
+                .children(app.selected_signals.iter().map(|signal_id| {
+                    let series = series_data.iter().find(|s| &s.name == signal_id);
+                    match series {
+                        Some(s) => render_single_chart(s, start_time, show_points).into_any_element(),
+                        None => render_no_data_chart(signal_id),
+                    }
                 }))
         )
         // Zoom Box Overlay Layer
@@ -668,31 +672,50 @@ fn render_hover_tooltip(
         }))
 }
 
+/// Render a placeholder card matching `render_single_chart`'s visual style
+/// for a selected signal that has no data points in the current log.
+fn render_no_data_chart(signal_id: &str) -> AnyElement {
+    let display_name = signal_id.split(':').last().unwrap_or(signal_id);
+    div()
+        .flex()
+        .flex_col()
+        .h(px(250.0))
+        .bg(rgb(0x18181b))
+        .border_1()
+        .border_color(rgb(0x27272a))
+        .rounded_lg()
+        .p_4()
+        .items_center()
+        .justify_center()
+        .child(
+            div()
+                .flex()
+                .flex_col()
+                .items_center()
+                .gap_2()
+                .child(div().text_xl().text_color(rgb(0x71717a)).child("⊘"))
+                .child(
+                    div()
+                        .text_sm()
+                        .text_color(rgb(0xa1a1aa))
+                        .child(format!("No data for '{}'", display_name))
+                )
+                .child(
+                    div()
+                        .text_xs()
+                        .text_color(rgb(0x52525b))
+                        .child("检查通道 ID 匹配 (DBC vs 日志) 或时间范围")
+                )
+        )
+        .into_any_element()
+}
+
 /// Render a single chart for one signal
 fn render_single_chart(
-    series: &Series, 
-    _start_time: Option<chrono::NaiveDateTime>, 
+    series: &Series,
+    _start_time: Option<chrono::NaiveDateTime>,
     show_points: bool
 ) -> impl IntoElement {
-    // Safety check: ensure we have points
-    if series.points.is_empty() {
-        return div()
-            .flex()
-            .flex_col()
-            .h(px(250.0))
-            .bg(rgb(0x18181b))
-            .border_1()
-            .border_color(rgb(0x27272a))
-            .rounded_lg()
-            .p_4()
-            .child(
-                div()
-                    .text_sm()
-                    .text_color(rgb(0xa1a1aa))
-                    .child(format!("No data points for '{}'. Check Channel ID match (DBC vs Log) or Time Range.", series.name))
-            );
-    }
-
     // Clone time labels for use in closure
     let time_labels = series.time_labels.clone();
 
