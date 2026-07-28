@@ -1,0 +1,19 @@
+src/view/src/ui/views/plot_sidebar.rs
+  s_ef368fd9f13ac0::t_3539c85fe49681 450-451,454-456,458-617
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "45da740888cc7452b328f03c9d6eb8ede3b395a6",
+  "prompts": {},
+  "sessions": {
+    "s_ef368fd9f13ac0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89bf9fed-0f83-4348-adf1-a239972eaef7",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
