@@ -1651,6 +1651,28 @@ impl Render for CanViewApp {
         // Update container height based on current window size
         self.update_container_height(window);
 
+        // Consume pending focus from add-channel Enter-key chain (set by PressEnter subscribe)
+        if let Some(target) = self.pending_add_channel_focus.take() {
+            use crate::app::state::PendingAddChannelFocus;
+            match target {
+                // Enter on channel_id → focus the channel_name input
+                PendingAddChannelFocus::ChannelName => {
+                    if let Some(name_input) = &self.channel_name_input {
+                        name_input.update(cx, |state, cx| state.focus(window, cx));
+                    }
+                }
+                // Enter on channel_name → user decided "let user choose next step"
+                // (no auto-focus on ✓ Confirm button — user picks Browse or ✓ manually).
+                // Re-focus the name input so it's not lost; the user then either clicks
+                // "Select File..." or tabs to ✓ to submit.
+                PendingAddChannelFocus::ChannelConfirm => {
+                    if let Some(name_input) = &self.channel_name_input {
+                        name_input.update(cx, |state, cx| state.focus(window, cx));
+                    }
+                }
+            }
+        }
+
         // Initialize import URL input if showing import dialog
         if self.show_import_dialog && self.import_url_input.is_none() {
             let input = cx.new(|cx| InputState::new(window, cx).placeholder("http://...?token=..."));
