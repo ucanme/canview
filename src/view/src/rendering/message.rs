@@ -415,7 +415,7 @@ pub fn render_message_row_static_with_widths(
                 .whitespace_nowrap()
                 .overflow_hidden()
                 .cursor_pointer()
-                .hover(|s| s.bg(rgb(0x4b5563)).text_color(rgb(0xfde68a)))
+                .when(!selected, |d| d.hover(|s| s.bg(rgb(0x4b5563)).text_color(rgb(0xfde68a))))
                 .on_mouse_down(gpui::MouseButton::Left, {
                     let row_str = format!(
                         "{} | {} | {} | {} | {} | {} | {}",
@@ -528,7 +528,7 @@ pub fn render_message_row_static_with_widths(
                 .text_color(rgb(0xa78bfa))
                 .whitespace_nowrap()
                 .cursor_pointer()
-                .hover(|s| s.bg(rgb(0x4b5563)).text_color(rgb(0xc4b5fd)))
+                .when(!selected, |d| d.hover(|s| s.bg(rgb(0x4b5563)).text_color(rgb(0xc4b5fd))))
                 .on_mouse_down(gpui::MouseButton::Left, {
                     let data_clone = data_str.clone();
                     let view_for_data = view.clone();
