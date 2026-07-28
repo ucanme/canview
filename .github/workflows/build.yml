@@ -26,7 +26,7 @@ jobs:
           # the project depends on edition 2024 + #![recursion_limit].
           - os: macos-14
             target: aarch64-apple-darwin
-            artifact_name: CANVIEW.app
+            artifact_name: canview.app
             asset_name: canview-macos-aarch64
 
           # Linux x86_64
@@ -179,7 +179,15 @@ jobs:
         shell: bash
         run: |
           set -e
-          APP_DIR=target/${{ matrix.target }}/release/CANVIEW.app
+          # Derive version from git tag (e.g. "v0.1.0" -> "0.1.0").
+          # Falls back to "0.0.0" if git is unavailable or no tags exist.
+          VERSION="$(git describe --tags --always 2>/dev/null || echo "0.0.0")"
+          # Strip leading "v" and any "-N-gabc" / "-dirty" suffix for the
+          # plist short version string (must be x.y[.z]).
+          VERSION_SHORT="$(echo "$VERSION" | sed -E 's/^v//; s/-.*//')"
+          echo "canview version: $VERSION (short: $VERSION_SHORT)"
+
+          APP_DIR=target/${{ matrix.target }}/release/canview.app
           CONTENTS="$APP_DIR/Contents"
           MACOS_DIR="$CONTENTS/MacOS"
           RESOURCES_DIR="$CONTENTS/Resources"
@@ -198,10 +206,10 @@ jobs:
             printf '%s\n' '  <key>CFBundleExecutable</key><string>canview</string>'
             printf '%s\n' '  <key>CFBundleIdentifier</key><string>com.canview.app</string>'
             printf '%s\n' '  <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>'
-            printf '%s\n' '  <key>CFBundleName</key><string>CANVIEW</string>'
+            printf '%s\n' '  <key>CFBundleName</key><string>canview</string>'
             printf '%s\n' '  <key>CFBundlePackageType</key><string>APPL</string>'
-            printf '%s\n' '  <key>CFBundleShortVersionString</key><string>0.1.0</string>'
-            printf '%s\n' '  <key>CFBundleVersion</key><string>0.1.0</string>'
+            printf '%s\n' "  <key>CFBundleShortVersionString</key><string>${VERSION_SHORT}</string>"
+            printf '%s\n' "  <key>CFBundleVersion</key><string>${VERSION_SHORT}</string>"
             printf '%s\n' '  <key>LSMinimumSystemVersion</key><string>10.13</string>'
             printf '%s\n' '  <key>NSHighResolutionCapable</key><true/>'
             printf '%s\n' '  <key>CFBundleIconFile</key><string>canview</string>'
@@ -224,7 +232,7 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          cp -R target/${{ matrix.target }}/release/CANVIEW.app upload/
+          cp -R target/${{ matrix.target }}/release/canview.app upload/
 
       - name: Copy binary (Windows)
         if: runner.os == 'Windows'
@@ -242,7 +250,7 @@ jobs:
         shell: bash
         run: |
           cd upload
-          tar czf ../${{ matrix.asset_name }}.tar.gz CANVIEW.app
+          tar czf ../${{ matrix.asset_name }}.tar.gz canview.app
 
       - name: Create archive (Windows)
         if: runner.os == 'Windows'
@@ -257,7 +265,7 @@ jobs:
           name: ${{ matrix.asset_name }}
           path: |
             upload/${{ matrix.artifact_name }}
-            upload/CANVIEW.app
+            upload/canview.app
           retention-days: 30
 
       - name: Upload artifact (Windows)

@@ -25,6 +25,8 @@ fn main() {
         println!("cargo:rustc-link-arg-bins=/SUBSYSTEM:WINDOWS");
         println!("cargo:rustc-link-arg-bins=/ENTRY:mainCRTStartup");
     }
+
+    emit_version();
 }
 
 #[cfg(target_os = "macos")]
@@ -44,9 +46,39 @@ fn main() {
     // Link the Metal framework (required by gpui on macOS).
     println!("cargo:rustc-link-lib=framework=Metal");
     println!("cargo:rustc-link-lib=framework=QuartzCore");
+
+    emit_version();
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
 fn main() {
     // Linux/other: no platform-specific build steps
+    emit_version();
+}
+
+/// Emit CANVIEW_VERSION env var from `git describe --tags --always --dirty`.
+/// Falls back to CARGO_PKG_VERSION when git is unavailable or no tags exist.
+fn emit_version() {
+    // Re-run when HEAD moves so the version stays accurate.
+    println!("cargo:rerun-if-changed=../../.git/HEAD");
+    println!("cargo:rerun-if-changed=../../.git/refs/tags");
+
+    let version = std::process::Command::new("git")
+        .args(["describe", "--tags", "--always"])
+        .output()
+        .ok()
+        .and_then(|o| {
+            if o.status.success() {
+                String::from_utf8(o.stdout).ok()
+            } else {
+                None
+            }
+        })
+        .map(|s| s.trim().to_string())
+        .unwrap_or_else(|| {
+            // Fall back to Cargo package version when git is unavailable or no tags.
+            env!("CARGO_PKG_VERSION").to_string()
+        });
+
+    println!("cargo:rustc-env=CANVIEW_VERSION={}", version);
 }

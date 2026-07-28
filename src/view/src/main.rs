@@ -51,7 +51,7 @@ fn parse_file_urls(urls: Vec<String>) -> Vec<std::path::PathBuf> {
 // can reference them by name. The `help` module groups them so callers can
 // use the qualified paths `help::OpenGitHubUrl`, etc.
 mod help {
-    gpui::actions!(help, [OpenGitHubUrl, SendFeedbackEmail, QuitApp]);
+    gpui::actions!(help, [OpenGitHubUrl, SendFeedbackEmail, QuitApp, ShowAbout]);
 }
 
 fn main() {
@@ -120,6 +120,8 @@ fn main() {
             gpui::Menu {
                 name: "canview".into(),
                 items: vec![
+                    gpui::MenuItem::action("About canview", help::ShowAbout),
+                    gpui::MenuItem::separator(),
                     gpui::MenuItem::action("View on GitHub", help::OpenGitHubUrl),
                     gpui::MenuItem::separator(),
                     gpui::MenuItem::action("Send Feedback", help::SendFeedbackEmail),
@@ -136,6 +138,22 @@ fn main() {
         });
         cx.on_action(|_action: &help::QuitApp, cx| {
             cx.quit();
+        });
+        cx.on_action(|_action: &help::ShowAbout, cx| {
+            let version = env!("CANVIEW_VERSION");
+            cx.spawn(async move |cx| {
+                let _ = rfd::AsyncMessageDialog::new()
+                    .set_title("About canview")
+                    .set_description(&format!(
+                        "canview {}\n\nOpen-source cross-platform CAN/LIN bus data analysis tool\n\nhttps://github.com/ucanme/canview",
+                        version
+                    ))
+                    .set_buttons(rfd::MessageButtons::Ok)
+                    .show()
+                    .await;
+                Ok::<(), anyhow::Error>(())
+            })
+            .detach();
         });
 
         cx.spawn(async move |cx| {
