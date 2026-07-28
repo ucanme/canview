@@ -145,6 +145,9 @@ impl CanViewApp {
             // Help menu dropdown state
             show_help_menu: false,
             selected_row_index: None,
+            expanded_channels: std::collections::HashSet::new(),
+            expanded_messages: std::collections::HashSet::new(),
+            pending_add_channel_focus: None,
             // Server state
             server_handle: None,
             show_share_dialog: false,
@@ -893,6 +896,9 @@ impl CanViewApp {
             // Help menu dropdown state
             show_help_menu: false,
             selected_row_index: None,
+            expanded_channels: std::collections::HashSet::new(),
+            expanded_messages: std::collections::HashSet::new(),
+            pending_add_channel_focus: None,
             // Server state
             server_handle: None,
             show_share_dialog: false,
