@@ -2125,7 +2125,7 @@ impl Render for CanViewApp {
                     let view_for_github = view.clone();
                     let view_for_feedback = view.clone();
                     let view_for_about = view.clone();
-                    let version = env!("CARGO_PKG_VERSION");
+                    let version = env!("CANVIEW_VERSION");
                     div()
                         .absolute()
                         .top(px(36.))

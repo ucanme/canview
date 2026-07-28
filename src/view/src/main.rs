@@ -140,12 +140,12 @@ fn main() {
             cx.quit();
         });
         cx.on_action(|_action: &help::ShowAbout, cx| {
-            let version = env!("CARGO_PKG_VERSION");
+            let version = env!("CANVIEW_VERSION");
             cx.spawn(async move |cx| {
                 let _ = rfd::AsyncMessageDialog::new()
                     .set_title("About canview")
                     .set_description(&format!(
-                        "canview v{}\n\nOpen-source cross-platform CAN/LIN bus data analysis tool\n\nhttps://github.com/ucanme/canview",
+                        "canview {}\n\nOpen-source cross-platform CAN/LIN bus data analysis tool\n\nhttps://github.com/ucanme/canview",
                         version
                     ))
                     .set_buttons(rfd::MessageButtons::Ok)
