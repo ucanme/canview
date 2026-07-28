@@ -59,17 +59,15 @@ pub fn render_plot_view(window: &mut Window, app: &mut CanViewApp, view: Entity<
                 .flex_col()
                 .child(render_toolbar(app, cx))
                 .child(
-                    div()
-                        .flex_1()
-                        .p_4()
-                        .overflow_y_scrollbar()
-                        .child(
-                            if !has_data {
-                                render_empty_state(app)
-                            } else {
-                                render_chart_canvas(app, series_data, cx)
-                            }
-                        )
+                    if !has_data {
+                        div()
+                            .flex_1()
+                            .p_4()
+                            .child(render_empty_state(app))
+                            .into_any_element()
+                    } else {
+                        render_chart_canvas(app, series_data, cx)
+                    }
                 )
         )
 }
@@ -178,26 +176,32 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
     let hover_time = app.plot_hover_time;
 
     // Constant offsets based on layout (Sidebar: 320px, Padding: 16px)
-    let sidebar_offset = px(320.0); 
+    let sidebar_offset = px(320.0);
     let padding = px(16.0);
     let chart_start_x = sidebar_offset + padding;
 
-    div()
-        .size_full()
+    // The v_flex itself is the scroll container: it has overflow_y_scroll +
+    // track_scroll, and its children (legend + charts) take natural height so
+    // the container grows beyond the viewport and scrolling kicks in. The
+    // zoom-box overlay and hover line are positioned absolutely inside the
+    // v_flex so they stay aligned with the visible charts.
+    v_flex()
+        .id("plot-scroll-container")
+        .flex_1()
+        .min_h_0()  // allow the flex child to shrink so its content can scroll
         .relative()
-        .child(
-            v_flex()
-                .size_full()
-                .gap_4()
-                .child(render_legend(&series_data))
-                .children(app.selected_signals.iter().map(|signal_id| {
-                    let series = series_data.iter().find(|s| &s.name == signal_id);
-                    match series {
-                        Some(s) => render_single_chart(s, start_time, show_points).into_any_element(),
-                        None => render_no_data_chart(signal_id),
-                    }
-                }))
-        )
+        .p_4()
+        .gap_4()
+        .overflow_y_scroll()
+        .track_scroll(&app.plot_scroll_handle)
+        .child(render_legend(&series_data))
+        .children(app.selected_signals.iter().map(|signal_id| {
+            let series = series_data.iter().find(|s| &s.name == signal_id);
+            match series {
+                Some(s) => render_single_chart(s, start_time, show_points).into_any_element(),
+                None => render_no_data_chart(signal_id),
+            }
+        }))
         // Zoom Box Overlay Layer
         .when(is_dragging, |this| {
             if let (Some(start), Some(current)) = (drag_start, drag_current) {
@@ -808,6 +812,12 @@ fn render_single_chart(
 
 /// Render legend showing all series
 fn render_legend(series_data: &[Series]) -> impl IntoElement {
+    // Render an empty (zero-height) div when there are no series, so the
+    // legend's bordered container doesn't show as an empty box above the
+    // first chart when every selected signal has no data in the log.
+    if series_data.is_empty() {
+        return div().into_any_element();
+    }
     div()
         .flex()
         .flex_wrap()
@@ -836,6 +846,7 @@ fn render_legend(series_data: &[Series]) -> impl IntoElement {
                         .child(series.name.split(':').last().unwrap_or(&series.name).to_string())
                 )
         }))
+        .into_any_element()
 }
 
 /// Filter existing plot data by zoom range

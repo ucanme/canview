@@ -140,6 +140,7 @@ impl CanViewApp {
             plot_hover_time: None,
             plot_hover_x: None,
             plot_width_px: px(0.0),
+            plot_scroll_handle: gpui::ScrollHandle::new(),
             // File menu dropdown state
             show_file_menu: false,
             // Help menu dropdown state
@@ -891,6 +892,7 @@ impl CanViewApp {
             plot_hover_time: None,
             plot_hover_x: None,
             plot_width_px: px(0.0),
+            plot_scroll_handle: gpui::ScrollHandle::new(),
             // File menu dropdown state
             show_file_menu: false,
             // Help menu dropdown state
