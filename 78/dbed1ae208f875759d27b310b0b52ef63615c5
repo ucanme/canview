@@ -1,0 +1,21 @@
+src/view/src/app/impls.rs
+  s_ef368fd9f13ac0::t_3494025a828d7d 1740-1775,2139-2141,2143-2214
+  s_ef368fd9f13ac0::t_4cce25dc834244 2142
+  s_ef368fd9f13ac0::t_dceac5059f600a 2215-2216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "78dbed1ae208f875759d27b310b0b52ef63615c5",
+  "prompts": {},
+  "sessions": {
+    "s_ef368fd9f13ac0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89bf9fed-0f83-4348-adf1-a239972eaef7",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
