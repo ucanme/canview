@@ -144,6 +144,7 @@ impl CanViewApp {
             show_file_menu: false,
             // Help menu dropdown state
             show_help_menu: false,
+            selected_row_index: None,
             // Server state
             server_handle: None,
             show_share_dialog: false,
@@ -891,6 +892,7 @@ impl CanViewApp {
             show_file_menu: false,
             // Help menu dropdown state
             show_help_menu: false,
+            selected_row_index: None,
             // Server state
             server_handle: None,
             show_share_dialog: false,

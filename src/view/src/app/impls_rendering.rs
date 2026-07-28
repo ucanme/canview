@@ -762,6 +762,7 @@ impl CanViewApp {
                                     range
                                         .map(|index| {
                                             if let Some((orig_idx, msg)) = filtered_messages.get(index) {
+                                                let selected = view_entity.read(cx).selected_row_index == Some(*orig_idx);
                                                 render_message_row_static_with_widths(
                                                     msg,
                                                     *orig_idx,
@@ -776,6 +777,7 @@ impl CanViewApp {
                                                     id_display_decimal,
                                                     view_entity.read(cx).show_id_filter_input,
                                                     view_entity.clone(),
+                                                    selected,
                                                 )
                                             } else {
                                                 div().into_any_element()
