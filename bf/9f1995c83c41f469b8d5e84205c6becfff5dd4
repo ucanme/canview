@@ -1,0 +1,28 @@
+.github/workflows/release.yml
+  s_4b597d79f57a41::t_574d84c58249ee 249,251,256-257,260-261
+src/view/build.rs
+  s_4b597d79f57a41::t_80319b11858512 67
+.github/workflows/build.yml
+  s_4b597d79f57a41::t_f9bfc2455b4ee2 182-183,185-190,209,211-212
+  s_4b597d79f57a41::t_b7c136f06e9a26 184
+  s_4b597d79f57a41::t_4854eb9441608f 235
+  s_4b597d79f57a41::t_12786139d35187 29
+  s_4b597d79f57a41::t_0f4d6c1a3c3763 268
+  s_4b597d79f57a41::t_f3e99dc0347009 253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "bf9f1995c83c41f469b8d5e84205c6becfff5dd4",
+  "prompts": {},
+  "sessions": {
+    "s_4b597d79f57a41": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04c31b32-2394-4f75-84b4-cfe6d2d76705",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
