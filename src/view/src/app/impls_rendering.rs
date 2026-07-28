@@ -2120,15 +2120,17 @@ impl Render for CanViewApp {
                 }
             })
             .child({
-                // Help dropdown menu — GitHub + Feedback
+                // Help dropdown menu — About + GitHub + Feedback
                 if self.show_help_menu {
                     let view_for_github = view.clone();
                     let view_for_feedback = view.clone();
+                    let view_for_about = view.clone();
+                    let version = env!("CARGO_PKG_VERSION");
                     div()
                         .absolute()
                         .top(px(36.))
                         .right(px(16.))
-                        .w(px(200.))
+                        .w(px(220.))
                         .bg(rgb(0x313244))
                         .border_1()
                         .border_color(rgb(0x45475a))
@@ -2140,6 +2142,49 @@ impl Render for CanViewApp {
                         .on_mouse_down(gpui::MouseButton::Left, |_event, _window, cx| {
                             cx.stop_propagation();
                         })
+                        // About canview
+                        .child(
+                            div()
+                                .px_3()
+                                .py_1()
+                                .text_xs()
+                                .text_color(rgb(0xcdd6f4))
+                                .hover(|style| style.bg(rgb(0x45475a)))
+                                .cursor_pointer()
+                                .on_mouse_down(gpui::MouseButton::Left, {
+                                    let version = version.to_string();
+                                    move |_event, _window, cx| {
+                                        cx.stop_propagation();
+                                        let v = version.clone();
+                                        cx.spawn(async move |cx| {
+                                            let _ = rfd::AsyncMessageDialog::new()
+                                                .set_title("About canview")
+                                                .set_description(&format!(
+                                                    "canview v{}\n\nOpen-source cross-platform CAN/LIN bus data analysis tool\n\nhttps://github.com/ucanme/canview",
+                                                    v
+                                                ))
+                                                .set_buttons(rfd::MessageButtons::Ok)
+                                                .show()
+                                                .await;
+                                            Ok::<(), anyhow::Error>(())
+                                        })
+                                        .detach();
+                                        view_for_about.update(cx, |app, cx| {
+                                            app.show_help_menu = false;
+                                            cx.notify();
+                                        });
+                                    }
+                                })
+                                .child(format!("About canview v{}", version)),
+                        )
+                        // Separator
+                        .child(
+                            div()
+                                .h(px(1.))
+                                .mx_2()
+                                .my_1()
+                                .bg(rgb(0x45475a)),
+                        )
                         // View on GitHub
                         .child(
                             div()
