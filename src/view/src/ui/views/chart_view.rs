@@ -663,7 +663,7 @@ fn render_hover_tooltip(
                      div()
                          .text_xs()
                          .text_color(rgb(0xd4d4d8))
-                         .child(format!("{}: {:.2} {}", series.name, val, series.unit.as_deref().unwrap_or("")))
+                         .child(format!("{}: {:.2} {}", series.name.split(':').last().unwrap_or(&series.name), val, series.unit.as_deref().unwrap_or("")))
                  )
         }))
 }
@@ -724,8 +724,8 @@ fn render_single_chart(
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_color(series.color)
                 .child(format!(
-                    "{} {} | {} pts | {:.3}s-{:.3}s (span: {:.3}s)", 
-                    series.name, 
+                    "{} {} | {} pts | {:.3}s-{:.3}s (span: {:.3}s)",
+                    series.name.split(':').last().unwrap_or(&series.name),
                     series.unit.as_ref().map(|u| format!("[{}]", u)).unwrap_or_default(),
                     series.points.len(),
                     min_time,
@@ -808,7 +808,7 @@ fn render_legend(series_data: &[Series]) -> impl IntoElement {
                     div()
                         .text_xs()
                         .text_color(rgb(0xa1a1aa))
-                        .child(series.name.clone())
+                        .child(series.name.split(':').last().unwrap_or(&series.name).to_string())
                 )
         }))
 }
@@ -1153,7 +1153,7 @@ pub fn extract_series_data(app: &CanViewApp) -> Arc<[Series]> {
         eprintln!("    ✅ Final point count: {}", points.len());
 
         all_series.push(Series {
-            name: sig_name.to_string(),
+            name: sig_id.clone(),
             unit,
             points: points.into(),
             color: colors[idx % colors.len()],
@@ -1257,4 +1257,24 @@ pub fn extract_and_update_series_data(app: &mut CanViewApp) {
 
     // Now apply zoom filter to set plot_data
     apply_zoom_to_full_data(app);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Verifies that the signal ID format produced by the sidebar matches what
+    /// `extract_series_data` will set as `Series.name`. This is a structural
+    /// test of the ID format — it doesn't run `extract_series_data` (which
+    /// needs a full message log) but locks the format convention.
+    #[test]
+    fn signal_id_format_matches_series_name_convention() {
+        let sidebar_signal_id = "CAN:1:256:EngineSpeed";
+        let parts: Vec<&str> = sidebar_signal_id.split(':').collect();
+        assert!(parts.len() >= 4, "signal id must have BUS:CH:MSG:NAME structure");
+        // The Series.name after this task's change will equal the full signal_id;
+        // display names extract the last segment:
+        let display_name = sidebar_signal_id.split(':').last().unwrap();
+        assert_eq!(display_name, "EngineSpeed");
+    }
 }
