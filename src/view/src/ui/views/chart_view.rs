@@ -28,7 +28,11 @@ pub fn render_plot_view(window: &mut Window, app: &mut CanViewApp, view: Entity<
                 .child(format!("Error: Too many plot series ({}). Please reload the application.", series_data.len())));
     }
 
-    let has_data = !series_data.is_empty();
+    // Show the chart canvas as long as the user has selected signals — even if
+    // none of those signals have data in the log, render_chart_canvas will draw
+    // ⊘ no-data placeholder cards for them. Only fall back to render_empty_state
+    // when no signals are selected at all.
+    let has_data = !app.selected_signals.is_empty();
 
     div()
         .size_full()
@@ -130,7 +134,7 @@ fn render_toolbar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoEl
 }
 
 
-/// Render empty state when no data is available
+/// Render empty state when no signals are selected
 fn render_empty_state(app: &CanViewApp) -> AnyElement {
     let msg_count = app.messages.len();
     let sel_count = app.selected_signals.len();
@@ -146,17 +150,17 @@ fn render_empty_state(app: &CanViewApp) -> AnyElement {
             div()
                 .text_color(rgb(0x71717a))
                 .text_lg()
-                .child("尚无数据显示")
+                .child("尚未选择信号")
         )
         .child(
             div()
                 .text_color(rgb(0x52525b))
                 .text_sm()
-                .child("请在信号选择(Signals)中选择信号，点击Plot按钮加载数据")
+                .child("请在左侧信号选择(Signals)中勾选信号，然后点击「绘制 (Plot)」按钮")
         )
         .child(
             div()
-                .text_color(rgb(0xef4444))
+                .text_color(rgb(0x52525b))
                 .text_xs()
                 .child(format!("Debug: Messages={}, Selected={}", msg_count, sel_count))
         )
