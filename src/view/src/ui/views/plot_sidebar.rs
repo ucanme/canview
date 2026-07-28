@@ -29,6 +29,8 @@ pub enum SidebarItem {
         is_expanded: bool,
         ch_id: u16,
     },
+    // Spec-mandated; ch_id/msg_id used for future channel/message lookup.
+    #[allow(dead_code)]
     SignalItem {
         name: String,
         id: String,
@@ -259,10 +261,8 @@ pub fn extract_signal_items(app: &CanViewApp) -> Vec<SidebarItem> {
     let mut selected_by_channel: std::collections::HashMap<u16, usize> = std::collections::HashMap::new();
     for sig_id in &app.selected_signals {
         let parts: Vec<&str> = sig_id.split(':').collect();
-        if parts.len() >= 2 {
-            if let Ok(ch) = parts[1].parse::<u16>() {
-                *selected_by_channel.entry(ch).or_insert(0) += 1;
-            }
+        if let Some(ch) = parts.get(1).and_then(|s| s.parse::<u16>().ok()) {
+            *selected_by_channel.entry(ch).or_insert(0) += 1;
         }
     }
 
@@ -423,23 +423,25 @@ pub fn extract_signal_items(app: &CanViewApp) -> Vec<SidebarItem> {
         .collect();
 
     for mapping in &app.app_config.mappings {
-        if mapping.library_id.is_some() && mapping.version_name.is_some() {
-            if !loaded_channels.contains(&mapping.channel_id) {
-                let ch_id = mapping.channel_id;
-                let ch_type_str = if mapping.channel_type.is_can() { "CAN" } else { "LIN" };
-                let ch_name = format!("Channel {} ({}) [Unloaded]", ch_id, ch_type_str);
+        if mapping.library_id.is_some()
+            && mapping.version_name.is_some()
+            && !loaded_channels.contains(&mapping.channel_id)
+        {
+            let ch_id = mapping.channel_id;
+            let ch_type_str = if mapping.channel_type.is_can() { "CAN" } else { "LIN" };
+            let ch_name = format!("Channel {} ({}) [Unloaded]", ch_id, ch_type_str);
 
-                if filter_text.is_empty() || ch_name.to_lowercase().contains(&filter_text) {
-                    items.push(SidebarItem::ChannelHeader {
-                        name: ch_name,
-                        ch_id,
-                        is_can: mapping.channel_type.is_can(),
-                        is_loaded: false,
-                        mapping: Some(mapping.clone()),
-                        is_expanded: false, // Unloaded channels are never expandable
-                        selected_count: selected_by_channel.get(&ch_id).copied().unwrap_or(0),
-                    });
-                }
+            if filter_text.is_empty() || ch_name.to_lowercase().contains(&filter_text) {
+                items.push(SidebarItem::ChannelHeader {
+                    name: ch_name,
+                    ch_id,
+                    is_can: mapping.channel_type.is_can(),
+                    is_loaded: false,
+                    mapping: Some(mapping.clone()),
+                    // Respect manual fold state + search force-expand
+                    is_expanded: app.expanded_channels.contains(&ch_id) || force_expand,
+                    selected_count: selected_by_channel.get(&ch_id).copied().unwrap_or(0),
+                });
             }
         }
     }

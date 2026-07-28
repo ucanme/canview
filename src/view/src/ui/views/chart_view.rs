@@ -10,8 +10,6 @@ use gpui_component::scroll::ScrollableElement;
 use std::sync::Arc;
 use chrono::{Timelike, Datelike};
 
-use super::plot_sidebar::{render_sidebar_item, SidebarItem};
-
 /// Render the plot view with signal charts
 pub fn render_plot_view(window: &mut Window, app: &mut CanViewApp, view: Entity<CanViewApp>, cx: &mut Context<CanViewApp>) -> impl IntoElement {
     // Safety check: prevent crash from invalid plot state after window operations

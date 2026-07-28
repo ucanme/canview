@@ -1653,7 +1653,7 @@ impl Render for CanViewApp {
 
         // Consume pending focus from add-channel Enter-key chain (set by PressEnter subscribe)
         if let Some(target) = self.pending_add_channel_focus.take() {
-            use crate::app::state::PendingAddChannelFocus;
+            use crate::app::PendingAddChannelFocus;
             match target {
                 // Enter on channel_id → focus the channel_name input
                 PendingAddChannelFocus::ChannelName => {

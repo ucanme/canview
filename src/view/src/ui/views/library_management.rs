@@ -1574,6 +1574,9 @@ fn render_add_channel_input_row_with_path(
                 .flex_shrink_0()
                 .child(
                     // 确认按钮
+                    // Note: Enter-on-✓ requires a FocusHandle (out of scope per
+                    // plan Task 8 design note). User clicks ✓ or tabs to it via
+                    // the row container's focus.
                     div()
                         .id("add-ch-confirm")
                         .w(px(20.))
@@ -1596,12 +1599,7 @@ fn render_add_channel_input_row_with_path(
                                 eprintln!("🖱️ Confirm button clicked");
                                 this.save_channel_config(cx);
                             }),
-                        )
-                        .on_key_down(cx.listener(|this, event: &KeyDownEvent, _window, cx| {
-                            if event.keystroke.key == "enter" {
-                                this.save_channel_config(cx);
-                            }
-                        })),
+                        ),
                 )
                 .child(
                     // 取消按钮

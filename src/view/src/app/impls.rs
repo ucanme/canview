@@ -1737,14 +1737,21 @@ impl CanViewApp {
         cx.notify();
     }
 
-    /// Clear all selected signals and the current plot data. Bound to the
-    /// "Clear all" button in the plot sidebar.
-    pub fn clear_selected_signals(&mut self, cx: &mut Context<Self>) {
+    /// Reset plot state without triggering a re-render. Used by tests and by
+    /// `clear_selected_signals`. Splits the data-reset from the notify so the
+    /// reset can be unit-tested without a context.
+    pub fn clear_plot_state(&mut self) {
         self.selected_signals.clear();
         self.plot_data = std::sync::Arc::from([]);
         self.plot_full_data = std::sync::Arc::from([]);
         self.plot_zoom_start = None;
         self.plot_zoom_end = None;
+    }
+
+    /// Clear all selected signals and the current plot data. Bound to the
+    /// "Clear all" button in the plot sidebar.
+    pub fn clear_selected_signals(&mut self, cx: &mut Context<Self>) {
+        self.clear_plot_state();
         cx.notify();
     }
 
@@ -2161,13 +2168,7 @@ mod tests {
     #[test]
     fn clear_selected_signals_resets_plot() {
         let mut app = make_app_with_selected("CAN:1:0x100:EngineSpeed");
-        // Manually trigger the clear logic (no cx needed for the data reset;
-        // we test the mutation, not cx.notify which is the only thing requiring cx).
-        app.selected_signals.clear();
-        app.plot_data = std::sync::Arc::from([]);
-        app.plot_full_data = std::sync::Arc::from([]);
-        app.plot_zoom_start = None;
-        app.plot_zoom_end = None;
+        app.clear_plot_state();
         assert!(app.selected_signals.is_empty());
         assert!(app.plot_data.is_empty());
         assert!(app.plot_zoom_start.is_none());
