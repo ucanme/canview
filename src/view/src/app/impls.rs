@@ -142,6 +142,9 @@ impl CanViewApp {
             plot_width_px: px(0.0),
             // File menu dropdown state
             show_file_menu: false,
+            // Help menu dropdown state
+            show_help_menu: false,
+            selected_row_index: None,
             // Server state
             server_handle: None,
             show_share_dialog: false,
@@ -559,7 +562,7 @@ impl CanViewApp {
             .take(actual_data_len)
             .map(|b| format!("{:02X}", b))
             .collect::<Vec<_>>()
-            .join(" ")
+            .join("")
     }
 
     /// Extract and format CAN signals from DBC database
@@ -698,7 +701,7 @@ impl CanViewApp {
                     WindowOptions {
                         window_bounds: Some(WindowBounds::Windowed(saved_bounds)),
                         titlebar: Some(TitlebarOptions {
-                            title: Some("CANVIEW - Bus Data Analyzer".into()),
+                            title: Some("canview".into()),
                             appears_transparent: true,
                             traffic_light_position: None,
                         }),
@@ -735,7 +738,7 @@ impl CanViewApp {
                     WindowOptions {
                         window_bounds: Some(WindowBounds::Windowed(display_bounds)),
                         titlebar: Some(TitlebarOptions {
-                            title: Some("CANVIEW - Bus Data Analyzer".into()),
+                            title: Some("canview".into()),
                             appears_transparent: true,
                             traffic_light_position: None,
                         }),
@@ -887,6 +890,9 @@ impl CanViewApp {
             plot_width_px: px(0.0),
             // File menu dropdown state
             show_file_menu: false,
+            // Help menu dropdown state
+            show_help_menu: false,
+            selected_row_index: None,
             // Server state
             server_handle: None,
             show_share_dialog: false,

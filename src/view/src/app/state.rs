@@ -237,6 +237,11 @@ pub struct CanViewApp {
 
     // File menu dropdown state
     pub show_file_menu: bool,
+    // Help menu dropdown state
+    pub show_help_menu: bool,
+
+    // Selected row index (for row-highlight on click-to-copy)
+    pub selected_row_index: Option<usize>,
 
     // Server state
     pub server_handle: Option<crate::server::ServerHandle>,
@@ -389,6 +394,9 @@ impl CanViewApp {
             plot_width_px: gpui::px(0.0),
             // File menu dropdown state
             show_file_menu: false,
+            // Help menu dropdown state
+            show_help_menu: false,
+            selected_row_index: None,
             // Server state
             server_handle: None,
             show_share_dialog: false,

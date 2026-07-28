@@ -32,7 +32,7 @@ impl UiRenderer {
                             .text_lg()
                             .font_weight(FontWeight::BOLD)
                             .text_color(rgb(0xffffff))
-                            .child("CANVIEW"),
+                            .child("canview"),
                     )
                     .child(
                         div()

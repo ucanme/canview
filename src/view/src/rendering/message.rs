@@ -95,23 +95,27 @@ pub fn calculate_column_widths(
         let (time_str, channel_id, msg_type, id_str, dlc_str, _data_str) =
             get_message_strings(msg, start_time, true); // Use decimal for width calculation
 
-        // Calculate exact width needed for each column
-        // Using 8.0 pixels per character (monospace font approximation)
-        // Add padding: horizontal padding (px_2 or px_3) + some margin
-        max_time_width = max_time_width.max(time_str.len() as f32 * 8.0 + 16.0); // px_3 = 12px + 4px margin
-        max_ch_width = max_ch_width.max(channel_id.to_string().len() as f32 * 8.0 + 10.0); // px_2 = 8px + 2px margin
-        max_type_width = max_type_width.max(msg_type.len() as f32 * 8.0 + 10.0);
-        max_id_width = max_id_width.max(id_str.len() as f32 * 8.0 + 10.0);
-        max_dlc_width = max_dlc_width.max(dlc_str.len() as f32 * 8.0 + 10.0);
+        // Calculate exact width needed for each column.
+        // Mono char width at text_xs is ~7px. Use 7px/char and add 16px
+        // total padding (4px each side + 8px inter-column gap) so text
+        // never visually abuts the next column.
+        max_time_width = max_time_width.max(time_str.len() as f32 * 7.0 + 16.0);
+        max_ch_width = max_ch_width.max(channel_id.to_string().len() as f32 * 7.0 + 16.0);
+        max_type_width = max_type_width.max(msg_type.len() as f32 * 7.0 + 16.0);
+        max_id_width = max_id_width.max(id_str.len() as f32 * 7.0 + 16.0);
+        max_dlc_width = max_dlc_width.max(dlc_str.len() as f32 * 7.0 + 16.0);
     }
 
-    // Apply maximum limits to prevent columns from becoming too wide
-    // This ensures the table remains readable even with very long content
-    max_time_width = max_time_width.min(300.0);
-    max_ch_width = max_ch_width.min(80.0);
-    max_type_width = max_type_width.min(120.0);
-    max_id_width = max_id_width.min(100.0);
-    max_dlc_width = max_dlc_width.min(80.0);
+    // Apply maximum limits to prevent columns from becoming too wide.
+    // Keep non-data columns compact so the DATA column has room to display
+    // full 64-byte payloads (up to ~128 hex chars without separators).
+    // Each column also has px_2 padding (16px total), so visible gap between
+    // adjacent column text is the sum of half-padding on each side (~8px).
+    max_time_width = max_time_width.min(200.0);
+    max_ch_width = max_ch_width.min(40.0);
+    max_type_width = max_type_width.min(70.0);
+    max_id_width = max_id_width.min(60.0);
+    max_dlc_width = max_dlc_width.min(40.0);
 
     // Round to integer pixels to ensure consistency across all rows
     // This prevents rounding errors that can cause misalignment
@@ -168,7 +172,7 @@ pub fn get_message_strings(
                 .take(actual_data_len)
                 .map(|b| format!("{:02X}", b))
                 .collect::<Vec<_>>()
-                .join(" ");
+                .join("");
 
             (
                 time_str,
@@ -190,7 +194,7 @@ pub fn get_message_strings(
                 .take(actual_data_len)
                 .map(|b| format!("{:02X}", b))
                 .collect::<Vec<_>>()
-                .join(" ");
+                .join("");
 
             (
                 time_str,
@@ -225,7 +229,7 @@ pub fn get_message_strings(
                 .take(actual_data_len)
                 .map(|b| format!("{:02X}", b))
                 .collect::<Vec<_>>()
-                .join(" ");
+                .join("");
 
             (
                 time_str,
@@ -247,7 +251,7 @@ pub fn get_message_strings(
                 .take(actual_data_len)
                 .map(|b| format!("{:02X}", b))
                 .collect::<Vec<_>>()
-                .join(" ");
+                .join("");
 
             (
                 time_str,
@@ -282,7 +286,7 @@ pub fn get_message_strings(
                 .take(actual_data_len)
                 .map(|b| format!("{:02X}", b))
                 .collect::<Vec<_>>()
-                .join(" ");
+                .join("");
 
             (
                 time_str,
@@ -303,7 +307,7 @@ pub fn get_message_strings(
                 .iter()
                 .map(|b| format!("{:02X}", b))
                 .collect::<Vec<_>>()
-                .join(" ");
+                .join("");
 
             (
                 time_str,
@@ -348,8 +352,6 @@ pub fn get_message_strings(
 /// * `disable_hover` - If true, disable hover effect
 ///
 /// # Returns
-/// A GPUI element that can be rendered in the message table
-#[allow(dead_code)]
 pub fn render_message_row_static_with_widths(
     msg: &LogObject,
     index: usize,
@@ -363,13 +365,15 @@ pub fn render_message_row_static_with_widths(
     start_time: Option<chrono::NaiveDateTime>,
     decimal: bool,
     disable_hover: bool,
+    view: gpui::Entity<crate::app::CanViewApp>,
+    selected: bool,
 ) -> gpui::AnyElement {
     use gpui::{div, prelude::*, rgb};
 
     let (time_str, channel_id, msg_type, id_str, dlc_str, data_str) =
         get_message_strings(msg, start_time, decimal);
 
-    let bg_color = rgb(0x181818);
+    let bg_color = if selected { rgb(0x1e3a8a) } else { rgb(0x181818) };
     let type_color = match msg_type.as_str() {
         "CAN" | "CAN2" => rgb(0x34d399),
         "CAN_ERR" => rgb(0xef4444),
@@ -390,15 +394,19 @@ pub fn render_message_row_static_with_widths(
         .text_xs()
         .text_color(rgb(0xd1d5db))
         .when(!disable_hover, |div| {
-            div.hover(|style| style.bg(rgb(0x1f2937)))
+            if selected {
+                div
+            } else {
+                div.hover(|style| style.bg(rgb(0x1f2937)))
+            }
         })
         .cursor_pointer()
         .overflow_hidden()
         .child(
-            // Line number column
+            // Line number column — click to select row and copy full row
             div()
-                .w(px(60.))
-                .px_3()
+                .w(px(50.))
+                .px_2()
                 .py_1()
                 .flex()
                 .items_center()
@@ -406,6 +414,44 @@ pub fn render_message_row_static_with_widths(
                 .text_color(rgb(0x6b7280))
                 .whitespace_nowrap()
                 .overflow_hidden()
+                .cursor_pointer()
+                .when(!selected, |d| d.hover(|s| s.bg(rgb(0x4b5563)).text_color(rgb(0xfde68a))))
+                .on_mouse_down(gpui::MouseButton::Left, {
+                    let row_str = format!(
+                        "{} | {} | {} | {} | {} | {} | {}",
+                        time_str.clone(),
+                        channel_id,
+                        msg_type.clone(),
+                        id_str.clone(),
+                        dlc_str.clone(),
+                        dlc_str.clone(),
+                        data_str.clone()
+                    );
+                    let view_for_row = view.clone();
+                    move |_, _window, cx| {
+                        cx.stop_propagation();
+                        cx.write_to_clipboard(gpui::ClipboardItem::new_string(row_str.clone()));
+                        view_for_row.update(cx, |app, cx| {
+                            app.selected_row_index = Some(index);
+                            app.status_msg = "✓ Copied row".into();
+                            cx.notify();
+                        });
+                        let reset_view = view_for_row.clone();
+                        cx.spawn(async move |cx| {
+                            smol::Timer::after(std::time::Duration::from_secs(2)).await;
+                            let _ = cx.update(|cx| {
+                                reset_view.update(cx, |app, cx| {
+                                    if app.selected_row_index == Some(index) {
+                                        app.selected_row_index = None;
+                                    }
+                                    app.status_msg = "".into();
+                                    cx.notify();
+                                });
+                            });
+                        })
+                        .detach();
+                    }
+                })
                 .child(format!("{}", index + 1)),
         )
         .child(
@@ -419,7 +465,7 @@ pub fn render_message_row_static_with_widths(
                 .text_color(rgb(0x9ca3af))
                 .whitespace_nowrap()
                 .overflow_hidden()
-                .child(time_str),
+                .child(time_str.clone()),
         )
         .child(
             div()
@@ -445,7 +491,7 @@ pub fn render_message_row_static_with_widths(
                 .text_color(type_color)
                 .whitespace_nowrap()
                 .overflow_hidden()
-                .child(msg_type),
+                .child(msg_type.clone()),
         )
         .child(
             div()
@@ -458,7 +504,7 @@ pub fn render_message_row_static_with_widths(
                 .text_color(rgb(0xfbbf24))
                 .whitespace_nowrap()
                 .overflow_hidden()
-                .child(id_str),
+                .child(id_str.clone()),
         )
         .child(
             div()
@@ -481,7 +527,32 @@ pub fn render_message_row_static_with_widths(
                 .items_center()
                 .text_color(rgb(0xa78bfa))
                 .whitespace_nowrap()
-                .child(data_str),
+                .cursor_pointer()
+                .when(!selected, |d| d.hover(|s| s.bg(rgb(0x4b5563)).text_color(rgb(0xc4b5fd))))
+                .on_mouse_down(gpui::MouseButton::Left, {
+                    let data_clone = data_str.clone();
+                    let view_for_data = view.clone();
+                    move |_, _window, cx| {
+                        cx.stop_propagation();
+                        cx.write_to_clipboard(gpui::ClipboardItem::new_string(data_clone.clone()));
+                        view_for_data.update(cx, |app, cx| {
+                            app.status_msg = "✓ Copied data".into();
+                            cx.notify();
+                        });
+                        let reset_view = view_for_data.clone();
+                        cx.spawn(async move |cx| {
+                            smol::Timer::after(std::time::Duration::from_secs(2)).await;
+                            let _ = cx.update(|cx| {
+                                reset_view.update(cx, |app, cx| {
+                                    app.status_msg = "".into();
+                                    cx.notify();
+                                });
+                            });
+                        })
+                        .detach();
+                    }
+                })
+                .child(data_str.clone()),
         )
         .into_any_element()
 }

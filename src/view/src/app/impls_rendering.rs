@@ -762,6 +762,7 @@ impl CanViewApp {
                                     range
                                         .map(|index| {
                                             if let Some((orig_idx, msg)) = filtered_messages.get(index) {
+                                                let selected = view_entity.read(cx).selected_row_index == Some(*orig_idx);
                                                 render_message_row_static_with_widths(
                                                     msg,
                                                     *orig_idx,
@@ -775,6 +776,8 @@ impl CanViewApp {
                                                     start_time,
                                                     id_display_decimal,
                                                     view_entity.read(cx).show_id_filter_input,
+                                                    view_entity.clone(),
+                                                    selected,
                                                 )
                                             } else {
                                                 div().into_any_element()
@@ -2095,6 +2098,90 @@ impl Render for CanViewApp {
                     div().hidden()
                 }
             })
+            .child({
+                // Full-screen overlay to catch clicks outside help dropdown
+                if self.show_help_menu {
+                    let view_for_overlay = view.clone();
+                    div()
+                        .absolute()
+                        .top_0()
+                        .left_0()
+                        .w_full()
+                        .h_full()
+                        .bg(rgba(0x00000033))
+                        .on_mouse_down(gpui::MouseButton::Left, move |_event, _window, cx| {
+                            view_for_overlay.update(cx, |app, cx| {
+                                app.show_help_menu = false;
+                                cx.notify();
+                            });
+                        })
+                } else {
+                    div().hidden()
+                }
+            })
+            .child({
+                // Help dropdown menu — GitHub + Feedback
+                if self.show_help_menu {
+                    let view_for_github = view.clone();
+                    let view_for_feedback = view.clone();
+                    div()
+                        .absolute()
+                        .top(px(36.))
+                        .right(px(16.))
+                        .w(px(200.))
+                        .bg(rgb(0x313244))
+                        .border_1()
+                        .border_color(rgb(0x45475a))
+                        .rounded(px(6.))
+                        .shadow_lg()
+                        .flex()
+                        .flex_col()
+                        .py_1()
+                        .on_mouse_down(gpui::MouseButton::Left, |_event, _window, cx| {
+                            cx.stop_propagation();
+                        })
+                        // View on GitHub
+                        .child(
+                            div()
+                                .px_3()
+                                .py_1()
+                                .text_xs()
+                                .text_color(rgb(0xcdd6f4))
+                                .hover(|style| style.bg(rgb(0x45475a)))
+                                .cursor_pointer()
+                                .on_mouse_down(gpui::MouseButton::Left, move |_event, _window, cx| {
+                                    cx.stop_propagation();
+                                    cx.open_url("https://github.com/ucanme/canview");
+                                    view_for_github.update(cx, |app, cx| {
+                                        app.show_help_menu = false;
+                                        cx.notify();
+                                    });
+                                })
+                                .child("View on GitHub"),
+                        )
+                        // Send Feedback
+                        .child(
+                            div()
+                                .px_3()
+                                .py_1()
+                                .text_xs()
+                                .text_color(rgb(0xcdd6f4))
+                                .hover(|style| style.bg(rgb(0x45475a)))
+                                .cursor_pointer()
+                                .on_mouse_down(gpui::MouseButton::Left, move |_event, _window, cx| {
+                                    cx.stop_propagation();
+                                    cx.open_url("mailto:admin@ucan.me?subject=canview%20Feedback");
+                                    view_for_feedback.update(cx, |app, cx| {
+                                        app.show_help_menu = false;
+                                        cx.notify();
+                                    });
+                                })
+                                .child("Send Feedback"),
+                        )
+                } else {
+                    div().hidden()
+                }
+            })
             // Share dialog overlay
             .child({
                 if self.show_share_dialog {
@@ -2291,7 +2378,7 @@ impl Render for CanViewApp {
                             div()
                                 .text_xs()
                                 .text_color(rgb(0xa6adc8))
-                                .child("Paste the share URL from another CANVIEW instance:"),
+                                .child("Paste the share URL from another canview instance:"),
                         )
                         .child(
                             div()

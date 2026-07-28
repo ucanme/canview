@@ -93,6 +93,39 @@ pub fn render_top_bar(
             });
         });
 
+    // Help button (right side). Toggles the help dropdown (GitHub / Feedback).
+    // Styling mirrors the File menu button so the top bar reads consistently.
+    let show_help_menu = app.show_help_menu;
+    let view_for_help = view.clone();
+    let help_button = div()
+        .px(spacing::SM)
+        .h_full()
+        .flex()
+        .items_center()
+        .cursor_pointer()
+        .text_sm()
+        .text_color(if show_help_menu {
+            colors::TEXT_PRIMARY
+        } else {
+            colors::TEXT_MUTED
+        })
+        .when(show_help_menu, |el| el.bg(colors::SURFACE1))
+        .hover(|s| {
+            if show_help_menu {
+                s
+            } else {
+                s.text_color(colors::TEXT_SECONDARY).bg(colors::SURFACE0)
+            }
+        })
+        .child("Help")
+        .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+            cx.stop_propagation();
+            view_for_help.update(cx, |app, cx| {
+                app.show_help_menu = !app.show_help_menu;
+                cx.notify();
+            });
+        });
+
     // macOS: 80px left padding to leave room for traffic lights
     let left_pad = if is_macos { Some(px(80.)) } else { None };
 
@@ -111,7 +144,8 @@ pub fn render_top_bar(
         .child(library_button)
         // Center: spacer that fills remaining width so the right side sticks to the edge
         .child(div().flex_1())
-        // Right: window controls (non-macOS only)
+        // Right: Help button (all platforms) + window controls (non-macOS only)
+        .child(help_button)
         .when(!is_macos, |el| el.child(render_window_controls(view)))
 }
 
