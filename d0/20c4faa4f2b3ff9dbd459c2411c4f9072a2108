@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-07-28-plot-ux-fixes-design.md
+  s_ef368fd9f13ac0::t_ea8fee8f7b21c5 1-346
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "d020c4faa4f2b3ff9dbd459c2411c4f9072a2108",
+  "prompts": {},
+  "sessions": {
+    "s_ef368fd9f13ac0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89bf9fed-0f83-4348-adf1-a239972eaef7",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
