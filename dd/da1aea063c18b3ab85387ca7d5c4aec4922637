@@ -1,0 +1,20 @@
+src/view/src/ui/views/chart_view.rs
+  s_ef368fd9f13ac0::t_96ab90ed7dc346 31-35
+  s_ef368fd9f13ac0::t_a823a5e271b6b5 137,153,159,163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "ddda1aea063c18b3ab85387ca7d5c4aec4922637",
+  "prompts": {},
+  "sessions": {
+    "s_ef368fd9f13ac0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89bf9fed-0f83-4348-adf1-a239972eaef7",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
