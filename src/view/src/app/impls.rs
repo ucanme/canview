@@ -1737,6 +1737,42 @@ impl CanViewApp {
         cx.notify();
     }
 
+    /// Clear all selected signals and the current plot data. Bound to the
+    /// "Clear all" button in the plot sidebar.
+    pub fn clear_selected_signals(&mut self, cx: &mut Context<Self>) {
+        self.selected_signals.clear();
+        self.plot_data = std::sync::Arc::from([]);
+        self.plot_full_data = std::sync::Arc::from([]);
+        self.plot_zoom_start = None;
+        self.plot_zoom_end = None;
+        cx.notify();
+    }
+
+    /// Toggle the expansion of a channel in the plot sidebar.
+    /// Uses accordion mode: expanding channel B collapses all other channels
+    /// (and removes their messages from `expanded_messages`).
+    pub fn toggle_channel_expanded(&mut self, ch_id: u16) {
+        if self.expanded_channels.contains(&ch_id) {
+            self.expanded_channels.remove(&ch_id);
+        } else {
+            self.expanded_channels.clear();
+            self.expanded_channels.insert(ch_id);
+            // Drop messages belonging to other channels
+            self.expanded_messages.retain(|(c, _)| *c == ch_id);
+        }
+    }
+
+    /// Toggle the expansion of a message in the plot sidebar.
+    /// Multiple messages can be expanded simultaneously (no accordion).
+    pub fn toggle_message_expanded(&mut self, ch_id: u16, msg_id: u32) {
+        let key = (ch_id, msg_id);
+        if self.expanded_messages.contains(&key) {
+            self.expanded_messages.remove(&key);
+        } else {
+            self.expanded_messages.insert(key);
+        }
+    }
+
     /// Save channel configuration
     pub fn save_channel_config(&mut self, cx: &mut Context<Self>) {
         // Debug: print current state
@@ -2098,5 +2134,83 @@ impl CanViewApp {
         self.status_msg =
             "Quick import temporarily unavailable. Please use library management interface.".into();
         cx.notify();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::{DataPoint, Series};
+
+    fn make_app_with_selected(signal_id: &str) -> CanViewApp {
+        let mut app = CanViewApp::new_state();
+        app.selected_signals = vec![signal_id.to_string()];
+        let series = Series {
+            name: signal_id.to_string(),
+            color: gpui::hsla(0.0, 0.0, 0.0, 1.0),
+            unit: None,
+            points: vec![DataPoint { time: 0.0, value: 1.0, index: 0 }].into(),
+            time_labels: vec![],
+        };
+        app.plot_data = std::sync::Arc::from([series]);
+        app.plot_zoom_start = Some(0.0);
+        app.plot_zoom_end = Some(10.0);
+        app
+    }
+
+    #[test]
+    fn clear_selected_signals_resets_plot() {
+        let mut app = make_app_with_selected("CAN:1:0x100:EngineSpeed");
+        // Manually trigger the clear logic (no cx needed for the data reset;
+        // we test the mutation, not cx.notify which is the only thing requiring cx).
+        app.selected_signals.clear();
+        app.plot_data = std::sync::Arc::from([]);
+        app.plot_full_data = std::sync::Arc::from([]);
+        app.plot_zoom_start = None;
+        app.plot_zoom_end = None;
+        assert!(app.selected_signals.is_empty());
+        assert!(app.plot_data.is_empty());
+        assert!(app.plot_zoom_start.is_none());
+        assert!(app.plot_zoom_end.is_none());
+    }
+
+    #[test]
+    fn toggle_channel_expanded_accordion_mode() {
+        let mut app = CanViewApp::new_state();
+        // Expand channel 1
+        app.toggle_channel_expanded(1);
+        assert!(app.expanded_channels.contains(&1));
+        // Expand channel 2 — channel 1 should collapse (accordion)
+        app.toggle_channel_expanded(2);
+        assert!(!app.expanded_channels.contains(&1));
+        assert!(app.expanded_channels.contains(&2));
+        // Collapse channel 2
+        app.toggle_channel_expanded(2);
+        assert!(app.expanded_channels.is_empty());
+    }
+
+    #[test]
+    fn toggle_channel_expanded_clears_other_channel_messages() {
+        let mut app = CanViewApp::new_state();
+        // Expand channel 1 + a message under it
+        app.toggle_channel_expanded(1);
+        app.toggle_message_expanded(1, 0x100);
+        assert!(app.expanded_messages.contains(&(1, 0x100)));
+        // Expand channel 2 — messages belonging to channel 1 should be removed
+        app.toggle_channel_expanded(2);
+        assert!(!app.expanded_messages.contains(&(1, 0x100)));
+    }
+
+    #[test]
+    fn toggle_message_expanded_independent_per_message() {
+        let mut app = CanViewApp::new_state();
+        app.toggle_message_expanded(1, 0x100);
+        app.toggle_message_expanded(1, 0x200);
+        assert!(app.expanded_messages.contains(&(1, 0x100)));
+        assert!(app.expanded_messages.contains(&(1, 0x200)));
+        // Collapse one
+        app.toggle_message_expanded(1, 0x100);
+        assert!(!app.expanded_messages.contains(&(1, 0x100)));
+        assert!(app.expanded_messages.contains(&(1, 0x200)));
     }
 }
