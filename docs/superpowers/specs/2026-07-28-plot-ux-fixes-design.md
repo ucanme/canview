@@ -43,9 +43,14 @@
 3. **`src/view/src/ui/views/chart_view.rs`**
    - 移除已迁移到 `plot_sidebar.rs` 的代码
    - `render_signal_sidebar` 的调用点改为 `plot_sidebar::render_signal_sidebar`
-   - `render_chart_canvas` 修改：遍历 `app.selected_signals` 而不是 `series_data`；对每个 signal 在 `series_data` 中按 name 查找；找不到则调用新函数 `render_no_data_chart(signal_id) -> impl IntoElement`
-   - 新增 `render_no_data_chart(signal_id: &str)` — 渲染高度 250px、深色背景、圆角边框、与 `render_single_chart` 一致的卡片，居中显示图标 + 文字
-   - `render_single_chart` 的现有 `if series.points.is_empty()` 分支**保留**（防御性，与 `render_no_data_chart` 视觉一致即可，避免重复逻辑）
+   - `extract_series_data` 第 1599 行：`Series { name: sig_name.to_string(), ... }` 改为 `Series { name: sig_id.clone(), ... }`（用完整 `signal_id` 而不是 `signal_name`）。这是必须的：`render_chart_canvas` 的新逻辑按 `series.name == signal_id` 匹配，若 name 只是 `signal_name` 则匹配失败（多个通道含同名 signal 时也不唯一）。
+   - 影响检查：
+     - `render_single_chart` 第 1135 行 `format!("No data points for '{}'.", series.name)` 显示的就是新格式（完整 ID），更准确
+     - `render_hover_tooltip` 第 1109 行 `format!("{}: {:.2} {}", series.name, ...)` 也变成完整 ID，hover 文字更长但唯一可识别
+     - `render_legend` 第 1254 行 `series.name.clone()` 图例文字也变长。**优化：legend 显示用 `series.name.split(':').last()` 取最后一段（signal_name），完整 ID 用于内部匹配**
+   - `render_chart_canvas` 修改：遍历 `app.selected_signals` 而不是 `series_data`；对每个 signal 在 `series_data` 中按 `series.name == signal_id` 查找；找不到则调用新函数 `render_no_data_chart(signal_id) -> impl IntoElement`
+   - 新增 `render_no_data_chart(signal_id: &str)` — 渲染高度 250px、深色背景、圆角边框、与 `render_single_chart` 一致的卡片，居中显示图标 + 文字（取 `signal_id.split(':').last()` 显示信号名）
+   - `render_single_chart` 的现有 `if series.points.is_empty()` 分支**删除**（变成 dead code：调用方保证传入的 series 都有 points；占位逻辑由 `render_no_data_chart` 负责）
 
 4. **`src/view/src/ui/views/library_management.rs`**
    - `render_add_channel_input_row_with_path`：
@@ -219,6 +224,7 @@ pub fn toggle_message_expanded(&mut self, ch_id: u16, msg_id: u32, cx: &mut Cont
 
 ```rust
 fn render_no_data_chart(signal_id: &str) -> impl IntoElement {
+    let display_name = signal_id.split(':').last().unwrap_or(signal_id);
     div()
         .flex().flex_col()
         .h(px(250.0))
@@ -233,7 +239,7 @@ fn render_no_data_chart(signal_id: &str) -> impl IntoElement {
             div().flex().flex_col().items_center().gap_2()
                 .child(div().text_xl().text_color(rgb(0x71717a)).child("⊘"))  // 无数据图标
                 .child(div().text_sm().text_color(rgb(0xa1a1aa))
-                    .child(format!("No data for '{}'", signal_id)))
+                    .child(format!("No data for '{}'", display_name)))
                 .child(div().text_xs().text_color(rgb(0x52525b))
                     .child("检查通道 ID 匹配 (DBC vs 日志) 或时间范围"))
         )
@@ -256,7 +262,7 @@ fn render_no_data_chart(signal_id: &str) -> impl IntoElement {
 }))
 ```
 
-注：`Series.name` 字段需确认等于 `signal_id`。检查 `extract_series_data` 第 1480 行附近，`Series` 的 `name` 设置逻辑——若现有 `Series.name` 不是完整 `signal_id` 而是 `signal_name`，则需要在 `extract_series_data` 中改为 `signal_id`（包含通道/msg 上下文），或在 `render_no_data_chart` 匹配时按其他键匹配。**实现时第一步先验证此假设**，根据实际 `Series.name` 格式调整匹配逻辑。
+注：当前 `extract_series_data` 第 1599 行 `Series.name = sig_name.to_string()`（仅 signal 名）。**改为 `sig_id.clone()`（完整 ID "CAN:ch:msg:sig"）**——这是必须的，否则 `render_chart_canvas` 按 `series.name == signal_id` 匹配会失败。legend / tooltip 显示用 `series.name.split(':').last()` 提取 signal 名保持简洁。
 
 ### Enter 键跳焦实现
 
@@ -290,7 +296,7 @@ cx.subscribe(&name_input, |this, input, event, cx| {
 this.channel_name_input = Some(name_input);
 ```
 
-注：`window` 在 `cx.subscribe` 闭包中不可直接访问——需要 `cx.listener` 模式或把 `window` 通过 `cx.listener(move |_this, _event, window, cx| ...)` 传入。具体 API 形态在实现时按 GPUI 当前签名调整。`add_ch_confirm_focus_handle` 是 `CanViewApp` 上的新字段：`Option<gpui::FocusHandle>`，在打开 add-channel 表单时 `cx.focus_handle()` 创建并赋值；✓ Confirm 按钮上 `.track_focus(&self.add_ch_confirm_focus_handle)` 绑定；✓ 按钮 `on_key_down` 监听 Enter → `save_channel_config`。
+注：`window` 在 `cx.subscribe` 闭包中不可直接访问——订阅闭包签名是 `|this, input, event, cx|`，无 `window`。跳焦用 `FocusHandle::focus(cx)` 或 `cx.focus_handle(...).focus(cx)` 的等价 API，不需要 `window` 参数（GPUI 的 `FocusHandle::focus` 接受 `&mut App` 即 `cx`）。`add_ch_confirm_focus_handle` 是 `CanViewApp` 上的新字段：`Option<gpui::FocusHandle>`，在打开 add-channel 表单时通过 `cx.focus_handle()` 创建并赋值；✓ Confirm 按钮的 `div` 上 `.track_focus(&self.add_ch_confirm_focus_handle)` 绑定；✓ 按钮 `on_key_down` 监听 Enter → `save_channel_config`。
 
 注：现有的 `render_add_channel_input_row_with_path` 整个 `div` 上有 `on_key_down` 监听 `enter` → `save_channel_config`。**这个监听要删除**，否则会在 input 自己处理 PressEnter 之前先触发提交。删除后，input 的 PressEnter 订阅独占处理；行级 `on_key_down` 只保留 `escape`。
 
