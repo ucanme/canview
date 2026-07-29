@@ -283,8 +283,8 @@ pub struct HoverPoint {
 pub enum PendingAddChannelFocus {
     /// Focus the channel name input.
     ChannelName,
-    /// Focus the ✓ Confirm button.
-    ChannelConfirm,
+    /// Blur the window (so the channel name input loses focus and the cursor stops blinking).
+    ChannelBlur,
 }
 
 /// Library dialog type

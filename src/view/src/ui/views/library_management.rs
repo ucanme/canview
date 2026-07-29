@@ -1349,9 +1349,9 @@ fn render_add_channel_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoEl
                             this.new_channel_name = input.read(cx).text().to_string();
                         }
                         gpui_component::input::InputEvent::PressEnter { .. } => {
-                            // Defer focus to next render where window is available
+                            // 让 render 在下次帧调 window.blur()，name 输入框光标自然消失
                             this.pending_add_channel_focus =
-                                Some(crate::app::PendingAddChannelFocus::ChannelConfirm);
+                                Some(crate::app::PendingAddChannelFocus::ChannelBlur);
                             cx.notify();
                         }
                         _ => {}

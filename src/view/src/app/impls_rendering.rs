@@ -1661,14 +1661,11 @@ impl Render for CanViewApp {
                         name_input.update(cx, |state, cx| state.focus(window, cx));
                     }
                 }
-                // Enter on channel_name → user decided "let user choose next step"
-                // (no auto-focus on ✓ Confirm button — user picks Browse or ✓ manually).
-                // Re-focus the name input so it's not lost; the user then either clicks
+                // Enter on channel_name → blur the window so the name input loses
+                // focus and the cursor stops blinking. The user then either clicks
                 // "Select File..." or tabs to ✓ to submit.
-                PendingAddChannelFocus::ChannelConfirm => {
-                    if let Some(name_input) = &self.channel_name_input {
-                        name_input.update(cx, |state, cx| state.focus(window, cx));
-                    }
+                PendingAddChannelFocus::ChannelBlur => {
+                    window.blur();
                 }
             }
         }
