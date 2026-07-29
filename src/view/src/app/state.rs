@@ -235,6 +235,7 @@ pub struct CanViewApp {
     pub hover_point: Option<HoverPoint>,
     pub plot_hover_time: Option<f64>,
     pub plot_hover_x: Option<Pixels>,
+    pub plot_hover_y: Option<Pixels>,
     pub plot_width_px: Pixels,
     /// Scroll handle for the plot canvas (vertical scroll over the chart list).
     pub plot_scroll_handle: gpui::ScrollHandle,
@@ -414,6 +415,7 @@ impl CanViewApp {
             hover_point: None,
             plot_hover_time: None,
             plot_hover_x: None,
+            plot_hover_y: None,
             plot_width_px: gpui::px(0.0),
             plot_scroll_handle: gpui::ScrollHandle::new(),
             // File menu dropdown state

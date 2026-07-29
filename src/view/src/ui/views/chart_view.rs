@@ -58,6 +58,7 @@ pub fn render_plot_view(window: &mut Window, app: &mut CanViewApp, view: Entity<
                 .h_full()
                 .flex()
                 .flex_col()
+                .relative()  // for hover tooltip absolute positioning (sibling to scroll container, so it doesn't extend the scroll bounds)
                 .child(render_toolbar(app, cx))
                 .child(
                     if !has_data {
@@ -67,7 +68,19 @@ pub fn render_plot_view(window: &mut Window, app: &mut CanViewApp, view: Entity<
                             .child(render_empty_state(app))
                             .into_any_element()
                     } else {
-                        render_chart_canvas(app, series_data, cx)
+                        render_chart_canvas(app, series_data.clone(), cx)
+                    }
+                )
+                .child(
+                    // Hover tooltip rendered as a sibling of the scroll container
+                    // (NOT inside v_flex) so its absolute positioning doesn't
+                    // extend the scroll content bounds (which caused infinite
+                    // scroll-down past the last card).
+                    if has_data {
+                        render_hover_tooltip_overlay(app, &series_data, px(320.0))
+                            .into_any_element()
+                    } else {
+                        div().into_any_element()
                     }
                 )
         )
@@ -199,7 +212,7 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
         .children(app.selected_signals.iter().map(|signal_id| {
             let series = series_data.iter().find(|s| &s.name == signal_id);
             match series {
-                Some(s) => render_single_chart(s, start_time, show_points).into_any_element(),
+                Some(s) => render_single_chart(s, start_time, show_points, hover_x, hover_time).into_any_element(),
                 None => render_no_data_chart(signal_id),
             }
         }))
@@ -228,26 +241,8 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                 this
             }
         })
-        // Hover Line and Tooltip
-        .when_some(hover_x.zip(hover_time), |this, (hx, ht)| {
-             // Calculate local position relative to canvas
-             let local_x = hx - chart_start_x;
-             let chart_width = app.plot_width_px;
-             
-             this.child(
-                 div()
-                     .absolute()
-                     .top_0()
-                     .left(local_x)
-                     .w(px(1.0))
-                     .h_full()
-                     .bg(rgb(0xd4d4d8)) // Light gray line
-                     .opacity(0.8)
-             )
-             .child(
-                 render_hover_tooltip(hx, ht, &series_data, chart_start_x, chart_width, app.start_time)
-             )
-        })
+        // Hover tooltip is rendered in render_plot_view as a sibling of the
+        // scroll container (NOT inside v_flex) — see render_hover_tooltip_overlay.
         // Global Canvas Interactions
         .on_mouse_down(MouseButton::Left, cx.listener(move |this: &mut CanViewApp, event: &MouseDownEvent, _, cx| {
              // Check for double-click to reset zoom
@@ -289,7 +284,8 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
             if mouse_x >= chart_start_x && mouse_x <= (window_width - padding) {
                 if moved_enough || this.is_dragging_zoom {
                     this.plot_hover_x = Some(mouse_x);
-                    
+                    this.plot_hover_y = Some(event.position.y);
+
                     // Determine time range
                     let (min_t, max_t) = if let (Some(s), Some(e)) = (this.plot_zoom_start, this.plot_zoom_end) {
                         (s, e)
@@ -304,20 +300,21 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                         }
                         if min_t == f64::MAX { (0.0, 1.0) } else { (min_t, max_t) }
                     };
-                    
+
                     // Interpolate
                     let rel_x = (mouse_x - chart_start_x) / chart_width_px;
                     let rel_x = f32::max(0.0, f32::min(1.0, rel_x)); // Clamp
-                    
+
                     let time_range = max_t - min_t;
                     let time = min_t + time_range * rel_x as f64;
-                    
+
                     this.plot_hover_time = Some(time);
                     cx.notify();
                 }
             } else if this.plot_hover_x.is_some() {
                  // Clear hover if moved out (approximate)
                  this.plot_hover_x = None;
+                 this.plot_hover_y = None;
                  this.plot_hover_time = None;
                  cx.notify();
             }
@@ -439,8 +436,9 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
 
             eprintln!("🖱️  scroll_delta = {:.4}", scroll_delta);
 
-            // Lower threshold for better responsiveness
-            if scroll_delta.abs() < 0.01 {
+            // Mac 触控板会产生大量微小滚动事件，过低的阈值会导致轻微触碰就触发缩放。
+            // 提高 threshold 并降低 zoom_factor，让缩放更"稳重"。
+            if scroll_delta.abs() < 0.5 {
                 return;
             }
 
@@ -449,7 +447,8 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
             // Scroll forward (away from user) = negative delta = zoom OUT
             let zoom_in = scroll_delta > 0.0;
 
-            let zoom_factor = 1.2;
+            // 单次缩放系数：1.1 比之前的 1.2 更平缓，避免一次滚动跳太多
+            let zoom_factor = 1.1;
 
             let (new_min, new_max) = if zoom_in {
                 // Zoom in: reduce range
@@ -480,9 +479,9 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                         // all points at the same time → use 1/1000 of range
                         (abs_range / 1000.0).max(1e-6)
                     } else {
-                        // allow zooming in to half the smallest gap, so at
-                        // least one point remains visible
-                        (smallest_gap * 0.5).max(1e-6)
+                        // 至少保留 2 个点可见：窗口宽度 >= 2 * 最小间隔，
+                        // 即使窗口偏移到中间也至少能覆盖 2 个相邻点。
+                        (smallest_gap * 2.0).max(1e-6)
                     }
                 } else {
                     // less than 2 points total → no zoom-in needed
@@ -508,8 +507,11 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                 let new_max = focus_t + new_range * (1.0 - mouse_t_ratio);
                 (new_min, new_max)
             } else {
-                // Zoom out: expand toward full data range, centered on mouse
-                let new_range = current_range * zoom_factor;
+                // Zoom out: expand toward full data range, centered on mouse.
+                // 用一个更激进的步长：至少扩展 abs_range 的 10%，避免从极小 zoom
+                // 花几十次滚动才能缩回来。
+                let abs_range = abs_max_t - abs_min_t;
+                let new_range = (current_range * zoom_factor).max(current_range + 0.1 * abs_range);
 
                 let chart_width_px = window_width - padding - chart_start_x;
                 let mouse_t_ratio = if current_max > current_min && chart_width_px > gpui::px(0.0) {
@@ -586,12 +588,38 @@ fn format_time_relative_or_absolute(time: f64, start_time: Option<chrono::NaiveD
     }
 }
 
-/// Render tooltip for hover over chart
-fn render_hover_tooltip(
-    hover_x: Pixels, 
-    hover_time: f64, 
+/// Render the hover tooltip as an overlay sibling of the scroll container.
+/// Rendered inside the right main area (which has `.relative()`), so absolute
+/// positioning stays within the main area and does NOT extend the scroll
+/// container's content bounds (which previously caused infinite scroll-down).
+///
+/// If hover state is None, returns an empty div (no tooltip shown).
+fn render_hover_tooltip_overlay(
+    app: &CanViewApp,
     series_data: &[Series],
-    offset_x: Pixels,
+    sidebar_width: Pixels,
+) -> impl IntoElement {
+    let (hover_x, hover_y, hover_time) = match (app.plot_hover_x, app.plot_hover_y, app.plot_hover_time) {
+        (Some(x), Some(y), Some(t)) => (x, y, t),
+        _ => return div().into_any_element(),
+    };
+    let chart_width = app.plot_width_px;
+    // Right main area starts at sidebar_width (sidebar on left).
+    // Local coordinates inside main area: x = hover_x - sidebar_width, y = hover_y - 0.
+    // (render_plot_view fills the whole window; main area top = 0.)
+    let local_x = hover_x - sidebar_width;
+    render_hover_tooltip(local_x, hover_y, hover_time, series_data, sidebar_width, chart_width, app.start_time).into_any_element()
+}
+
+/// Render tooltip for hover over chart.
+/// `local_x` is the mouse x inside the main area (after subtracting sidebar width).
+/// `local_y` is the mouse y inside the main area (from window top, since main area top = 0).
+fn render_hover_tooltip(
+    local_x_in: Pixels,
+    local_y_in: Pixels,
+    hover_time: f64,
+    series_data: &[Series],
+    _sidebar_width: Pixels,
     chart_width: Pixels,
     start_time: Option<chrono::NaiveDateTime>
 ) -> impl IntoElement {
@@ -624,13 +652,13 @@ fn render_hover_tooltip(
     }
 
     // Determine tooltip position
-    // local coordinates
-    let local_x = hover_x - offset_x;
-    
+    // local_x is already the x relative to main area
+    let local_x = local_x_in;
+
     // Check if we need to flip to left
     let tooltip_width_estimate = px(220.0); // Rough estimate
     let space_right = chart_width - local_x;
-    
+
     let (tooltip_left, _align_right) = if space_right < tooltip_width_estimate {
         // Not enough space, place to left of cursor
         (local_x - tooltip_width_estimate - px(10.0), true)
@@ -638,10 +666,10 @@ fn render_hover_tooltip(
         // Place to right
         (local_x + px(10.0), false)
     };
-    
+
     div()
         .absolute()
-        .top(px(20.0))
+        .top(local_y_in)
         .left(tooltip_left)
         .bg(rgba(0x18181be6)) // Dark bg with transparency
         .border_1()
@@ -686,12 +714,13 @@ fn render_no_data_chart(signal_id: &str) -> AnyElement {
     div()
         .flex()
         .flex_col()
-        .h(px(250.0))
+        .h(px(240.0))
+        .flex_shrink_0()
         .bg(rgb(0x18181b))
         .border_1()
         .border_color(rgb(0x27272a))
         .rounded_lg()
-        .p_4()
+        .p_2()
         .items_center()
         .justify_center()
         .child(
@@ -720,12 +749,15 @@ fn render_no_data_chart(signal_id: &str) -> AnyElement {
 /// Render a single chart for one signal — gpui canvas self-drawn, no grid.
 fn render_single_chart(
     series: &Series,
-    _start_time: Option<chrono::NaiveDateTime>,
+    start_time: Option<chrono::NaiveDateTime>,
     show_points: bool,
+    hover_x: Option<Pixels>,
+    hover_time: Option<f64>,
 ) -> impl IntoElement {
     let points = Arc::new(series.points.clone());
     let color = series.color;
-    let time_labels = Arc::new(series.time_labels.clone());
+    let unit = series.unit.clone();
+    let start_time_for_paint = start_time;
     let title = format!(
         "{} {} | {} pts",
         series.name.split(':').last().unwrap_or(&series.name),
@@ -736,7 +768,8 @@ fn render_single_chart(
     div()
         .flex()
         .flex_col()
-        .h(px(360.0))
+        .h(px(240.0))
+        .flex_shrink_0()
         .bg(rgb(0x18181b))
         .border_1()
         .border_color(rgb(0x27272a))
@@ -746,6 +779,7 @@ fn render_single_chart(
         .child(
             div()
                 .flex_1()
+                .min_h_0()
                 .py_1()
                 .child({
                     let prepaint_points = points.clone();
@@ -757,10 +791,20 @@ fn render_single_chart(
                             }
                             let min_t = prepaint_points.first().unwrap().time;
                             let max_t = prepaint_points.last().unwrap().time;
-                            let (min_v, max_v) = prepaint_points.iter().fold(
+                            let (mut min_v, mut max_v) = prepaint_points.iter().fold(
                                 (f64::INFINITY, f64::NEG_INFINITY),
                                 |(mn, mx), p| (mn.min(p.value), mx.max(p.value)),
                             );
+                            // 当所有值相等（含全 0）时，扩展 Y 范围让 0 落在 X 轴底部，
+                            // 而不是把折线压在 Y 轴顶部。
+                            if max_v == min_v {
+                                min_v = min_v.min(0.0);
+                                max_v = max_v.max(0.0);
+                                if max_v == min_v {
+                                    // 仍相等（仅当 min_v=max_v=0）：给一个 1 的虚拟高度
+                                    max_v = min_v + 1.0;
+                                }
+                            }
                             let v_range = (max_v - min_v).max(1e-9);
                             let t_range = (max_t - min_t).max(1e-9);
                             Some(ChartLayout {
@@ -812,11 +856,14 @@ fn render_single_chart(
                                 }
                             }
 
-                            // === 3. Y 轴刻度 + 标签（max / mid / min，3 个）===
-                            let y_values = [layout.max_v, (layout.max_v + layout.min_v) / 2.0, layout.min_v];
-                            let mut y_labels: Vec<gpui_component::plot::label::Text> = Vec::with_capacity(3);
-                            for (i, v) in y_values.iter().enumerate() {
-                                let y_px = origin_y + chart_h * (i as f32 / 2.0);
+                            // === 3. Y 轴刻度 + 标签（动态数量，按 chart_h 估算）===
+                            let n_y_ticks = calc_y_tick_count(chart_h.as_f32());
+                            let mut y_labels: Vec<gpui_component::plot::label::Text> = Vec::with_capacity(n_y_ticks);
+                            for i in 0..n_y_ticks {
+                                // i=0 → max_v (top), i=n_y_ticks-1 → min_v (bottom)
+                                let ratio = if n_y_ticks == 1 { 0.0 } else { i as f32 / (n_y_ticks - 1) as f32 };
+                                let v = layout.max_v - (layout.max_v - layout.min_v) * ratio as f64;
+                                let y_px = origin_y + chart_h * ratio;
                                 // 短刻度线（向左 4px）
                                 {
                                     let mut b = PathBuilder::stroke(px(1.));
@@ -861,15 +908,15 @@ fn render_single_chart(
                                         window.paint_path(path, stroke_color);
                                     }
                                 }
-                                // 时间标签：优先用 time_labels 索引采样，否则用 format_time_label fallback
+                                // 时间标签：X 轴上省略年月日，用 HH:MM:SS.mmm（11 字符）；
+                                // 完整 YYYY-MM-DD HH:MM:SS.mmm 在悬停 tooltip 里显示。
                                 let t = layout.min_t + layout.t_range * ratio as f64;
-                                let label_text = if !time_labels.is_empty() {
-                                    // 按 ratio 在 time_labels 里采样
-                                    let idx = ((ratio * time_labels.len() as f32) as usize)
-                                        .min(time_labels.len() - 1);
-                                    time_labels[idx].clone()
+                                let full_label = format_time_relative_or_absolute(t, start_time_for_paint);
+                                let label_text = if full_label.starts_with("Time: ") {
+                                    full_label
                                 } else {
-                                    format_time_label(t, layout.t_range)
+                                    // 截取 HH:MM:SS.mmm（跳过 "YYYY-MM-DD " 的 11 字符）
+                                    full_label.get(11..).unwrap_or(&full_label).to_string()
                                 };
                                 x_labels.push(
                                     gpui_component::plot::label::Text::new(
@@ -888,7 +935,7 @@ fn render_single_chart(
                             x_plot_label.paint(&bounds, window, cx);
 
                             // === 5. 折线 ===
-                            let mut builder = PathBuilder::stroke(px(1.5));
+                            let mut builder = PathBuilder::stroke(px(1.0));
                             let mut started = false;
                             for p in points.iter() {
                                 let x = origin_x
@@ -927,16 +974,105 @@ fn render_single_chart(
                                             ((layout.max_v - p.value) / layout.v_range
                                                 * chart_h.as_f32() as f64) as f32,
                                         );
-                                    // 6px 实心方块（用 gpui::fill 简化）
+                                    // 3px 实心方块（缩小后不堆叠）
                                     let dot_bounds = gpui::Bounds::new(
-                                        point(x - px(3.), y - px(3.)),
-                                        size(px(6.), px(6.)),
+                                        point(x - px(1.5), y - px(1.5)),
+                                        size(px(3.), px(3.)),
                                     );
                                     window.paint_quad(gpui::fill(dot_bounds, color));
                                 }
                             }
+
+                            // === 7. 悬停竖线 + 最近点数值标签 ===
+                            // 鼠标在 plot 区时，每张卡片都画一条贯穿 top→x_axis_y 的竖线，
+                            // 并在最近的数据点处显示一个带边框的小数值气泡。
+                            if let (Some(hx), Some(ht)) = (hover_x, hover_time) {
+                                // 只在 hover_time 落在 [min_t, max_t] 范围内才画
+                                let max_t = layout.min_t + layout.t_range;
+                                if ht >= layout.min_t && ht <= max_t {
+                                    let line_x = origin_x
+                                        + px(
+                                            ((ht - layout.min_t) / layout.t_range
+                                                * chart_w.as_f32() as f64) as f32,
+                                        );
+                                    // 仅当竖线 x 在 canvas 水平范围内时画
+                                    if line_x >= origin_x && line_x <= origin_x + chart_w {
+                                        // 竖线
+                                        let mut b = PathBuilder::stroke(px(1.));
+                                        b.move_to(point(line_x, origin_y));
+                                        b.line_to(point(line_x, x_axis_y));
+                                        if let Ok(path) = b.build() {
+                                            window.paint_path(
+                                                path,
+                                                gpui::rgba(0xd4d4d8cc),
+                                            );
+                                        }
+                                        // 找最近的数据点
+                                        let idx = points
+                                            .partition_point(|p| p.time < ht);
+                                        let p_before = if idx > 0 {
+                                            points.get(idx - 1)
+                                        } else {
+                                            None
+                                        };
+                                        let p_after = points.get(idx);
+                                        let nearest = match (p_before, p_after) {
+                                            (Some(b), Some(a)) => {
+                                                let db = (ht - b.time).abs();
+                                                let da = (a.time - ht).abs();
+                                                if db < da { b } else { a }
+                                            }
+                                            (Some(b), None) => b,
+                                            (None, Some(a)) => a,
+                                            (None, None) => return,
+                                        };
+                                        // 高亮该点（4px 圆点，比 show_points 大）
+                                        let dot_y = origin_y
+                                            + px(
+                                                ((layout.max_v - nearest.value)
+                                                    / layout.v_range
+                                                    * chart_h.as_f32() as f64)
+                                                    as f32,
+                                            );
+                                        let dot_x = origin_x
+                                            + px(
+                                                ((nearest.time - layout.min_t) / layout.t_range
+                                                    * chart_w.as_f32() as f64) as f32,
+                                            );
+                                        window.paint_quad(gpui::fill(
+                                            gpui::Bounds::new(
+                                                point(dot_x - px(2.), dot_y - px(2.)),
+                                                size(px(4.), px(4.)),
+                                            ),
+                                            color,
+                                        ));
+                                        // 在高亮点上方显示数值标签
+                                        let label_text = format!(
+                                            "{:.2}{}",
+                                            nearest.value,
+                                            unit.as_deref().unwrap_or("")
+                                        );
+                                        // 标签放在点上方 6px，左对齐，避免遮挡折线
+                                        let label_origin = point(
+                                            dot_x + px(4.) - bounds.origin.x,
+                                            dot_y - px(16.) - bounds.origin.y,
+                                        );
+                                        let label = gpui_component::plot::label::Text::new(
+                                            label_text,
+                                            label_origin,
+                                            color,
+                                        )
+                                        .font_size(px(10.))
+                                        .align(gpui::TextAlign::Left);
+                                        let plot_label =
+                                            gpui_component::plot::PlotLabel::new(vec![label]);
+                                        plot_label.paint(&bounds, window, cx);
+                                    }
+                                }
+                            }
                         },
                     )
+                    .size_full()
                 }),
         )
 }
@@ -1401,6 +1537,18 @@ pub fn apply_zoom_to_full_data(app: &mut CanViewApp) {
         }
     }).collect();
 
+    // Guard: if all series have 0 points (zoom window is between points), the
+    // chart would be empty. Fall back to the full range so user never sees a
+    // blank chart.
+    let all_empty = filtered.iter().all(|s| s.points.is_empty());
+    if all_empty {
+        eprintln!("⚠️  Zoom window contains no points — resetting to full range");
+        app.plot_zoom_start = None;
+        app.plot_zoom_end = None;
+        app.plot_data = app.plot_full_data.clone();
+        return;
+    }
+
     app.plot_data = std::sync::Arc::from(filtered);
 }
 
@@ -1444,6 +1592,14 @@ pub fn calc_x_tick_count(chart_w_px: f32) -> usize {
     approx.clamp(2, 6)
 }
 
+/// 按 50px/刻度估算 Y 轴刻度数量，clamp [3, 8]。
+/// chart_h_px 是 canvas 内可用于画折线的垂直像素（已扣除上下 padding）。
+/// 至少 3 个 (max / mid / min)，最多 8 个（避免标签过密）。
+pub fn calc_y_tick_count(chart_h_px: f32) -> usize {
+    let approx = (chart_h_px / 50.0).floor() as usize;
+    approx.clamp(3, 8)
+}
+
 /// 时间标签 fallback（series.time_labels 为空时用）。
 /// span 是 max_t - min_t（秒）。
 /// < 60s → 三位小数秒；< 1h → 一位小数秒；否则 → 一位小数分钟。
@@ -1484,6 +1640,16 @@ mod tests {
         assert_eq!(calc_x_tick_count(600.0), 6);  // 600/80=7.5 → 7 → clamp 6
         assert_eq!(calc_x_tick_count(160.0), 2);
         assert_eq!(calc_x_tick_count(320.0), 4);
+    }
+
+    #[test]
+    fn calc_y_tick_count_basic() {
+        assert_eq!(calc_y_tick_count(150.0), 3);  // 150/50=3 → clamp 3
+        assert_eq!(calc_y_tick_count(100.0), 3);  // 100/50=2 → clamp 3
+        assert_eq!(calc_y_tick_count(50.0), 3);   // 50/50=1 → clamp 3
+        assert_eq!(calc_y_tick_count(300.0), 6);  // 300/50=6
+        assert_eq!(calc_y_tick_count(500.0), 8);  // 500/50=10 → clamp 8
+        assert_eq!(calc_y_tick_count(250.0), 5);
     }
 
     #[test]

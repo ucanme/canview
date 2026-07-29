@@ -57,7 +57,8 @@ pub fn render_sidebar_item(item: &SidebarItem, view: Entity<CanViewApp>) -> AnyE
 
             div()
                 .px_2()
-                .py_1()
+                .h(px(24.0))
+                .flex_shrink_0()
                 .bg(rgb(0x18181b))
                 .border_b_1()
                 .border_color(rgb(0x27272a))
@@ -145,7 +146,8 @@ pub fn render_sidebar_item(item: &SidebarItem, view: Entity<CanViewApp>) -> AnyE
 
             div()
                 .px_3()
-                .py_0p5()
+                .h(px(24.0))
+                .flex_shrink_0()
                 .bg(rgb(0x111112))
                 .flex()
                 .items_center()
@@ -193,7 +195,8 @@ pub fn render_sidebar_item(item: &SidebarItem, view: Entity<CanViewApp>) -> AnyE
 
             div()
                 .px_4()
-                .py_1()
+                .h(px(24.0))
+                .flex_shrink_0()
                 .flex()
                 .items_center()
                 .gap_2()
