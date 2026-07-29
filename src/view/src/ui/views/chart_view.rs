@@ -749,7 +749,6 @@ fn render_single_chart(
                 .py_1()
                 .child({
                     let prepaint_points = points.clone();
-                    let prepaint_time_labels = time_labels.clone();
                     gpui::canvas(
                         move |bounds, _window, _cx| {
                             // prepaint: 预计算坐标变换参数；空数据返回 None 跳过 paint
@@ -764,11 +763,9 @@ fn render_single_chart(
                             );
                             let v_range = (max_v - min_v).max(1e-9);
                             let t_range = (max_t - min_t).max(1e-9);
-                            let _ = &prepaint_time_labels;
                             Some(ChartLayout {
                                 bounds,
                                 min_t,
-                                max_t,
                                 min_v,
                                 max_v,
                                 t_range,
@@ -831,10 +828,15 @@ fn render_single_chart(
                                 }
                                 // 标签文本（在 origin_x - 6px 处右对齐，垂直居中于 y_px）
                                 let label = format!("{:.1}", v);
+                                // PlotLabel::paint 内部会再加 bounds.origin，所以这里必须
+                                // 存画布相对坐标（已减去 bounds.origin），避免双重偏移。
                                 y_labels.push(
                                     gpui_component::plot::label::Text::new(
                                         label,
-                                        point(origin_x - px(6.), y_px - px(5.)),
+                                        point(
+                                            origin_x - px(6.) - bounds.origin.x,
+                                            y_px - px(5.) - bounds.origin.y,
+                                        ),
                                         cx.theme().muted_foreground,
                                     )
                                     .font_size(px(10.))
@@ -872,7 +874,10 @@ fn render_single_chart(
                                 x_labels.push(
                                     gpui_component::plot::label::Text::new(
                                         label_text,
-                                        point(x_px, x_axis_y + px(4.)),
+                                        point(
+                                            x_px - bounds.origin.x,
+                                            x_axis_y + px(4.) - bounds.origin.y,
+                                        ),
                                         cx.theme().muted_foreground,
                                     )
                                     .font_size(px(10.))
@@ -940,7 +945,6 @@ fn render_single_chart(
 struct ChartLayout {
     bounds: gpui::Bounds<gpui::Pixels>,
     min_t: f64,
-    max_t: f64,
     t_range: f64,
     min_v: f64,
     max_v: f64,
