@@ -1414,6 +1414,9 @@ impl CanViewApp {
         // Save config
         self.save_config(cx);
 
+        // 刷新 plot 数据：库版本变了，已选信号对应的 series 要重新从新 DBC 提取
+        crate::ui::views::chart_view::extract_and_update_series_data(self);
+
         self.status_msg =
             format!("✅ Applied version {} to all plot channels", version_name).into();
         cx.notify();
@@ -1997,6 +2000,9 @@ impl CanViewApp {
                         self.apply_version_to_mappings(&library_id.clone(), &version_name.clone(), cx);
                     }
 
+                    // 刷新 plot 数据（即使是非激活版本路径，也是 no-op 无害）
+                    crate::ui::views::chart_view::extract_and_update_series_data(self);
+
                     cx.notify();
                 }
                 Err(e) => {
@@ -2079,6 +2085,13 @@ impl CanViewApp {
             } else {
                 Ok(())
             };
+
+            // 若删除的是激活版本的通道，刷新 plot 数据
+            let is_active_version = self.active_library_id.as_deref() == Some(library_id.as_str())
+                && self.active_version_name.as_deref() == Some(version_name.as_str());
+            if is_active_version {
+                crate::ui::views::chart_view::extract_and_update_series_data(self);
+            }
 
             self.status_msg = match cleanup_result {
                 Ok(()) => format!("Channel {} deleted", channel_id).into(),
