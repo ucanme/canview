@@ -1,0 +1,21 @@
+docs/superpowers/specs/2026-07-29-task-feedback-3-items-design.md
+  s_790df9e047e933::t_65b7a3921d6442 140
+  s_790df9e047e933::t_e922ce9d762633 207-212,245,253,256,275
+  s_790df9e047e933::t_97002e78cbbe42 449
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "f95880a7833de4e4ccd3e44b4f794ff7659e4969",
+  "prompts": {},
+  "sessions": {
+    "s_790df9e047e933": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d78f7f1-6460-4c57-b80a-37d892318959",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
