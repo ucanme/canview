@@ -166,7 +166,7 @@ fn render_empty_state(app: &CanViewApp) -> AnyElement {
         .into_any_element()
 }
 
-/// Render the chart canvas using gpui-component LineChart
+/// Render the chart canvas — legend + zoom box + hover tooltip + per-signal canvas cards.
 fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Context<CanViewApp>) -> AnyElement {
     let is_dragging = app.is_dragging_zoom;
     let drag_start = app.zoom_drag_start_x;
