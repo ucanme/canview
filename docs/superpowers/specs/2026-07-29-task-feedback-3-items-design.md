@@ -130,17 +130,6 @@ PendingAddChannelFocus::ChannelConfirm => {
    ```rust
    if is_active_version {
        self.apply_version_to_mappings(&library_id.clone(), &version_name.clone(), cx);
-       // apply_version_to_mappings 内部已刷新 plot_data，此处不重复调用
-   }
-
-   cx.notify();
-   ```
-
-   **修正**：根据用户决策「三个函数都要调用」，改为：
-
-   ```rust
-   if is_active_version {
-       self.apply_version_to_mappings(&library_id.clone(), &version_name.clone(), cx);
    }
    // 无条件刷新 plot 数据，确保新通道立即在 plot 中可见
    crate::ui::views::chart_view::extract_and_update_series_data(self);
@@ -148,7 +137,7 @@ PendingAddChannelFocus::ChannelConfirm => {
    cx.notify();
    ```
 
-   重复刷新（apply_version_to_mappings 内部已刷一次，这里再刷一次）按用户决策接受。
+   根据用户决策「三个函数都要调用」。`apply_version_to_mappings` 内部已刷一次 plot_data，这里再刷一次（重复刷新按用户决策接受，性能影响可忽略 —— `extract_and_update_series_data` 是 `O(已选信号 × 消息数)`，已选信号通常 ≤ 20）。
 
 3. **`impls.rs:2011 delete_channel`** —— 在末尾 `cx.notify()` 之前（2091 行附近）加版本激活判断：
 
@@ -215,6 +204,12 @@ div().h(px(250.0)).p_4().border_1().rounded_lg()
 #### canvas paint 实现骨架
 
 ```rust
+struct ChartLayout {
+    bounds: Bounds<Pixels>,
+    min_t: f64, max_t: f64, t_range: f64,
+    min_v: f64, max_v: f64, v_range: f64,
+}
+
 fn render_single_chart(
     series: &Series,
     _start_time: Option<chrono::NaiveDateTime>,
@@ -247,7 +242,7 @@ fn render_single_chart(
                 .child(gpui::canvas(
                     move |bounds, _window, _cx| {
                         // prepaint: 预计算坐标变换参数
-                        if points.is_empty() { return; }
+                        if points.is_empty() { return None; }
                         let (min_t, max_t) = (points.first().unwrap().time, points.last().unwrap().time);
                         let (min_v, max_v) = points.iter().fold(
                             (f64::INFINITY, f64::NEG_INFINITY),
@@ -255,13 +250,10 @@ fn render_single_chart(
                         );
                         let v_range = (max_v - min_v).max(1e-9);
                         let t_range = (max_t - min_t).max(1e-9);
-                        ChartLayout {
-                            bounds,
-                            min_t, max_t, min_v, max_v, t_range, v_range,
-                        }
+                        Some(ChartLayout { bounds, min_t, max_t, min_v, max_v, t_range, v_range })
                     },
                     move |_bounds, layout, window, cx| {
-                        // paint: 画 Y 轴 + X 轴 + 折线
+                        let layout = match layout { Some(l) => l, None => return };
                         let bounds = layout.bounds;
                         let pad_left = px(36.0);
                         let pad_right = px(4.0);
@@ -279,6 +271,8 @@ fn render_single_chart(
         )
 }
 ```
+
+注：`gpui::canvas` 的 prepaint 返回 `T`，paint 接收 `T`。`points.is_empty()` 时返回 `None` 跳过 paint。
 
 #### Y 轴绘制
 
@@ -452,7 +446,7 @@ render_chart_canvas → 遍历 app.selected_signals
 
 ## 风险与注意
 
-1. **`window.blur(cx)` 签名**：实现时需确认 `Window::blur` 的实际签名（`&mut self` 还是 `&mut self, cx: &mut Context`）。从 gpui 0.2.2 源码看是 `pub fn blur(&mut self)`（无 cx 参数），但项目用的 gpui 版本可能不同 —— 实现前先 grep 确认。
+1. **`window.blur()` 签名**：实现时需确认 `Window::blur` 的实际签名（`&mut self` 还是 `&mut self, cx: &mut Context`）。从 gpui 0.2.2 源码看是 `pub fn blur(&mut self)`（无 cx 参数），但项目用的 gpui 版本可能不同 —— 实现前先 grep 确认。spec 中写作 `window.blur(cx)` 是占位，实现时按实际签名调整。
 
 2. **`window.paint_text` / `paint_glyph` API**：gpui 文本绘制 API 在不同版本签名不同。实现时若 `paint_text` 不可用，用 `window.paint_quad` + 预渲染文本贴图，或退化为不画刻度文本（保留轴 + 折线）。
 
