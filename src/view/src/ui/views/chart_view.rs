@@ -4,7 +4,8 @@ use crate::models::{DataPoint, Series};
 use blf::LogObject;
 use gpui::prelude::*;
 use gpui::*;
-use gpui_component::chart::LineChart;
+use gpui_component::ActiveTheme;
+use gpui_component::PixelsExt;
 use gpui_component::v_flex;
 use gpui_component::scroll::ScrollableElement;
 use std::sync::Arc;
@@ -716,97 +717,234 @@ fn render_no_data_chart(signal_id: &str) -> AnyElement {
         .into_any_element()
 }
 
-/// Render a single chart for one signal
+/// Render a single chart for one signal — gpui canvas self-drawn, no grid.
 fn render_single_chart(
     series: &Series,
     _start_time: Option<chrono::NaiveDateTime>,
-    show_points: bool
+    show_points: bool,
 ) -> impl IntoElement {
-    // Clone time labels for use in closure
-    let time_labels = series.time_labels.clone();
-
-    // Calculate time range for debug display
-    let min_time = series.points.iter().map(|p| p.time).fold(f64::INFINITY, f64::min);
-    let max_time = series.points.iter().map(|p| p.time).fold(f64::NEG_INFINITY, f64::max);
-    let time_span = max_time - min_time;
-
-    // Calculate optimal step for showing labels (aim for ~4 labels)
-    let total_points = series.points.len();
-    let label_step = if total_points <= 10 {
-        1
-    } else {
-        total_points / 4
-    };
+    let points = Arc::new(series.points.clone());
+    let color = series.color;
+    let time_labels = Arc::new(series.time_labels.clone());
+    let title = format!(
+        "{} {} | {} pts",
+        series.name.split(':').last().unwrap_or(&series.name),
+        series.unit.as_ref().map(|u| format!("[{}]", u)).unwrap_or_default(),
+        series.points.len(),
+    );
 
     div()
         .flex()
         .flex_col()
-        .h(px(250.0))
+        .h(px(360.0))
         .bg(rgb(0x18181b))
         .border_1()
         .border_color(rgb(0x27272a))
         .rounded_lg()
-        .p_4()
-        .child(
-            div()
-                .text_sm()
-                .font_weight(FontWeight::SEMIBOLD)
-                .text_color(series.color)
-                .child(format!(
-                    "{} {} | {} pts | {:.3}s-{:.3}s (span: {:.3}s)",
-                    series.name.split(':').last().unwrap_or(&series.name),
-                    series.unit.as_ref().map(|u| format!("[{}]", u)).unwrap_or_default(),
-                    series.points.len(),
-                    min_time,
-                    max_time,
-                    time_span
-                ))
-        )
+        .p_2()
+        .child(div().text_xs().text_color(color).child(title))
         .child(
             div()
                 .flex_1()
-                .py_2()
+                .py_1()
                 .child({
-                    let mut chart = LineChart::<DataPoint, SharedString, f64>::new(series.points.clone())
-                        .x(move |d| {
-                            // Hack: Use zero-width characters to make each time string unique
-                            // while keeping it visually identical for labels.
-                            let mut unique_suffix = String::new();
-                            let mut val = d.index;
-                            // ERROR FIX: Increased from 10 to 20 bits. 
-                            // 10 bits only supported 1024 points, causing collisions for 5753 points.
-                            // 20 bits supports ~1 million points (2^20), insuring uniqueness.
-                            for _ in 0..20 { 
-                                unique_suffix.push(if val % 2 == 0 { '\u{200B}' } else { '\u{200C}' });
-                                val /= 2;
+                    let prepaint_points = points.clone();
+                    let prepaint_time_labels = time_labels.clone();
+                    gpui::canvas(
+                        move |bounds, _window, _cx| {
+                            // prepaint: 预计算坐标变换参数；空数据返回 None 跳过 paint
+                            if prepaint_points.is_empty() {
+                                return None;
                             }
-                            
-                            // Determine if we should show the label
-                            let should_show = d.index == 0 || // Always show first
-                                              d.index == total_points - 1 || // Always show last
-                                              d.index % label_step == 0; // Show periodic
-                            
-                            let label_text = if should_show {
-                                time_labels.get(d.index).map(|s| s.as_str()).unwrap_or("N/A")
-                            } else {
-                                "" // Empty string for hidden labels
+                            let min_t = prepaint_points.first().unwrap().time;
+                            let max_t = prepaint_points.last().unwrap().time;
+                            let (min_v, max_v) = prepaint_points.iter().fold(
+                                (f64::INFINITY, f64::NEG_INFINITY),
+                                |(mn, mx), p| (mn.min(p.value), mx.max(p.value)),
+                            );
+                            let v_range = (max_v - min_v).max(1e-9);
+                            let t_range = (max_t - min_t).max(1e-9);
+                            let _ = &prepaint_time_labels;
+                            Some(ChartLayout {
+                                bounds,
+                                min_t,
+                                max_t,
+                                min_v,
+                                max_v,
+                                t_range,
+                                v_range,
+                            })
+                        },
+                        move |_bounds, layout, window, cx| {
+                            let layout = match layout {
+                                Some(l) => l,
+                                None => return,
                             };
+                            let bounds = layout.bounds;
+                            let pad_left = px(36.0);
+                            let pad_right = px(4.0);
+                            let pad_top = px(4.0);
+                            let pad_bottom = px(14.0);
+                            let chart_w = bounds.size.width - pad_left - pad_right;
+                            let chart_h = bounds.size.height - pad_top - pad_bottom;
 
-                            format!("{}{}", label_text, unique_suffix).into()
-                        })
-                        .y(|d| d.value)
-                        .stroke(series.color)
-                        .linear()
-                        .tick_margin(1); // Always "try" to draw every tick, but most will be empty strings
-                    
-                    // Add dots on data points if enabled
-                    if show_points {
-                        chart = chart.dot();
-                    }
-                    
-                    chart
-                })
+                            // 坐标系原点（左下角）和右上角
+                            let origin_x = bounds.origin.x + pad_left;
+                            let origin_y = bounds.origin.y + pad_top; // 顶部 Y
+                            let x_axis_y = bounds.origin.y + pad_top + chart_h; // 底部 X 轴线 Y
+
+                            let stroke_color = cx.theme().border;
+
+                            // === 1. Y 轴线 ===
+                            {
+                                let mut b = PathBuilder::stroke(px(1.));
+                                b.move_to(point(origin_x, origin_y));
+                                b.line_to(point(origin_x, x_axis_y));
+                                if let Ok(path) = b.build() {
+                                    window.paint_path(path, stroke_color);
+                                }
+                            }
+
+                            // === 2. X 轴线 ===
+                            {
+                                let mut b = PathBuilder::stroke(px(1.));
+                                b.move_to(point(origin_x, x_axis_y));
+                                b.line_to(point(bounds.origin.x + pad_left + chart_w, x_axis_y));
+                                if let Ok(path) = b.build() {
+                                    window.paint_path(path, stroke_color);
+                                }
+                            }
+
+                            // === 3. Y 轴刻度 + 标签（max / mid / min，3 个）===
+                            let y_values = [layout.max_v, (layout.max_v + layout.min_v) / 2.0, layout.min_v];
+                            let mut y_labels: Vec<gpui_component::plot::label::Text> = Vec::with_capacity(3);
+                            for (i, v) in y_values.iter().enumerate() {
+                                let y_px = origin_y + chart_h * (i as f32 / 2.0);
+                                // 短刻度线（向左 4px）
+                                {
+                                    let mut b = PathBuilder::stroke(px(1.));
+                                    b.move_to(point(origin_x - px(4.), y_px));
+                                    b.line_to(point(origin_x, y_px));
+                                    if let Ok(path) = b.build() {
+                                        window.paint_path(path, stroke_color);
+                                    }
+                                }
+                                // 标签文本（在 origin_x - 6px 处右对齐，垂直居中于 y_px）
+                                let label = format!("{:.1}", v);
+                                y_labels.push(
+                                    gpui_component::plot::label::Text::new(
+                                        label,
+                                        point(origin_x - px(6.), y_px - px(5.)),
+                                        cx.theme().muted_foreground,
+                                    )
+                                    .font_size(px(10.))
+                                    .align(gpui::TextAlign::Right),
+                                );
+                            }
+                            let y_plot_label = gpui_component::plot::PlotLabel::new(y_labels);
+                            y_plot_label.paint(&bounds, window, cx);
+
+                            // === 4. X 轴刻度 + 标签（动态数量）===
+                            let n_ticks = calc_x_tick_count(chart_w.as_f32());
+                            let mut x_labels: Vec<gpui_component::plot::label::Text> = Vec::with_capacity(n_ticks);
+                            for i in 0..n_ticks {
+                                let ratio = if n_ticks == 1 { 0.0 } else { i as f32 / (n_ticks - 1) as f32 };
+                                let x_px = origin_x + chart_w * ratio;
+                                // 短刻度线（向下 4px）
+                                {
+                                    let mut b = PathBuilder::stroke(px(1.));
+                                    b.move_to(point(x_px, x_axis_y));
+                                    b.line_to(point(x_px, x_axis_y + px(4.)));
+                                    if let Ok(path) = b.build() {
+                                        window.paint_path(path, stroke_color);
+                                    }
+                                }
+                                // 时间标签：优先用 time_labels 索引采样，否则用 format_time_label fallback
+                                let t = layout.min_t + layout.t_range * ratio as f64;
+                                let label_text = if !time_labels.is_empty() {
+                                    // 按 ratio 在 time_labels 里采样
+                                    let idx = ((ratio * time_labels.len() as f32) as usize)
+                                        .min(time_labels.len() - 1);
+                                    time_labels[idx].clone()
+                                } else {
+                                    format_time_label(t, layout.t_range)
+                                };
+                                x_labels.push(
+                                    gpui_component::plot::label::Text::new(
+                                        label_text,
+                                        point(x_px, x_axis_y + px(4.)),
+                                        cx.theme().muted_foreground,
+                                    )
+                                    .font_size(px(10.))
+                                    .align(gpui::TextAlign::Center),
+                                );
+                            }
+                            let x_plot_label = gpui_component::plot::PlotLabel::new(x_labels);
+                            x_plot_label.paint(&bounds, window, cx);
+
+                            // === 5. 折线 ===
+                            let mut builder = PathBuilder::stroke(px(1.5));
+                            let mut started = false;
+                            for p in points.iter() {
+                                let x = origin_x
+                                    + px(
+                                        ((p.time - layout.min_t) / layout.t_range
+                                            * chart_w.as_f32() as f64) as f32,
+                                    );
+                                let y = origin_y
+                                    + px(
+                                        ((layout.max_v - p.value) / layout.v_range
+                                            * chart_h.as_f32() as f64) as f32,
+                                    );
+                                if !started {
+                                    builder.move_to(point(x, y));
+                                    started = true;
+                                } else {
+                                    builder.line_to(point(x, y));
+                                }
+                            }
+                            if started {
+                                if let Ok(path) = builder.build() {
+                                    window.paint_path(path, color);
+                                }
+                            }
+
+                            // === 6. data points（可选，show_points 为 true）===
+                            if show_points {
+                                for p in points.iter() {
+                                    let x = origin_x
+                                        + px(
+                                            ((p.time - layout.min_t) / layout.t_range
+                                                * chart_w.as_f32() as f64) as f32,
+                                        );
+                                    let y = origin_y
+                                        + px(
+                                            ((layout.max_v - p.value) / layout.v_range
+                                                * chart_h.as_f32() as f64) as f32,
+                                        );
+                                    // 6px 实心方块（用 gpui::fill 简化）
+                                    let dot_bounds = gpui::Bounds::new(
+                                        point(x - px(3.), y - px(3.)),
+                                        size(px(6.), px(6.)),
+                                    );
+                                    window.paint_quad(gpui::fill(dot_bounds, color));
+                                }
+                            }
+                        },
+                    )
+                }),
         )
+}
+
+/// Canvas 自绘坐标变换参数
+struct ChartLayout {
+    bounds: gpui::Bounds<gpui::Pixels>,
+    min_t: f64,
+    max_t: f64,
+    t_range: f64,
+    min_v: f64,
+    max_v: f64,
+    v_range: f64,
 }
 
 
