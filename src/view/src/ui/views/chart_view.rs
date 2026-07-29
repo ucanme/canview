@@ -1295,6 +1295,26 @@ pub fn extract_and_update_series_data(app: &mut CanViewApp) {
     apply_zoom_to_full_data(app);
 }
 
+/// 按 80px/刻度估算 X 轴刻度数量，clamp [2, 6]。
+/// chart_w_px 是 canvas 内可用于画折线的水平像素（已扣除左右 padding）。
+pub fn calc_x_tick_count(chart_w_px: f32) -> usize {
+    let approx = (chart_w_px / 80.0).floor() as usize;
+    approx.clamp(2, 6)
+}
+
+/// 时间标签 fallback（series.time_labels 为空时用）。
+/// span 是 max_t - min_t（秒）。
+/// < 60s → 三位小数秒；< 1h → 一位小数秒；否则 → 一位小数分钟。
+pub fn format_time_label(t: f64, span: f64) -> String {
+    if span < 60.0 {
+        format!("{:.3}s", t)
+    } else if span < 3600.0 {
+        format!("{:.1}s", t)
+    } else {
+        format!("{:.1}min", t / 60.0)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1312,5 +1332,22 @@ mod tests {
         // display names extract the last segment:
         let display_name = sidebar_signal_id.split(':').last().unwrap();
         assert_eq!(display_name, "EngineSpeed");
+    }
+
+    #[test]
+    fn calc_x_tick_count_basic() {
+        assert_eq!(calc_x_tick_count(400.0), 5);
+        assert_eq!(calc_x_tick_count(80.0), 2);   // 80px → 1 → clamp 2
+        assert_eq!(calc_x_tick_count(40.0), 2);   // 40px → 0 → clamp 2
+        assert_eq!(calc_x_tick_count(600.0), 6);  // 600/80=7.5 → 7 → clamp 6
+        assert_eq!(calc_x_tick_count(160.0), 2);
+        assert_eq!(calc_x_tick_count(320.0), 4);
+    }
+
+    #[test]
+    fn format_time_label_ranges() {
+        assert_eq!(format_time_label(12.345, 30.0), "12.345s");
+        assert_eq!(format_time_label(5.0, 300.0), "5.0s");
+        assert_eq!(format_time_label(120.0, 4000.0), "2.0min");
     }
 }
