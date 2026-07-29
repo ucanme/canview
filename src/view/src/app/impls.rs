@@ -2087,8 +2087,6 @@ impl CanViewApp {
             };
 
             // 若删除的是激活版本的通道，刷新 plot 数据
-            let is_active_version = self.active_library_id.as_deref() == Some(library_id.as_str())
-                && self.active_version_name.as_deref() == Some(version_name.as_str());
             if is_active_version {
                 crate::ui::views::chart_view::extract_and_update_series_data(self);
             }

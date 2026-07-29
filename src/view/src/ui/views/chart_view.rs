@@ -1491,5 +1491,9 @@ mod tests {
         assert_eq!(format_time_label(12.345, 30.0), "12.345s");
         assert_eq!(format_time_label(5.0, 300.0), "5.0s");
         assert_eq!(format_time_label(120.0, 4000.0), "2.0min");
+        // Boundary cases: at exactly 60.0 the first branch (< 60.0) fails → second branch → "60.0s";
+        // at exactly 3600.0 the second branch (< 3600.0) fails → else → 3600.0/60.0 = 60.0 → "60.0min".
+        assert_eq!(format_time_label(60.0, 60.0), "60.0s");
+        assert_eq!(format_time_label(3600.0, 3600.0), "60.0min");
     }
 }
