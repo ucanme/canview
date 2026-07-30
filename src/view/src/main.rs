@@ -93,7 +93,7 @@ fn main() {
                     },
                 })),
                 titlebar: Some(TitlebarOptions {
-                    title: Some("canview".into()),
+                    title: Some("can-viewer".into()),
                     appears_transparent: true,
                     traffic_light_position: None,
                 }),
@@ -118,23 +118,23 @@ fn main() {
         // those platforms — see top_bar.rs + impls_rendering.rs).
         cx.set_menus(vec![
             gpui::Menu {
-                name: "canview".into(),
+                name: "can-viewer".into(),
                 items: vec![
-                    gpui::MenuItem::action("About canview", help::ShowAbout),
+                    gpui::MenuItem::action("About can-viewer", help::ShowAbout),
                     gpui::MenuItem::separator(),
                     gpui::MenuItem::action("View on GitHub", help::OpenGitHubUrl),
                     gpui::MenuItem::separator(),
                     gpui::MenuItem::action("Send Feedback", help::SendFeedbackEmail),
                     gpui::MenuItem::separator(),
-                    gpui::MenuItem::action("Quit canview", help::QuitApp),
+                    gpui::MenuItem::action("Quit can-viewer", help::QuitApp),
                 ],
             },
         ]);
         cx.on_action(|_action: &help::OpenGitHubUrl, cx| {
-            cx.open_url("https://github.com/ucanme/canview");
+            cx.open_url("https://github.com/ucanme/can-viewer");
         });
         cx.on_action(|_action: &help::SendFeedbackEmail, cx| {
-            cx.open_url("mailto:admin@ucan.me?subject=canview%20Feedback");
+            cx.open_url("mailto:admin@ucan.me?subject=can-viewer%20Feedback");
         });
         cx.on_action(|_action: &help::QuitApp, cx| {
             cx.quit();
@@ -143,9 +143,9 @@ fn main() {
             let version = env!("CANVIEW_VERSION");
             cx.spawn(async move |cx| {
                 let _ = rfd::AsyncMessageDialog::new()
-                    .set_title("About canview")
+                    .set_title("About can-viewer")
                     .set_description(&format!(
-                        "canview {}\n\nOpen-source cross-platform CAN/LIN bus data analysis tool\n\nhttps://github.com/ucanme/canview",
+                        "can-viewer {}\n\nOpen-source cross-platform CAN/LIN bus data analysis tool\n\nhttps://github.com/ucanme/can-viewer",
                         version
                     ))
                     .set_buttons(rfd::MessageButtons::Ok)
@@ -166,7 +166,7 @@ fn main() {
                     },
                 })),
                 titlebar: Some(TitlebarOptions {
-                    title: Some("canview".into()),
+                    title: Some("can-viewer".into()),
                     appears_transparent: true,
                     traffic_light_position: None,
                 }),

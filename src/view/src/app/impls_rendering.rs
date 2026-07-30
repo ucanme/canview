@@ -2161,7 +2161,7 @@ impl Render for CanViewerApp {
                         .on_mouse_down(gpui::MouseButton::Left, |_event, _window, cx| {
                             cx.stop_propagation();
                         })
-                        // About canview
+                        // About can-viewer
                         .child(
                             div()
                                 .px_3()
@@ -2177,9 +2177,9 @@ impl Render for CanViewerApp {
                                         let v = version.clone();
                                         cx.spawn(async move |cx| {
                                             let _ = rfd::AsyncMessageDialog::new()
-                                                .set_title("About canview")
+                                                .set_title("About can-viewer")
                                                 .set_description(&format!(
-                                                    "canview v{}\n\nOpen-source cross-platform CAN/LIN bus data analysis tool\n\nhttps://github.com/ucanme/canview",
+                                                    "can-viewer v{}\n\nOpen-source cross-platform CAN/LIN bus data analysis tool\n\nhttps://github.com/ucanme/can-viewer",
                                                     v
                                                 ))
                                                 .set_buttons(rfd::MessageButtons::Ok)
@@ -2194,7 +2194,7 @@ impl Render for CanViewerApp {
                                         });
                                     }
                                 })
-                                .child(format!("About canview v{}", version)),
+                                .child(format!("About can-viewer v{}", version)),
                         )
                         // Separator
                         .child(
@@ -2215,7 +2215,7 @@ impl Render for CanViewerApp {
                                 .cursor_pointer()
                                 .on_mouse_down(gpui::MouseButton::Left, move |_event, _window, cx| {
                                     cx.stop_propagation();
-                                    cx.open_url("https://github.com/ucanme/canview");
+                                    cx.open_url("https://github.com/ucanme/can-viewer");
                                     view_for_github.update(cx, |app, cx| {
                                         app.show_help_menu = false;
                                         cx.notify();
@@ -2234,7 +2234,7 @@ impl Render for CanViewerApp {
                                 .cursor_pointer()
                                 .on_mouse_down(gpui::MouseButton::Left, move |_event, _window, cx| {
                                     cx.stop_propagation();
-                                    cx.open_url("mailto:admin@ucan.me?subject=canview%20Feedback");
+                                    cx.open_url("mailto:admin@ucan.me?subject=can-viewer%20Feedback");
                                     view_for_feedback.update(cx, |app, cx| {
                                         app.show_help_menu = false;
                                         cx.notify();
@@ -2442,7 +2442,7 @@ impl Render for CanViewerApp {
                             div()
                                 .text_xs()
                                 .text_color(rgb(0xa6adc8))
-                                .child("Paste the share URL from another canview instance:"),
+                                .child("Paste the share URL from another can-viewer instance:"),
                         )
                         .child(
                             div()

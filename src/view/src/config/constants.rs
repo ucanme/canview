@@ -1,7 +1,7 @@
 //! Configuration constants and helper functions
 //!
 //! This module contains configuration-related constants and helper functions
-//! for the CanView application.
+//! for the can-viewer application.
 
 use std::path::PathBuf;
 

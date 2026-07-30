@@ -707,7 +707,7 @@ impl CanViewerApp {
                     WindowOptions {
                         window_bounds: Some(WindowBounds::Windowed(saved_bounds)),
                         titlebar: Some(TitlebarOptions {
-                            title: Some("canview".into()),
+                            title: Some("can-viewer".into()),
                             appears_transparent: true,
                             traffic_light_position: None,
                         }),
@@ -744,7 +744,7 @@ impl CanViewerApp {
                     WindowOptions {
                         window_bounds: Some(WindowBounds::Windowed(display_bounds)),
                         titlebar: Some(TitlebarOptions {
-                            title: Some("canview".into()),
+                            title: Some("can-viewer".into()),
                             appears_transparent: true,
                             traffic_light_position: None,
                         }),

@@ -264,7 +264,7 @@ mod tests {
     impl TempDir {
         fn new() -> std::io::Result<Self> {
             let mut p = std::env::temp_dir();
-            p.push(format!("canview-test-{}-{}", std::process::id(), next_id()));
+            p.push(format!("can-viewer-test-{}-{}", std::process::id(), next_id()));
             fs::create_dir_all(&p)?;
             Ok(Self(p))
         }

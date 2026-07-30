@@ -342,7 +342,7 @@ fn main() {
     println!("   - 4种不同类型的损坏数据");
     println!("   - 预期结果: 成功解析{}个消息，报告4个错误", object_count);
     println!("\n📝 使用方法:");
-    println!("   1. 运行 canview 应用");
+    println!("   1. 运行 can-viewer 应用");
     println!("   2. 点击 'Open BLF' 按钮");
     println!("   3. 选择 {} 文件", filename);
     println!("   4. 检查状态栏和logs视图，应该看到成功解析的消息和错误信息\n");

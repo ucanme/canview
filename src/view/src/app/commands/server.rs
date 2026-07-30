@@ -66,7 +66,7 @@ impl CanViewerApp {
         let (tx, rx) = std::sync::mpsc::channel();
 
         std::thread::Builder::new()
-            .name("canview-import".into())
+            .name("can-viewer-import".into())
             .spawn(move || {
                 let rt = tokio::runtime::Builder::new_current_thread()
                     .enable_all()
