@@ -1,0 +1,44 @@
+src/view/src/app/impls_rendering.rs
+  s_790df9e047e933::t_a33031753edc51 2164,2180,2182,2197,2218,2237,2445
+src/view/src/server/handlers.rs
+  s_790df9e047e933::t_cb68147704961a 48
+src/view/src/views/status_view.rs
+  s_790df9e047e933::t_a33031753edc51 41
+src/view/src/config/constants.rs
+  s_790df9e047e933::t_0a0eeed282f81e 4
+src/view/src/models/mod.rs
+  s_790df9e047e933::t_0a0eeed282f81e 1
+src/blf/src/bin/gen_corrupted_blf.rs
+  s_790df9e047e933::t_a33031753edc51 345
+src/view/src/ui/zed_style/enhanced_text_input.rs
+  s_790df9e047e933::t_a33031753edc51 4
+src/view/src/ui/mod.rs
+  s_790df9e047e933::t_a33031753edc51 35
+src/view/src/app/commands/server.rs
+  s_790df9e047e933::t_a33031753edc51 69
+src/view/src/handlers/drag_drop.rs
+  s_790df9e047e933::t_a33031753edc51 267
+src/view/src/app/impls.rs
+  s_790df9e047e933::t_a33031753edc51 710,747
+src/view/src/main.rs
+  s_790df9e047e933::t_a33031753edc51 96,121,123,129,134,137,146,148,169
+src/view/src/server/mod.rs
+  s_790df9e047e933::t_a33031753edc51 99
+  s_790df9e047e933::t_cb68147704961a 3,113,118,135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "0b586fc6b84a9923f875ce5829d4bd8bee4ba9ad",
+  "prompts": {},
+  "sessions": {
+    "s_790df9e047e933": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d78f7f1-6460-4c57-b80a-37d892318959",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
