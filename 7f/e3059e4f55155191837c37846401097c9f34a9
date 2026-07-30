@@ -1,0 +1,23 @@
+docs/superpowers/plans/2026-07-31-signal-sets.md
+  s_04d90952119fff::t_0ca4aae21f556c 1-14,16-960,962-969,974-979,981-982,1007-1301,1305-1309,1311-1320,1341-1361,1363,1367-1595
+  s_04d90952119fff::t_d0822c1883c423 1302-1304,1310,1321-1340,1362,1364-1366
+  s_04d90952119fff::t_d81aad150a6810 961,970-973,980,983-1006
+  s_04d90952119fff::t_853e72b55c656c 1596
+  s_04d90952119fff::t_8c33fa067dacc2 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "7fe3059e4f55155191837c37846401097c9f34a9",
+  "prompts": {},
+  "sessions": {
+    "s_04d90952119fff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8e61c224-a58a-4b5b-a842-5d741ff2c1da",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
