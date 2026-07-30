@@ -178,8 +178,8 @@ cargo build --release -p view --target x86_64-apple-darwin
 
 # Universal
 lipo -create -output can-viewer-universal \
-  target/aarch64-apple-darwin/release/view \
-  target/x86_64-apple-darwin/release/view
+  target/aarch64-apple-darwin/release/viewer \
+  target/x86_64-apple-darwin/release/viewer
 ```
 
 ### Windows

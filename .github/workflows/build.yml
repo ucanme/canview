@@ -149,7 +149,7 @@ jobs:
 
       - name: Strip binary (Linux)
         if: runner.os == 'Linux'
-        run: strip target/${{ matrix.target }}/release/view || true
+        run: strip target/${{ matrix.target }}/release/viewer || true
 
       - name: Regenerate can-viewer.icns from PNG sources (macOS)
         if: runner.os == 'macOS'
@@ -192,7 +192,7 @@ jobs:
           MACOS_DIR="$CONTENTS/MacOS"
           RESOURCES_DIR="$CONTENTS/Resources"
           mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
-          cp target/${{ matrix.target }}/release/view "$MACOS_DIR/can-viewer"
+          cp target/${{ matrix.target }}/release/viewer "$MACOS_DIR/can-viewer"
           chmod +x "$MACOS_DIR/can-viewer"
           cp assets/ico/can-viewer.icns "$RESOURCES_DIR/can-viewer.icns"
           # Write Info.plist without indentation (plist parser is strict
@@ -225,7 +225,7 @@ jobs:
       - name: Copy binary (Linux)
         if: runner.os == 'Linux'
         run: |
-          cp target/${{ matrix.target }}/release/view upload/${{ matrix.artifact_name }}
+          cp target/${{ matrix.target }}/release/viewer upload/${{ matrix.artifact_name }}
           chmod +x upload/${{ matrix.artifact_name }}
 
       - name: Copy .app bundle (macOS)
@@ -237,7 +237,7 @@ jobs:
       - name: Copy binary (Windows)
         if: runner.os == 'Windows'
         run: |
-          cp target/${{ matrix.target }}/release/view.exe upload/${{ matrix.artifact_name }}
+          cp target/${{ matrix.target }}/release/viewer.exe upload/${{ matrix.artifact_name }}
 
       - name: Create archive (Linux)
         if: runner.os == 'Linux'

@@ -59,7 +59,7 @@ sudo apt-get install libxkbcommon-dev libx11-dev libegl1-mesa-dev
 # Build and run
 git clone https://github.com/cantool/can-viewer.git
 cd can-viewer
-cargo run --release --bin view
+cargo run --release --bin viewer
 ```
 
 Pre-built binaries: [Releases](https://github.com/cantool/can-viewer/releases) (Windows / macOS / Linux)

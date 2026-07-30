@@ -45,7 +45,7 @@ echo ""
 
 # 3. 复制可执行文件
 echo "📋 步骤 3: 复制文件..."
-cp "./target/release/view" "$MACOS_DIR/can-viewer"
+cp "./target/release/viewer" "$MACOS_DIR/can-viewer"
 chmod +x "$MACOS_DIR/can-viewer"
 
 # 4. 复制资源文件

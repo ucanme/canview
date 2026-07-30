@@ -18,7 +18,7 @@ RESOURCES_DIR="$CONTENTS/Resources"
 rm -rf "$APP_DIR"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 
-cp ./target/debug/view "$MACOS_DIR/can-viewer"
+cp ./target/debug/viewer "$MACOS_DIR/can-viewer"
 chmod +x "$MACOS_DIR/can-viewer"
 
 if [ -f assets/ico/can-viewer.icns ]; then

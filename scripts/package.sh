@@ -39,9 +39,9 @@ echo ""
 # 复制可执行文件
 echo "📋 步骤 3: 复制可执行文件..."
 if [ "$PLATFORM" = "macos" ]; then
-    cp ./target/release/view "$PACKAGE_DIR/bin/can-viewer"
+    cp ./target/release/viewer "$PACKAGE_DIR/bin/can-viewer"
 else
-    cp ./target/release/view "$PACKAGE_DIR/bin/can-viewer"
+    cp ./target/release/viewer "$PACKAGE_DIR/bin/can-viewer"
 fi
 chmod +x "$PACKAGE_DIR/bin/can-viewer"
 echo "✅ 可执行文件已复制"

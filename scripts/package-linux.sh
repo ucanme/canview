@@ -46,7 +46,7 @@ echo ""
 
 # 3. 复制可执行文件
 echo "📋 步骤 3: 复制文件..."
-cp "./target/release/view" "$PACKAGE_DIR/usr/bin/$APP_NAME"
+cp "./target/release/viewer" "$PACKAGE_DIR/usr/bin/$APP_NAME"
 chmod +x "$PACKAGE_DIR/usr/bin/$APP_NAME"
 
 # 4. 复制资源文件
