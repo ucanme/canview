@@ -1,0 +1,22 @@
+src/view/src/library/mod.rs
+  s_04d90952119fff::t_2702de338af872 5-17
+src/view/src/library/signal_sets.rs
+  s_04d90952119fff::t_07eb90bc0584b9 26-112
+  s_04d90952119fff::t_af72bbd4bf04b8 1-25,113-246
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "6cd2c7acec917d6ffc8818fd138c4ff57375d2da",
+  "prompts": {},
+  "sessions": {
+    "s_04d90952119fff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8e61c224-a58a-4b5b-a842-5d741ff2c1da",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
