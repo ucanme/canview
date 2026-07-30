@@ -1,6 +1,6 @@
-# CANVIEW 使用文档
+# can-viewer 使用文档
 
-CANVIEW 实战手册 —— BLF 日志查看、信号波形绘制、DBC/LDF 信号库管理。
+can-viewer 实战手册 —— BLF 日志查看、信号波形绘制、DBC/LDF 信号库管理。
 
 > **其他语言:** [English User Guide](USAGE.md)
 
@@ -284,7 +284,7 @@ token 是一个不透明的随机字符串,每个请求都会校验 —— 分�
 
 ## 键盘快捷键
 
-CANVIEW 没有全局热键注册表,快捷键按视图分别处理。
+can-viewer 没有全局热键注册表,快捷键按视图分别处理。
 
 ### 日志视图
 
@@ -338,7 +338,7 @@ CANVIEW 没有全局热键注册表,快捷键按视图分别处理。
 
 ### 磁盘上的库文件
 
-添加通道时,DBC/LDF 文件被复制到 `<config_dir>/libraries/<库>/<版本>/<通道>/`。macOS 配置目录是 `~/Library/Application Support/canview`,Linux 是 `~/.config/canview`,Windows 是 `%APPDATA%/canview`。
+添加通道时,DBC/LDF 文件被复制到 `<config_dir>/libraries/<库>/<版本>/<通道>/`。macOS 配置目录是 `~/Library/Application Support/can-viewer`,Linux 是 `~/.config/can-viewer`,Windows 是 `%APPDATA%/can-viewer`。
 
 ### 仅存于内存(不持久化)
 
