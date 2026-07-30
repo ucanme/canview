@@ -1,0 +1,27 @@
+README.md
+  s_790df9e047e933::t_1bc06d630fcd0d 3,5,24
+  s_790df9e047e933::t_25a0e13872b24f 61
+  s_790df9e047e933::t_6ab76175e013dd 122
+LICENSE.txt
+  s_790df9e047e933::t_6ab76175e013dd 3
+README_zh.md
+  s_790df9e047e933::t_1bc06d630fcd0d 3,5,24
+  s_790df9e047e933::t_edcac24dbe677f 61
+  s_790df9e047e933::t_6ab76175e013dd 122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "d9f7510c35915f9ad0fbcf77e6dfdc64d441f8f6",
+  "prompts": {},
+  "sessions": {
+    "s_790df9e047e933": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d78f7f1-6460-4c57-b80a-37d892318959",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
