@@ -1325,8 +1325,17 @@ fn render_add_channel_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoEl
                 // Create fresh InputState entities in the event handler (not in render)
                 let id_input = cx.new(|cx| InputState::new(window, cx).placeholder("Channel ID"));
                 cx.subscribe(&id_input, |this, input, event, cx| {
-                    if let gpui_component::input::InputEvent::Change = event {
-                        this.new_channel_id = input.read(cx).text().to_string();
+                    match event {
+                        gpui_component::input::InputEvent::Change => {
+                            this.new_channel_id = input.read(cx).text().to_string();
+                        }
+                        gpui_component::input::InputEvent::PressEnter { .. } => {
+                            // Defer focus to next render where window is available
+                            this.pending_add_channel_focus =
+                                Some(crate::app::PendingAddChannelFocus::ChannelName);
+                            cx.notify();
+                        }
+                        _ => {}
                     }
                 })
                 .detach();
@@ -1335,8 +1344,17 @@ fn render_add_channel_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoEl
                 let name_input =
                     cx.new(|cx| InputState::new(window, cx).placeholder("Channel name"));
                 cx.subscribe(&name_input, |this, input, event, cx| {
-                    if let gpui_component::input::InputEvent::Change = event {
-                        this.new_channel_name = input.read(cx).text().to_string();
+                    match event {
+                        gpui_component::input::InputEvent::Change => {
+                            this.new_channel_name = input.read(cx).text().to_string();
+                        }
+                        gpui_component::input::InputEvent::PressEnter { .. } => {
+                            // 让 render 在下次帧调 window.blur()，name 输入框光标自然消失
+                            this.pending_add_channel_focus =
+                                Some(crate::app::PendingAddChannelFocus::ChannelBlur);
+                            cx.notify();
+                        }
+                        _ => {}
                     }
                 })
                 .detach();
@@ -1387,10 +1405,9 @@ fn render_add_channel_input_row_with_path(
                 this.channel_db_path_input = None;
                 this.new_channel_db_path.clear(); // Clear selected path
                 cx.notify();
-            } else if event.keystroke.key == "enter" {
-                // Save the channel configuration
-                this.save_channel_config(cx);
             }
+            // Enter key handling moved to per-input PressEnter subscriptions
+            // (see render_add_channel_button) and the ✓ Confirm button.
         }))
         .child(
             // 类型选择器 - 可点击切换，宽度与表头对齐
@@ -1557,6 +1574,9 @@ fn render_add_channel_input_row_with_path(
                 .flex_shrink_0()
                 .child(
                     // 确认按钮
+                    // Note: Enter-on-✓ requires a FocusHandle (out of scope per
+                    // plan Task 8 design note). User clicks ✓ or tabs to it via
+                    // the row container's focus.
                     div()
                         .id("add-ch-confirm")
                         .w(px(20.))

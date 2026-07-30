@@ -40,6 +40,8 @@ pub struct RuntimeState {
     pub start_time: Option<chrono::NaiveDateTime>,
     pub active_library_id: Option<String>,
     pub active_version_name: Option<String>,
+    pub expanded_channels: std::collections::HashSet<u16>,
+    pub expanded_messages: std::collections::HashSet<(u16, u32)>,
 }
 
 use blf::LogObject;
@@ -233,7 +235,10 @@ pub struct CanViewApp {
     pub hover_point: Option<HoverPoint>,
     pub plot_hover_time: Option<f64>,
     pub plot_hover_x: Option<Pixels>,
+    pub plot_hover_y: Option<Pixels>,
     pub plot_width_px: Pixels,
+    /// Scroll handle for the plot canvas (vertical scroll over the chart list).
+    pub plot_scroll_handle: gpui::ScrollHandle,
 
     // File menu dropdown state
     pub show_file_menu: bool,
@@ -242,6 +247,14 @@ pub struct CanViewApp {
 
     // Selected row index (for row-highlight on click-to-copy)
     pub selected_row_index: Option<usize>,
+
+    // Plot sidebar fold state (session-only, not persisted to disk)
+    pub expanded_channels: std::collections::HashSet<u16>,
+    pub expanded_messages: std::collections::HashSet<(u16, u32)>, // (ch_id, msg_id)
+
+    // Add-channel form Enter-key focus chain: set by PressEnter subscribe,
+    // consumed by render() which has window access.
+    pub pending_add_channel_focus: Option<PendingAddChannelFocus>,
 
     // Server state
     pub server_handle: Option<crate::server::ServerHandle>,
@@ -262,6 +275,17 @@ pub struct HoverPoint {
     pub x_px: Pixels,
     pub y_px: Pixels,
     pub series_name: String,
+}
+
+/// Which input to focus next when the user presses Enter in the add-channel form.
+/// Set by `InputEvent::PressEnter` subscriptions (no window access there),
+/// consumed by `render()` which has window access.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum PendingAddChannelFocus {
+    /// Focus the channel name input.
+    ChannelName,
+    /// Blur the window (so the channel name input loses focus and the cursor stops blinking).
+    ChannelBlur,
 }
 
 /// Library dialog type
@@ -391,12 +415,17 @@ impl CanViewApp {
             hover_point: None,
             plot_hover_time: None,
             plot_hover_x: None,
+            plot_hover_y: None,
             plot_width_px: gpui::px(0.0),
+            plot_scroll_handle: gpui::ScrollHandle::new(),
             // File menu dropdown state
             show_file_menu: false,
             // Help menu dropdown state
             show_help_menu: false,
             selected_row_index: None,
+            expanded_channels: std::collections::HashSet::new(),
+            expanded_messages: std::collections::HashSet::new(),
+            pending_add_channel_focus: None,
             // Server state
             server_handle: None,
             show_share_dialog: false,
@@ -436,6 +465,8 @@ impl CanViewApp {
             start_time: self.start_time,
             active_library_id: self.active_library_id.clone(),
             active_version_name: self.active_version_name.clone(),
+            expanded_channels: self.expanded_channels.clone(),
+            expanded_messages: self.expanded_messages.clone(),
         }
     }
 
@@ -470,6 +501,8 @@ impl CanViewApp {
         self.start_time = state.start_time;
         self.active_library_id = state.active_library_id;
         self.active_version_name = state.active_version_name;
+        self.expanded_channels = state.expanded_channels;
+        self.expanded_messages = state.expanded_messages;
         eprintln!("✅ State restored. Now have: {:?} view, {} files, {} messages, {} plot series",
             self.current_view, self.files.len(), self.messages.len(), self.plot_data.len());
     }

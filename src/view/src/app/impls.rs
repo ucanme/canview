@@ -139,12 +139,17 @@ impl CanViewApp {
             hover_point: None,
             plot_hover_time: None,
             plot_hover_x: None,
+            plot_hover_y: None,
             plot_width_px: px(0.0),
+            plot_scroll_handle: gpui::ScrollHandle::new(),
             // File menu dropdown state
             show_file_menu: false,
             // Help menu dropdown state
             show_help_menu: false,
             selected_row_index: None,
+            expanded_channels: std::collections::HashSet::new(),
+            expanded_messages: std::collections::HashSet::new(),
+            pending_add_channel_focus: None,
             // Server state
             server_handle: None,
             show_share_dialog: false,
@@ -690,6 +695,7 @@ impl CanViewApp {
         self.hover_point = None;
         self.plot_hover_time = None;
         self.plot_hover_x = None;
+        self.plot_hover_y = None;
 
         if self.is_maximized {
             // Restore to normal size
@@ -887,12 +893,17 @@ impl CanViewApp {
             hover_point: None,
             plot_hover_time: None,
             plot_hover_x: None,
+            plot_hover_y: None,
             plot_width_px: px(0.0),
+            plot_scroll_handle: gpui::ScrollHandle::new(),
             // File menu dropdown state
             show_file_menu: false,
             // Help menu dropdown state
             show_help_menu: false,
             selected_row_index: None,
+            expanded_channels: std::collections::HashSet::new(),
+            expanded_messages: std::collections::HashSet::new(),
+            pending_add_channel_focus: None,
             // Server state
             server_handle: None,
             show_share_dialog: false,
@@ -1406,6 +1417,9 @@ impl CanViewApp {
         // Save config
         self.save_config(cx);
 
+        // 刷新 plot 数据：库版本变了，已选信号对应的 series 要重新从新 DBC 提取
+        crate::ui::views::chart_view::extract_and_update_series_data(self);
+
         self.status_msg =
             format!("✅ Applied version {} to all plot channels", version_name).into();
         cx.notify();
@@ -1731,6 +1745,49 @@ impl CanViewApp {
         cx.notify();
     }
 
+    /// Reset plot state without triggering a re-render. Used by tests and by
+    /// `clear_selected_signals`. Splits the data-reset from the notify so the
+    /// reset can be unit-tested without a context.
+    pub fn clear_plot_state(&mut self) {
+        self.selected_signals.clear();
+        self.plot_data = std::sync::Arc::from([]);
+        self.plot_full_data = std::sync::Arc::from([]);
+        self.plot_zoom_start = None;
+        self.plot_zoom_end = None;
+    }
+
+    /// Clear all selected signals and the current plot data. Bound to the
+    /// "Clear all" button in the plot sidebar.
+    pub fn clear_selected_signals(&mut self, cx: &mut Context<Self>) {
+        self.clear_plot_state();
+        cx.notify();
+    }
+
+    /// Toggle the expansion of a channel in the plot sidebar.
+    /// Uses accordion mode: expanding channel B collapses all other channels
+    /// (and removes their messages from `expanded_messages`).
+    pub fn toggle_channel_expanded(&mut self, ch_id: u16) {
+        if self.expanded_channels.contains(&ch_id) {
+            self.expanded_channels.remove(&ch_id);
+        } else {
+            self.expanded_channels.clear();
+            self.expanded_channels.insert(ch_id);
+            // Drop messages belonging to other channels
+            self.expanded_messages.retain(|(c, _)| *c == ch_id);
+        }
+    }
+
+    /// Toggle the expansion of a message in the plot sidebar.
+    /// Multiple messages can be expanded simultaneously (no accordion).
+    pub fn toggle_message_expanded(&mut self, ch_id: u16, msg_id: u32) {
+        let key = (ch_id, msg_id);
+        if self.expanded_messages.contains(&key) {
+            self.expanded_messages.remove(&key);
+        } else {
+            self.expanded_messages.insert(key);
+        }
+    }
+
     /// Save channel configuration
     pub fn save_channel_config(&mut self, cx: &mut Context<Self>) {
         // Debug: print current state
@@ -1946,6 +2003,9 @@ impl CanViewApp {
                         self.apply_version_to_mappings(&library_id.clone(), &version_name.clone(), cx);
                     }
 
+                    // 刷新 plot 数据（即使是非激活版本路径，也是 no-op 无害）
+                    crate::ui::views::chart_view::extract_and_update_series_data(self);
+
                     cx.notify();
                 }
                 Err(e) => {
@@ -2029,6 +2089,11 @@ impl CanViewApp {
                 Ok(())
             };
 
+            // 若删除的是激活版本的通道，刷新 plot 数据
+            if is_active_version {
+                crate::ui::views::chart_view::extract_and_update_series_data(self);
+            }
+
             self.status_msg = match cleanup_result {
                 Ok(()) => format!("Channel {} deleted", channel_id).into(),
                 Err(e) => format!(
@@ -2092,5 +2157,77 @@ impl CanViewApp {
         self.status_msg =
             "Quick import temporarily unavailable. Please use library management interface.".into();
         cx.notify();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::{DataPoint, Series};
+
+    fn make_app_with_selected(signal_id: &str) -> CanViewApp {
+        let mut app = CanViewApp::new_state();
+        app.selected_signals = vec![signal_id.to_string()];
+        let series = Series {
+            name: signal_id.to_string(),
+            color: gpui::hsla(0.0, 0.0, 0.0, 1.0),
+            unit: None,
+            points: vec![DataPoint { time: 0.0, value: 1.0, index: 0 }].into(),
+            time_labels: vec![],
+        };
+        app.plot_data = std::sync::Arc::from([series]);
+        app.plot_zoom_start = Some(0.0);
+        app.plot_zoom_end = Some(10.0);
+        app
+    }
+
+    #[test]
+    fn clear_selected_signals_resets_plot() {
+        let mut app = make_app_with_selected("CAN:1:0x100:EngineSpeed");
+        app.clear_plot_state();
+        assert!(app.selected_signals.is_empty());
+        assert!(app.plot_data.is_empty());
+        assert!(app.plot_zoom_start.is_none());
+        assert!(app.plot_zoom_end.is_none());
+    }
+
+    #[test]
+    fn toggle_channel_expanded_accordion_mode() {
+        let mut app = CanViewApp::new_state();
+        // Expand channel 1
+        app.toggle_channel_expanded(1);
+        assert!(app.expanded_channels.contains(&1));
+        // Expand channel 2 — channel 1 should collapse (accordion)
+        app.toggle_channel_expanded(2);
+        assert!(!app.expanded_channels.contains(&1));
+        assert!(app.expanded_channels.contains(&2));
+        // Collapse channel 2
+        app.toggle_channel_expanded(2);
+        assert!(app.expanded_channels.is_empty());
+    }
+
+    #[test]
+    fn toggle_channel_expanded_clears_other_channel_messages() {
+        let mut app = CanViewApp::new_state();
+        // Expand channel 1 + a message under it
+        app.toggle_channel_expanded(1);
+        app.toggle_message_expanded(1, 0x100);
+        assert!(app.expanded_messages.contains(&(1, 0x100)));
+        // Expand channel 2 — messages belonging to channel 1 should be removed
+        app.toggle_channel_expanded(2);
+        assert!(!app.expanded_messages.contains(&(1, 0x100)));
+    }
+
+    #[test]
+    fn toggle_message_expanded_independent_per_message() {
+        let mut app = CanViewApp::new_state();
+        app.toggle_message_expanded(1, 0x100);
+        app.toggle_message_expanded(1, 0x200);
+        assert!(app.expanded_messages.contains(&(1, 0x100)));
+        assert!(app.expanded_messages.contains(&(1, 0x200)));
+        // Collapse one
+        app.toggle_message_expanded(1, 0x100);
+        assert!(!app.expanded_messages.contains(&(1, 0x100)));
+        assert!(app.expanded_messages.contains(&(1, 0x200)));
     }
 }

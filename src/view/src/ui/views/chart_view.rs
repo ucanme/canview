@@ -4,7 +4,8 @@ use crate::models::{DataPoint, Series};
 use blf::LogObject;
 use gpui::prelude::*;
 use gpui::*;
-use gpui_component::chart::LineChart;
+use gpui_component::ActiveTheme;
+use gpui_component::PixelsExt;
 use gpui_component::v_flex;
 use gpui_component::scroll::ScrollableElement;
 use std::sync::Arc;
@@ -28,7 +29,11 @@ pub fn render_plot_view(window: &mut Window, app: &mut CanViewApp, view: Entity<
                 .child(format!("Error: Too many plot series ({}). Please reload the application.", series_data.len())));
     }
 
-    let has_data = !series_data.is_empty();
+    // Show the chart canvas as long as the user has selected signals — even if
+    // none of those signals have data in the log, render_chart_canvas will draw
+    // ⊘ no-data placeholder cards for them. Only fall back to render_empty_state
+    // when no signals are selected at all.
+    let has_data = !app.selected_signals.is_empty();
 
     div()
         .size_full()
@@ -44,7 +49,7 @@ pub fn render_plot_view(window: &mut Window, app: &mut CanViewApp, view: Entity<
                 .border_color(rgb(0x27272a))
                 .flex()
                 .flex_col()
-                .child(render_signal_sidebar(window, app, view.clone(), cx))
+                .child(super::plot_sidebar::render_signal_sidebar(window, app, view.clone(), cx))
         )
         .child(
             // Right Main Area: Charts
@@ -53,19 +58,30 @@ pub fn render_plot_view(window: &mut Window, app: &mut CanViewApp, view: Entity<
                 .h_full()
                 .flex()
                 .flex_col()
+                .relative()  // for hover tooltip absolute positioning (sibling to scroll container, so it doesn't extend the scroll bounds)
                 .child(render_toolbar(app, cx))
                 .child(
-                    div()
-                        .flex_1()
-                        .p_4()
-                        .overflow_y_scrollbar()
-                        .child(
-                            if !has_data {
-                                render_empty_state(app)
-                            } else {
-                                render_chart_canvas(app, series_data, cx)
-                            }
-                        )
+                    if !has_data {
+                        div()
+                            .flex_1()
+                            .p_4()
+                            .child(render_empty_state(app))
+                            .into_any_element()
+                    } else {
+                        render_chart_canvas(app, series_data.clone(), cx)
+                    }
+                )
+                .child(
+                    // Hover tooltip rendered as a sibling of the scroll container
+                    // (NOT inside v_flex) so its absolute positioning doesn't
+                    // extend the scroll content bounds (which caused infinite
+                    // scroll-down past the last card).
+                    if has_data {
+                        render_hover_tooltip_overlay(app, &series_data, px(320.0))
+                            .into_any_element()
+                    } else {
+                        div().into_any_element()
+                    }
                 )
         )
 }
@@ -129,453 +145,8 @@ fn render_toolbar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoEl
         )
 }
 
-/// Signal list item types for the sidebar
-#[derive(Clone)]
-enum SidebarItem {
-    ChannelHeader {
-        name: String,
-        ch_id: u16,
-        is_can: bool,
-        is_loaded: bool,
-        mapping: Option<crate::models::ChannelMapping>,
-    },
-    MessageHeader {
-        name: String,
-        id: u32,
-        is_can: bool,
-        is_expanded: bool,
-    },
-    SignalItem {
-        name: String,
-        id: String,
-        size: u32,
-        is_selected: bool,
-        is_can: bool,
-    },
-}
 
-/// Render the signal selection sidebar
-fn render_signal_sidebar(_window: &mut Window, app: &mut CanViewApp, view: Entity<CanViewApp>, cx: &mut Context<CanViewApp>) -> impl IntoElement {
-    // 1. Prepare the flattened and filtered list of items
-    let mut items = Vec::new();
-    let filter_text = app.signal_filter_text.to_lowercase();
-    let selected_signals = &app.selected_signals;
-
-    // A. Loaded Databases
-    let mut dbc_keys: Vec<_> = app.dbc_channels.keys().collect();
-    dbc_keys.sort();
-    for &ch_id in &dbc_keys {
-        if let Some(dbc) = app.dbc_channels.get(ch_id) {
-            let ch_name = format!("Channel {} (CAN)", ch_id);
-            
-            // Collect all matching messages and signals for this channel
-            let mut channel_has_matches = filter_text.is_empty();
-            let mut channel_items = Vec::new();
-
-            let mut messages: Vec<_> = dbc.messages.values().collect();
-            messages.sort_by_key(|m| m.id);
-
-            for msg in messages {
-                let matches_msg = msg.name.to_lowercase().contains(&filter_text)
-                    || format!("0x{:x}", msg.id).to_lowercase().contains(&filter_text);
-                
-                let matching_signals: Vec<_> = msg.signals.values()
-                    .filter(|s| s.name.to_lowercase().contains(&filter_text))
-                    .collect();
-
-                if matches_msg || !matching_signals.is_empty() {
-                    channel_has_matches = true;
-                    
-                    channel_items.push(SidebarItem::MessageHeader {
-                        name: msg.name.clone(),
-                        id: msg.id,
-                        is_can: true,
-                        is_expanded: true, // Always expanded for now, could add state later
-                    });
-
-                    let mut signals: Vec<_> = msg.signals.values().collect();
-                    signals.sort_by_key(|s| s.start_bit);
-                    
-                    for sig in signals {
-                        if filter_text.is_empty() || sig.name.to_lowercase().contains(&filter_text) || matches_msg {
-                            // Fix ID format: BUS:CHANNEL:MSG_ID:SIG_NAME
-                            let signal_id = format!("CAN:{}:{}:{}", ch_id, msg.id, sig.name);
-                            channel_items.push(SidebarItem::SignalItem {
-                                name: sig.name.clone(),
-                                id: signal_id.clone(),
-                                size: sig.signal_size,
-                                is_selected: selected_signals.contains(&signal_id),
-                                is_can: true,
-                            });
-                        }
-                    }
-                }
-            }
-
-            if channel_has_matches {
-                items.push(SidebarItem::ChannelHeader {
-                    name: ch_name,
-                    ch_id: *ch_id,
-                    is_can: true,
-                    is_loaded: true,
-                    mapping: None,
-                });
-                items.extend(channel_items);
-            }
-        }
-    }
-
-    let mut ldf_keys: Vec<_> = app.ldf_channels.keys().collect();
-    ldf_keys.sort();
-    for &ch_id in &ldf_keys {
-        if let Some(ldf) = app.ldf_channels.get(ch_id) {
-            let ch_name = format!("Channel {} (LIN)", ch_id);
-            let mut channel_has_matches = filter_text.is_empty();
-            let mut channel_items = Vec::new();
-
-            let mut frames: Vec<_> = ldf.frames.values().collect();
-            frames.sort_by_key(|f| f.id);
-
-            for frame in frames {
-                let matches_frame = frame.name.to_lowercase().contains(&filter_text)
-                    || format!("0x{:x}", frame.id).to_lowercase().contains(&filter_text);
-                
-                let matching_signals: Vec<_> = frame.signals.iter()
-                    .filter(|s| s.signal_name.to_lowercase().contains(&filter_text))
-                    .collect();
-
-                if matches_frame || !matching_signals.is_empty() {
-                    channel_has_matches = true;
-                    channel_items.push(SidebarItem::MessageHeader {
-                        name: frame.name.clone(),
-                        id: frame.id,
-                        is_can: false,
-                        is_expanded: true,
-                    });
-
-                    for mapping in &frame.signals {
-                        if filter_text.is_empty() || mapping.signal_name.to_lowercase().contains(&filter_text) || matches_frame {
-                            // Fix ID format for LIN as well: LIN:CHANNEL:FRAME_ID:SIG_NAME
-                            let signal_id = format!("LIN:{}:{}:{}", ch_id, frame.id, mapping.signal_name);
-                            let sig_size = ldf.signals.get(&mapping.signal_name).map(|s| s.size).unwrap_or(0);
-                            channel_items.push(SidebarItem::SignalItem {
-                                name: mapping.signal_name.clone(),
-                                id: signal_id.clone(),
-                                size: sig_size,
-                                is_selected: selected_signals.contains(&signal_id),
-                                is_can: false,
-                            });
-                        }
-                    }
-                }
-            }
-
-            if channel_has_matches {
-                items.push(SidebarItem::ChannelHeader {
-                    name: ch_name,
-                    ch_id: *ch_id,
-                    is_can: false,
-                    is_loaded: true,
-                    mapping: None,
-                });
-                items.extend(channel_items);
-            }
-        }
-    }
-
-    // B. Unloaded Configured Channels (Only if not already shown as loaded)
-    let loaded_channels: std::collections::HashSet<_> = items.iter().filter_map(|item| {
-        if let SidebarItem::ChannelHeader { ch_id, .. } = item { Some(*ch_id) } else { None }
-    }).collect();
-
-    for mapping in &app.app_config.mappings {
-        if mapping.library_id.is_some() && mapping.version_name.is_some() {
-            if !loaded_channels.contains(&mapping.channel_id) {
-                let ch_id = mapping.channel_id;
-                let ch_type_str = if mapping.channel_type.is_can() { "CAN" } else { "LIN" };
-                let ch_name = format!("Channel {} ({}) [Unloaded]", ch_id, ch_type_str);
-                
-                if filter_text.is_empty() || ch_name.to_lowercase().contains(&filter_text) {
-                    items.push(SidebarItem::ChannelHeader {
-                        name: ch_name,
-                        ch_id,
-                        is_can: mapping.channel_type.is_can(),
-                        is_loaded: false,
-                        mapping: Some(mapping.clone()),
-                    });
-                }
-            }
-        }
-    }
-
-    // 3. Render the sidebar
-    div()
-        .size_full()
-        .flex()
-        .flex_col()
-        .bg(rgb(0x0a0a0b)) // Slightly darker for contrast
-        .child(
-            // Sidebar Header
-            div()
-                .px_4()
-                .py_2()
-                .bg(rgb(0x131314))
-                .border_b_1()
-                .border_color(rgb(0x27272a))
-                .flex()
-                .items_center()
-                .justify_between()
-                .child(
-                    div()
-                        .text_xs()
-                        .font_weight(FontWeight::BOLD)
-                        .text_color(rgb(0xe4e4e7))
-                        .child("信号选择 (Signals)")
-                )
-                .child(
-                    div()
-                        .text_xs()
-                        .text_color(rgb(0x71717a))
-                        .child(format!("{}", items.len()))
-                )
-        )
-        .child(
-                // Search Box Area
-                div()
-                    .w_full()
-                    .px_4()
-                    .py_2()
-                    .border_b_1()
-                    .border_color(rgb(0x27272a))
-                    .flex()
-                    .items_center() // 确保垂直居中
-                    .child(
-                        if let Some(input) = &app.signal_search_input {
-                            div()
-                                .flex_1()
-                                .h(px(32.0)) // 保持高度约束，防止过高或过矮
-                                .flex()
-                                .items_center() // 确保 Input 内部垂直居中
-                                .child(Input::new(input).appearance(true))
-                                .into_any_element()
-                        } else {
-                            div()
-                                .flex_1() 
-                                .h(px(32.0))
-                                .flex()
-                                .items_center()
-                                .px_2()
-                                .text_xs()
-                                .text_color(rgb(0x888888))
-                                .child("Search signals...")
-                                .into_any_element()
-                        }
-                    )
-        )
-        .child(
-            // Virtualized List
-            div()
-                .flex_1()
-                .child(
-                    if items.is_empty() {
-                        div()
-                            .p_4()
-                            .text_xs()
-                            .text_color(rgb(0x52525b))
-                            .text_center()
-                            .child("No matches found")
-                            .into_any_element()
-                    } else {
-                        let _scroll_handle = app.signal_scroll_handle.clone();
-                        let item_count = items.len();
-                        let view_entity = view.clone();
-
-                        // Wrap items in Arc to avoid copying large Vec into closure
-                        let items_arc = std::sync::Arc::new(items);
-
-                        uniform_list(
-                            "signal-list",
-                            item_count,
-                            move |range, _window, _cx| {
-                                let items = items_arc.clone();
-                                range.map(|i| {
-                                    render_sidebar_item(&items[i], view_entity.clone())
-                                }).collect::<Vec<_>>()
-                            }
-                        )
-                        .size_full()
-                        .into_any_element()
-                    }
-                )
-        )
-        .child(
-            // Bottom Action Bar: Plot Selected
-            if !app.selected_signals.is_empty() {
-                div()
-                    .p_2()
-                    .bg(rgb(0x131314))
-                    .border_t_1()
-                    .border_color(rgb(0x27272a))
-                    .child(
-                        div()
-                            .px_3()
-                            .py_1p5()
-                            .bg(rgb(0x3b82f6))
-                            .rounded(px(4.0))
-                            .cursor_pointer()
-                            .hover(|s| s.bg(rgb(0x2563eb)))
-                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                eprintln!("Redraw button clicked!");
-                                crate::ui::views::chart_view::extract_and_update_series_data(this);
-                                cx.notify();
-                            }))
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .gap_2()
-                                    .child(div().text_xs().font_weight(FontWeight::BOLD).text_color(rgb(0xffffff)).child(format!("绘制 {} 个信号 (Plot)", app.selected_signals.len())))
-                            )
-                    )
-            } else {
-                div()
-            }
-        )
-}
-
-/// Helper to render a single item in the sidebar list
-fn render_sidebar_item(item: &SidebarItem, view: Entity<CanViewApp>) -> AnyElement {
-    match item {
-        SidebarItem::ChannelHeader { name, ch_id: _, is_can, is_loaded, mapping } => {
-            let lib_id = mapping.as_ref().and_then(|m| m.library_id.clone()).unwrap_or_default();
-            let ver_name = mapping.as_ref().and_then(|m| m.version_name.clone()).unwrap_or_default();
-            
-            div()
-                .px_2()
-                .py_1()
-                .bg(rgb(0x18181b))
-                .border_b_1()
-                .border_color(rgb(0x27272a))
-                .flex()
-                .items_center()
-                .justify_between()
-                .child(
-                    div()
-                        .text_xs()
-                        .font_weight(FontWeight::BOLD)
-                        .text_color(if *is_can { rgb(0x3b82f6) } else { rgb(0xeab308) })
-                        .child(name.clone())
-                )
-                .when(!*is_loaded, |this| {
-                    let lib_id = lib_id.clone();
-                    let ver_name = ver_name.clone();
-                    let view = view.clone();
-                    this.child(
-                        div()
-                            .px_1p5()
-                            .py(px(1.0))
-                            .bg(rgb(0x313244))
-                            .rounded(px(3.0))
-                            .cursor_pointer()
-                            .hover(|s| s.bg(rgb(0x45475a)))
-                            .on_mouse_down(gpui::MouseButton::Left, move |_, _, cx| {
-                                view.update(cx, |this, cx| {
-                                    this.load_library_version(&lib_id, &ver_name, cx);
-                                });
-                            })
-                            .child(div().text_color(rgb(0xcdd6f4)).text_xs().child("Load"))
-                    )
-                })
-                .into_any_element()
-        }
-        SidebarItem::MessageHeader { name, id, is_can, .. } => {
-            div()
-                .px_3()
-                .py_0p5()
-                .bg(rgb(0x111112))
-                .flex()
-                .items_center()
-                .gap_2()
-                .child(
-                    div()
-                        .w(px(60.0))
-                        .text_xs()
-                        .text_color(if *is_can { rgb(0x89b4fa) } else { rgb(0xf9e2af) })
-                        .child(format!("0x{:X}", id))
-                )
-                .child(
-                    div()
-                        .flex_1()
-                        .text_xs()
-                        .font_weight(FontWeight::MEDIUM)
-                        .text_color(rgb(0xd4d4d8))
-                        .child(name.clone())
-                )
-                .into_any_element()
-        }
-        SidebarItem::SignalItem { name, id, size, is_selected, is_can } => {
-            let sig_id = id.clone();
-            let is_selected = *is_selected;
-            
-            div()
-                .px_4()
-                .py_1()
-                .flex()
-                .items_center()
-                .gap_2()
-                .hover(|s| s.bg(rgb(0x1a1a1b)))
-                .child(
-                    // Checkbox
-                    div()
-                        .w(px(12.0))
-                        .h(px(12.0))
-                        .rounded(px(2.0))
-                        .border_1()
-                        .border_color(if is_selected { 
-                            if *is_can { rgb(0x3b82f6) } else { rgb(0xeab308) }
-                        } else { 
-                            rgb(0x3f3f46)
-                        })
-                        .bg(if is_selected { 
-                            if *is_can { rgb(0x3b82f6) } else { rgb(0xeab308) }
-                        } else { 
-                            rgba(0x00000000)
-                        })
-                        .cursor_pointer()
-                        .on_mouse_down(MouseButton::Left, {
-                            let view = view.clone();
-                            move |_, _, cx| {
-                                view.update(cx, |this, cx| {
-                                    if let Some(pos) = this.selected_signals.iter().position(|s| s == &sig_id) {
-                                        this.selected_signals.remove(pos);
-                                    } else {
-                                        this.selected_signals.push(sig_id.clone());
-                                    }
-                                    cx.notify();
-                                });
-                            }
-                        })
-                )
-                .child(
-                    div()
-                        .flex_1()
-                        .text_xs()
-                        .text_color(if is_selected { rgb(0xffffff) } else { rgb(0xa1a1aa) })
-                        .child(name.clone())
-                )
-                .child(
-                    div()
-                        .text_color(rgb(0x52525b))
-                        .text_xs()
-                        .child(format!("{}b", size))
-                )
-                .into_any_element()
-        }
-    }
-}
-
-/// Render empty state when no data is available
+/// Render empty state when no signals are selected
 fn render_empty_state(app: &CanViewApp) -> AnyElement {
     let msg_count = app.messages.len();
     let sel_count = app.selected_signals.len();
@@ -591,24 +162,24 @@ fn render_empty_state(app: &CanViewApp) -> AnyElement {
             div()
                 .text_color(rgb(0x71717a))
                 .text_lg()
-                .child("尚无数据显示")
+                .child("尚未选择信号")
         )
         .child(
             div()
                 .text_color(rgb(0x52525b))
                 .text_sm()
-                .child("请在信号选择(Signals)中选择信号，点击Plot按钮加载数据")
+                .child("请在左侧信号选择(Signals)中勾选信号，然后点击「绘制 (Plot)」按钮")
         )
         .child(
             div()
-                .text_color(rgb(0xef4444))
+                .text_color(rgb(0x52525b))
                 .text_xs()
                 .child(format!("Debug: Messages={}, Selected={}", msg_count, sel_count))
         )
         .into_any_element()
 }
 
-/// Render the chart canvas using gpui-component LineChart
+/// Render the chart canvas — legend + zoom box + hover tooltip + per-signal canvas cards.
 fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Context<CanViewApp>) -> AnyElement {
     let is_dragging = app.is_dragging_zoom;
     let drag_start = app.zoom_drag_start_x;
@@ -619,22 +190,32 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
     let hover_time = app.plot_hover_time;
 
     // Constant offsets based on layout (Sidebar: 320px, Padding: 16px)
-    let sidebar_offset = px(320.0); 
+    let sidebar_offset = px(320.0);
     let padding = px(16.0);
     let chart_start_x = sidebar_offset + padding;
 
-    div()
-        .size_full()
+    // The v_flex itself is the scroll container: it has overflow_y_scroll +
+    // track_scroll, and its children (legend + charts) take natural height so
+    // the container grows beyond the viewport and scrolling kicks in. The
+    // zoom-box overlay and hover line are positioned absolutely inside the
+    // v_flex so they stay aligned with the visible charts.
+    v_flex()
+        .id("plot-scroll-container")
+        .flex_1()
+        .min_h_0()  // allow the flex child to shrink so its content can scroll
         .relative()
-        .child(
-            v_flex()
-                .size_full()
-                .gap_4()
-                .child(render_legend(&series_data))
-                .children(series_data.iter().map(|series| {
-                    render_single_chart(series, start_time, show_points)
-                }))
-        )
+        .p_4()
+        .gap_4()
+        .overflow_y_scroll()
+        .track_scroll(&app.plot_scroll_handle)
+        .child(render_legend(&series_data))
+        .children(app.selected_signals.iter().map(|signal_id| {
+            let series = series_data.iter().find(|s| &s.name == signal_id);
+            match series {
+                Some(s) => render_single_chart(s, start_time, show_points, hover_x, hover_time).into_any_element(),
+                None => render_no_data_chart(signal_id),
+            }
+        }))
         // Zoom Box Overlay Layer
         .when(is_dragging, |this| {
             if let (Some(start), Some(current)) = (drag_start, drag_current) {
@@ -660,26 +241,8 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                 this
             }
         })
-        // Hover Line and Tooltip
-        .when_some(hover_x.zip(hover_time), |this, (hx, ht)| {
-             // Calculate local position relative to canvas
-             let local_x = hx - chart_start_x;
-             let chart_width = app.plot_width_px;
-             
-             this.child(
-                 div()
-                     .absolute()
-                     .top_0()
-                     .left(local_x)
-                     .w(px(1.0))
-                     .h_full()
-                     .bg(rgb(0xd4d4d8)) // Light gray line
-                     .opacity(0.8)
-             )
-             .child(
-                 render_hover_tooltip(hx, ht, &series_data, chart_start_x, chart_width, app.start_time)
-             )
-        })
+        // Hover tooltip is rendered in render_plot_view as a sibling of the
+        // scroll container (NOT inside v_flex) — see render_hover_tooltip_overlay.
         // Global Canvas Interactions
         .on_mouse_down(MouseButton::Left, cx.listener(move |this: &mut CanViewApp, event: &MouseDownEvent, _, cx| {
              // Check for double-click to reset zoom
@@ -721,7 +284,8 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
             if mouse_x >= chart_start_x && mouse_x <= (window_width - padding) {
                 if moved_enough || this.is_dragging_zoom {
                     this.plot_hover_x = Some(mouse_x);
-                    
+                    this.plot_hover_y = Some(event.position.y);
+
                     // Determine time range
                     let (min_t, max_t) = if let (Some(s), Some(e)) = (this.plot_zoom_start, this.plot_zoom_end) {
                         (s, e)
@@ -736,20 +300,21 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                         }
                         if min_t == f64::MAX { (0.0, 1.0) } else { (min_t, max_t) }
                     };
-                    
+
                     // Interpolate
                     let rel_x = (mouse_x - chart_start_x) / chart_width_px;
                     let rel_x = f32::max(0.0, f32::min(1.0, rel_x)); // Clamp
-                    
+
                     let time_range = max_t - min_t;
                     let time = min_t + time_range * rel_x as f64;
-                    
+
                     this.plot_hover_time = Some(time);
                     cx.notify();
                 }
             } else if this.plot_hover_x.is_some() {
                  // Clear hover if moved out (approximate)
                  this.plot_hover_x = None;
+                 this.plot_hover_y = None;
                  this.plot_hover_time = None;
                  cx.notify();
             }
@@ -871,8 +436,9 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
 
             eprintln!("🖱️  scroll_delta = {:.4}", scroll_delta);
 
-            // Lower threshold for better responsiveness
-            if scroll_delta.abs() < 0.01 {
+            // Mac 触控板会产生大量微小滚动事件，过低的阈值会导致轻微触碰就触发缩放。
+            // 提高 threshold 并降低 zoom_factor，让缩放更"稳重"。
+            if scroll_delta.abs() < 0.5 {
                 return;
             }
 
@@ -881,7 +447,8 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
             // Scroll forward (away from user) = negative delta = zoom OUT
             let zoom_in = scroll_delta > 0.0;
 
-            let zoom_factor = 1.2;
+            // 单次缩放系数：1.1 比之前的 1.2 更平缓，避免一次滚动跳太多
+            let zoom_factor = 1.1;
 
             let (new_min, new_max) = if zoom_in {
                 // Zoom in: reduce range
@@ -912,9 +479,9 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                         // all points at the same time → use 1/1000 of range
                         (abs_range / 1000.0).max(1e-6)
                     } else {
-                        // allow zooming in to half the smallest gap, so at
-                        // least one point remains visible
-                        (smallest_gap * 0.5).max(1e-6)
+                        // 至少保留 2 个点可见：窗口宽度 >= 2 * 最小间隔，
+                        // 即使窗口偏移到中间也至少能覆盖 2 个相邻点。
+                        (smallest_gap * 2.0).max(1e-6)
                     }
                 } else {
                     // less than 2 points total → no zoom-in needed
@@ -940,8 +507,11 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                 let new_max = focus_t + new_range * (1.0 - mouse_t_ratio);
                 (new_min, new_max)
             } else {
-                // Zoom out: expand toward full data range, centered on mouse
-                let new_range = current_range * zoom_factor;
+                // Zoom out: expand toward full data range, centered on mouse.
+                // 用一个更激进的步长：至少扩展 abs_range 的 10%，避免从极小 zoom
+                // 花几十次滚动才能缩回来。
+                let abs_range = abs_max_t - abs_min_t;
+                let new_range = (current_range * zoom_factor).max(current_range + 0.1 * abs_range);
 
                 let chart_width_px = window_width - padding - chart_start_x;
                 let mouse_t_ratio = if current_max > current_min && chart_width_px > gpui::px(0.0) {
@@ -1018,12 +588,38 @@ fn format_time_relative_or_absolute(time: f64, start_time: Option<chrono::NaiveD
     }
 }
 
-/// Render tooltip for hover over chart
-fn render_hover_tooltip(
-    hover_x: Pixels, 
-    hover_time: f64, 
+/// Render the hover tooltip as an overlay sibling of the scroll container.
+/// Rendered inside the right main area (which has `.relative()`), so absolute
+/// positioning stays within the main area and does NOT extend the scroll
+/// container's content bounds (which previously caused infinite scroll-down).
+///
+/// If hover state is None, returns an empty div (no tooltip shown).
+fn render_hover_tooltip_overlay(
+    app: &CanViewApp,
     series_data: &[Series],
-    offset_x: Pixels,
+    sidebar_width: Pixels,
+) -> impl IntoElement {
+    let (hover_x, hover_y, hover_time) = match (app.plot_hover_x, app.plot_hover_y, app.plot_hover_time) {
+        (Some(x), Some(y), Some(t)) => (x, y, t),
+        _ => return div().into_any_element(),
+    };
+    let chart_width = app.plot_width_px;
+    // Right main area starts at sidebar_width (sidebar on left).
+    // Local coordinates inside main area: x = hover_x - sidebar_width, y = hover_y - 0.
+    // (render_plot_view fills the whole window; main area top = 0.)
+    let local_x = hover_x - sidebar_width;
+    render_hover_tooltip(local_x, hover_y, hover_time, series_data, sidebar_width, chart_width, app.start_time).into_any_element()
+}
+
+/// Render tooltip for hover over chart.
+/// `local_x` is the mouse x inside the main area (after subtracting sidebar width).
+/// `local_y` is the mouse y inside the main area (from window top, since main area top = 0).
+fn render_hover_tooltip(
+    local_x_in: Pixels,
+    local_y_in: Pixels,
+    hover_time: f64,
+    series_data: &[Series],
+    _sidebar_width: Pixels,
     chart_width: Pixels,
     start_time: Option<chrono::NaiveDateTime>
 ) -> impl IntoElement {
@@ -1056,13 +652,13 @@ fn render_hover_tooltip(
     }
 
     // Determine tooltip position
-    // local coordinates
-    let local_x = hover_x - offset_x;
-    
+    // local_x is already the x relative to main area
+    let local_x = local_x_in;
+
     // Check if we need to flip to left
     let tooltip_width_estimate = px(220.0); // Rough estimate
     let space_right = chart_width - local_x;
-    
+
     let (tooltip_left, _align_right) = if space_right < tooltip_width_estimate {
         // Not enough space, place to left of cursor
         (local_x - tooltip_width_estimate - px(10.0), true)
@@ -1070,10 +666,10 @@ fn render_hover_tooltip(
         // Place to right
         (local_x + px(10.0), false)
     };
-    
+
     div()
         .absolute()
-        .top(px(20.0))
+        .top(local_y_in)
         .left(tooltip_left)
         .bg(rgba(0x18181be6)) // Dark bg with transparency
         .border_1()
@@ -1106,126 +702,400 @@ fn render_hover_tooltip(
                      div()
                          .text_xs()
                          .text_color(rgb(0xd4d4d8))
-                         .child(format!("{}: {:.2} {}", series.name, val, series.unit.as_deref().unwrap_or("")))
+                         .child(format!("{}: {:.2} {}", series.name.split(':').last().unwrap_or(&series.name), val, series.unit.as_deref().unwrap_or("")))
                  )
         }))
 }
 
-/// Render a single chart for one signal
-fn render_single_chart(
-    series: &Series, 
-    _start_time: Option<chrono::NaiveDateTime>, 
-    show_points: bool
-) -> impl IntoElement {
-    // Safety check: ensure we have points
-    if series.points.is_empty() {
-        return div()
-            .flex()
-            .flex_col()
-            .h(px(250.0))
-            .bg(rgb(0x18181b))
-            .border_1()
-            .border_color(rgb(0x27272a))
-            .rounded_lg()
-            .p_4()
-            .child(
-                div()
-                    .text_sm()
-                    .text_color(rgb(0xa1a1aa))
-                    .child(format!("No data points for '{}'. Check Channel ID match (DBC vs Log) or Time Range.", series.name))
-            );
-    }
-
-    // Clone time labels for use in closure
-    let time_labels = series.time_labels.clone();
-
-    // Calculate time range for debug display
-    let min_time = series.points.iter().map(|p| p.time).fold(f64::INFINITY, f64::min);
-    let max_time = series.points.iter().map(|p| p.time).fold(f64::NEG_INFINITY, f64::max);
-    let time_span = max_time - min_time;
-
-    // Calculate optimal step for showing labels (aim for ~4 labels)
-    let total_points = series.points.len();
-    let label_step = if total_points <= 10 {
-        1
-    } else {
-        total_points / 4
-    };
-
+/// Render a placeholder card matching `render_single_chart`'s visual style
+/// for a selected signal that has no data points in the current log.
+fn render_no_data_chart(signal_id: &str) -> AnyElement {
+    let display_name = signal_id.split(':').last().unwrap_or(signal_id);
     div()
         .flex()
         .flex_col()
-        .h(px(250.0))
+        .h(px(240.0))
+        .flex_shrink_0()
         .bg(rgb(0x18181b))
         .border_1()
         .border_color(rgb(0x27272a))
         .rounded_lg()
-        .p_4()
+        .p_2()
+        .items_center()
+        .justify_center()
         .child(
             div()
-                .text_sm()
-                .font_weight(FontWeight::SEMIBOLD)
-                .text_color(series.color)
-                .child(format!(
-                    "{} {} | {} pts | {:.3}s-{:.3}s (span: {:.3}s)", 
-                    series.name, 
-                    series.unit.as_ref().map(|u| format!("[{}]", u)).unwrap_or_default(),
-                    series.points.len(),
-                    min_time,
-                    max_time,
-                    time_span
-                ))
+                .flex()
+                .flex_col()
+                .items_center()
+                .gap_2()
+                .child(div().text_xl().text_color(rgb(0x71717a)).child("⊘"))
+                .child(
+                    div()
+                        .text_sm()
+                        .text_color(rgb(0xa1a1aa))
+                        .child(format!("No data for '{}'", display_name))
+                )
+                .child(
+                    div()
+                        .text_xs()
+                        .text_color(rgb(0x52525b))
+                        .child("检查通道 ID 匹配 (DBC vs 日志) 或时间范围")
+                )
         )
+        .into_any_element()
+}
+
+/// Render a single chart for one signal — gpui canvas self-drawn, no grid.
+fn render_single_chart(
+    series: &Series,
+    start_time: Option<chrono::NaiveDateTime>,
+    show_points: bool,
+    hover_x: Option<Pixels>,
+    hover_time: Option<f64>,
+) -> impl IntoElement {
+    let points = Arc::new(series.points.clone());
+    let color = series.color;
+    let unit = series.unit.clone();
+    let start_time_for_paint = start_time;
+    let title = format!(
+        "{} {} | {} pts",
+        series.name.split(':').last().unwrap_or(&series.name),
+        series.unit.as_ref().map(|u| format!("[{}]", u)).unwrap_or_default(),
+        series.points.len(),
+    );
+
+    div()
+        .flex()
+        .flex_col()
+        .h(px(240.0))
+        .flex_shrink_0()
+        .bg(rgb(0x18181b))
+        .border_1()
+        .border_color(rgb(0x27272a))
+        .rounded_lg()
+        .p_2()
+        .child(div().text_xs().text_color(color).child(title))
         .child(
             div()
                 .flex_1()
-                .py_2()
+                .min_h_0()
+                .py_1()
                 .child({
-                    let mut chart = LineChart::<DataPoint, SharedString, f64>::new(series.points.clone())
-                        .x(move |d| {
-                            // Hack: Use zero-width characters to make each time string unique
-                            // while keeping it visually identical for labels.
-                            let mut unique_suffix = String::new();
-                            let mut val = d.index;
-                            // ERROR FIX: Increased from 10 to 20 bits. 
-                            // 10 bits only supported 1024 points, causing collisions for 5753 points.
-                            // 20 bits supports ~1 million points (2^20), insuring uniqueness.
-                            for _ in 0..20 { 
-                                unique_suffix.push(if val % 2 == 0 { '\u{200B}' } else { '\u{200C}' });
-                                val /= 2;
+                    let prepaint_points = points.clone();
+                    gpui::canvas(
+                        move |bounds, _window, _cx| {
+                            // prepaint: 预计算坐标变换参数；空数据返回 None 跳过 paint
+                            if prepaint_points.is_empty() {
+                                return None;
                             }
-                            
-                            // Determine if we should show the label
-                            let should_show = d.index == 0 || // Always show first
-                                              d.index == total_points - 1 || // Always show last
-                                              d.index % label_step == 0; // Show periodic
-                            
-                            let label_text = if should_show {
-                                time_labels.get(d.index).map(|s| s.as_str()).unwrap_or("N/A")
-                            } else {
-                                "" // Empty string for hidden labels
+                            let min_t = prepaint_points.first().unwrap().time;
+                            let max_t = prepaint_points.last().unwrap().time;
+                            let (mut min_v, mut max_v) = prepaint_points.iter().fold(
+                                (f64::INFINITY, f64::NEG_INFINITY),
+                                |(mn, mx), p| (mn.min(p.value), mx.max(p.value)),
+                            );
+                            // 当所有值相等（含全 0）时，扩展 Y 范围让 0 落在 X 轴底部，
+                            // 而不是把折线压在 Y 轴顶部。
+                            if max_v == min_v {
+                                min_v = min_v.min(0.0);
+                                max_v = max_v.max(0.0);
+                                if max_v == min_v {
+                                    // 仍相等（仅当 min_v=max_v=0）：给一个 1 的虚拟高度
+                                    max_v = min_v + 1.0;
+                                }
+                            }
+                            let v_range = (max_v - min_v).max(1e-9);
+                            let t_range = (max_t - min_t).max(1e-9);
+                            Some(ChartLayout {
+                                bounds,
+                                min_t,
+                                min_v,
+                                max_v,
+                                t_range,
+                                v_range,
+                            })
+                        },
+                        move |_bounds, layout, window, cx| {
+                            let layout = match layout {
+                                Some(l) => l,
+                                None => return,
                             };
+                            let bounds = layout.bounds;
+                            let pad_left = px(36.0);
+                            let pad_right = px(4.0);
+                            let pad_top = px(4.0);
+                            let pad_bottom = px(14.0);
+                            let chart_w = bounds.size.width - pad_left - pad_right;
+                            let chart_h = bounds.size.height - pad_top - pad_bottom;
 
-                            format!("{}{}", label_text, unique_suffix).into()
-                        })
-                        .y(|d| d.value)
-                        .stroke(series.color)
-                        .linear()
-                        .tick_margin(1); // Always "try" to draw every tick, but most will be empty strings
-                    
-                    // Add dots on data points if enabled
-                    if show_points {
-                        chart = chart.dot();
-                    }
-                    
-                    chart
-                })
+                            // 坐标系原点（左下角）和右上角
+                            let origin_x = bounds.origin.x + pad_left;
+                            let origin_y = bounds.origin.y + pad_top; // 顶部 Y
+                            let x_axis_y = bounds.origin.y + pad_top + chart_h; // 底部 X 轴线 Y
+
+                            let stroke_color = cx.theme().border;
+
+                            // === 1. Y 轴线 ===
+                            {
+                                let mut b = PathBuilder::stroke(px(1.));
+                                b.move_to(point(origin_x, origin_y));
+                                b.line_to(point(origin_x, x_axis_y));
+                                if let Ok(path) = b.build() {
+                                    window.paint_path(path, stroke_color);
+                                }
+                            }
+
+                            // === 2. X 轴线 ===
+                            {
+                                let mut b = PathBuilder::stroke(px(1.));
+                                b.move_to(point(origin_x, x_axis_y));
+                                b.line_to(point(bounds.origin.x + pad_left + chart_w, x_axis_y));
+                                if let Ok(path) = b.build() {
+                                    window.paint_path(path, stroke_color);
+                                }
+                            }
+
+                            // === 3. Y 轴刻度 + 标签（动态数量，按 chart_h 估算）===
+                            let n_y_ticks = calc_y_tick_count(chart_h.as_f32());
+                            let mut y_labels: Vec<gpui_component::plot::label::Text> = Vec::with_capacity(n_y_ticks);
+                            for i in 0..n_y_ticks {
+                                // i=0 → max_v (top), i=n_y_ticks-1 → min_v (bottom)
+                                let ratio = if n_y_ticks == 1 { 0.0 } else { i as f32 / (n_y_ticks - 1) as f32 };
+                                let v = layout.max_v - (layout.max_v - layout.min_v) * ratio as f64;
+                                let y_px = origin_y + chart_h * ratio;
+                                // 短刻度线（向左 4px）
+                                {
+                                    let mut b = PathBuilder::stroke(px(1.));
+                                    b.move_to(point(origin_x - px(4.), y_px));
+                                    b.line_to(point(origin_x, y_px));
+                                    if let Ok(path) = b.build() {
+                                        window.paint_path(path, stroke_color);
+                                    }
+                                }
+                                // 标签文本（在 origin_x - 6px 处右对齐，垂直居中于 y_px）
+                                let label = format!("{:.1}", v);
+                                // PlotLabel::paint 内部会再加 bounds.origin，所以这里必须
+                                // 存画布相对坐标（已减去 bounds.origin），避免双重偏移。
+                                y_labels.push(
+                                    gpui_component::plot::label::Text::new(
+                                        label,
+                                        point(
+                                            origin_x - px(6.) - bounds.origin.x,
+                                            y_px - px(5.) - bounds.origin.y,
+                                        ),
+                                        cx.theme().muted_foreground,
+                                    )
+                                    .font_size(px(10.))
+                                    .align(gpui::TextAlign::Right),
+                                );
+                            }
+                            let y_plot_label = gpui_component::plot::PlotLabel::new(y_labels);
+                            y_plot_label.paint(&bounds, window, cx);
+
+                            // === 4. X 轴刻度 + 标签（动态数量）===
+                            let n_ticks = calc_x_tick_count(chart_w.as_f32());
+                            let mut x_labels: Vec<gpui_component::plot::label::Text> = Vec::with_capacity(n_ticks);
+                            for i in 0..n_ticks {
+                                let ratio = if n_ticks == 1 { 0.0 } else { i as f32 / (n_ticks - 1) as f32 };
+                                let x_px = origin_x + chart_w * ratio;
+                                // 短刻度线（向下 4px）
+                                {
+                                    let mut b = PathBuilder::stroke(px(1.));
+                                    b.move_to(point(x_px, x_axis_y));
+                                    b.line_to(point(x_px, x_axis_y + px(4.)));
+                                    if let Ok(path) = b.build() {
+                                        window.paint_path(path, stroke_color);
+                                    }
+                                }
+                                // 时间标签：X 轴上省略年月日，用 HH:MM:SS.mmm（11 字符）；
+                                // 完整 YYYY-MM-DD HH:MM:SS.mmm 在悬停 tooltip 里显示。
+                                let t = layout.min_t + layout.t_range * ratio as f64;
+                                let full_label = format_time_relative_or_absolute(t, start_time_for_paint);
+                                let label_text = if full_label.starts_with("Time: ") {
+                                    full_label
+                                } else {
+                                    // 截取 HH:MM:SS.mmm（跳过 "YYYY-MM-DD " 的 11 字符）
+                                    full_label.get(11..).unwrap_or(&full_label).to_string()
+                                };
+                                x_labels.push(
+                                    gpui_component::plot::label::Text::new(
+                                        label_text,
+                                        point(
+                                            x_px - bounds.origin.x,
+                                            x_axis_y + px(4.) - bounds.origin.y,
+                                        ),
+                                        cx.theme().muted_foreground,
+                                    )
+                                    .font_size(px(10.))
+                                    .align(gpui::TextAlign::Center),
+                                );
+                            }
+                            let x_plot_label = gpui_component::plot::PlotLabel::new(x_labels);
+                            x_plot_label.paint(&bounds, window, cx);
+
+                            // === 5. 折线 ===
+                            let mut builder = PathBuilder::stroke(px(1.0));
+                            let mut started = false;
+                            for p in points.iter() {
+                                let x = origin_x
+                                    + px(
+                                        ((p.time - layout.min_t) / layout.t_range
+                                            * chart_w.as_f32() as f64) as f32,
+                                    );
+                                let y = origin_y
+                                    + px(
+                                        ((layout.max_v - p.value) / layout.v_range
+                                            * chart_h.as_f32() as f64) as f32,
+                                    );
+                                if !started {
+                                    builder.move_to(point(x, y));
+                                    started = true;
+                                } else {
+                                    builder.line_to(point(x, y));
+                                }
+                            }
+                            if started {
+                                if let Ok(path) = builder.build() {
+                                    window.paint_path(path, color);
+                                }
+                            }
+
+                            // === 6. data points（可选，show_points 为 true）===
+                            if show_points {
+                                for p in points.iter() {
+                                    let x = origin_x
+                                        + px(
+                                            ((p.time - layout.min_t) / layout.t_range
+                                                * chart_w.as_f32() as f64) as f32,
+                                        );
+                                    let y = origin_y
+                                        + px(
+                                            ((layout.max_v - p.value) / layout.v_range
+                                                * chart_h.as_f32() as f64) as f32,
+                                        );
+                                    // 3px 实心方块（缩小后不堆叠）
+                                    let dot_bounds = gpui::Bounds::new(
+                                        point(x - px(1.5), y - px(1.5)),
+                                        size(px(3.), px(3.)),
+                                    );
+                                    window.paint_quad(gpui::fill(dot_bounds, color));
+                                }
+                            }
+
+                            // === 7. 悬停竖线 + 最近点数值标签 ===
+                            // 鼠标在 plot 区时，每张卡片都画一条贯穿 top→x_axis_y 的竖线，
+                            // 并在最近的数据点处显示一个带边框的小数值气泡。
+                            if let (Some(hx), Some(ht)) = (hover_x, hover_time) {
+                                // 只在 hover_time 落在 [min_t, max_t] 范围内才画
+                                let max_t = layout.min_t + layout.t_range;
+                                if ht >= layout.min_t && ht <= max_t {
+                                    let line_x = origin_x
+                                        + px(
+                                            ((ht - layout.min_t) / layout.t_range
+                                                * chart_w.as_f32() as f64) as f32,
+                                        );
+                                    // 仅当竖线 x 在 canvas 水平范围内时画
+                                    if line_x >= origin_x && line_x <= origin_x + chart_w {
+                                        // 竖线
+                                        let mut b = PathBuilder::stroke(px(1.));
+                                        b.move_to(point(line_x, origin_y));
+                                        b.line_to(point(line_x, x_axis_y));
+                                        if let Ok(path) = b.build() {
+                                            window.paint_path(
+                                                path,
+                                                gpui::rgba(0xd4d4d8cc),
+                                            );
+                                        }
+                                        // 找最近的数据点
+                                        let idx = points
+                                            .partition_point(|p| p.time < ht);
+                                        let p_before = if idx > 0 {
+                                            points.get(idx - 1)
+                                        } else {
+                                            None
+                                        };
+                                        let p_after = points.get(idx);
+                                        let nearest = match (p_before, p_after) {
+                                            (Some(b), Some(a)) => {
+                                                let db = (ht - b.time).abs();
+                                                let da = (a.time - ht).abs();
+                                                if db < da { b } else { a }
+                                            }
+                                            (Some(b), None) => b,
+                                            (None, Some(a)) => a,
+                                            (None, None) => return,
+                                        };
+                                        // 高亮该点（4px 圆点，比 show_points 大）
+                                        let dot_y = origin_y
+                                            + px(
+                                                ((layout.max_v - nearest.value)
+                                                    / layout.v_range
+                                                    * chart_h.as_f32() as f64)
+                                                    as f32,
+                                            );
+                                        let dot_x = origin_x
+                                            + px(
+                                                ((nearest.time - layout.min_t) / layout.t_range
+                                                    * chart_w.as_f32() as f64) as f32,
+                                            );
+                                        window.paint_quad(gpui::fill(
+                                            gpui::Bounds::new(
+                                                point(dot_x - px(2.), dot_y - px(2.)),
+                                                size(px(4.), px(4.)),
+                                            ),
+                                            color,
+                                        ));
+                                        // 在高亮点上方显示数值标签
+                                        let label_text = format!(
+                                            "{:.2}{}",
+                                            nearest.value,
+                                            unit.as_deref().unwrap_or("")
+                                        );
+                                        // 标签放在点上方 6px，左对齐，避免遮挡折线
+                                        let label_origin = point(
+                                            dot_x + px(4.) - bounds.origin.x,
+                                            dot_y - px(16.) - bounds.origin.y,
+                                        );
+                                        let label = gpui_component::plot::label::Text::new(
+                                            label_text,
+                                            label_origin,
+                                            color,
+                                        )
+                                        .font_size(px(10.))
+                                        .align(gpui::TextAlign::Left);
+                                        let plot_label =
+                                            gpui_component::plot::PlotLabel::new(vec![label]);
+                                        plot_label.paint(&bounds, window, cx);
+                                    }
+                                }
+                            }
+                        },
+                    )
+                    .size_full()
+                }),
         )
+}
+
+/// Canvas 自绘坐标变换参数
+struct ChartLayout {
+    bounds: gpui::Bounds<gpui::Pixels>,
+    min_t: f64,
+    t_range: f64,
+    min_v: f64,
+    max_v: f64,
+    v_range: f64,
 }
 
 
 /// Render legend showing all series
 fn render_legend(series_data: &[Series]) -> impl IntoElement {
+    // Render an empty (zero-height) div when there are no series, so the
+    // legend's bordered container doesn't show as an empty box above the
+    // first chart when every selected signal has no data in the log.
+    if series_data.is_empty() {
+        return div().into_any_element();
+    }
     div()
         .flex()
         .flex_wrap()
@@ -1251,9 +1121,10 @@ fn render_legend(series_data: &[Series]) -> impl IntoElement {
                     div()
                         .text_xs()
                         .text_color(rgb(0xa1a1aa))
-                        .child(series.name.clone())
+                        .child(series.name.split(':').last().unwrap_or(&series.name).to_string())
                 )
         }))
+        .into_any_element()
 }
 
 /// Filter existing plot data by zoom range
@@ -1596,7 +1467,7 @@ pub fn extract_series_data(app: &CanViewApp) -> Arc<[Series]> {
         eprintln!("    ✅ Final point count: {}", points.len());
 
         all_series.push(Series {
-            name: sig_name.to_string(),
+            name: sig_id.clone(),
             unit,
             points: points.into(),
             color: colors[idx % colors.len()],
@@ -1666,6 +1537,18 @@ pub fn apply_zoom_to_full_data(app: &mut CanViewApp) {
         }
     }).collect();
 
+    // Guard: if all series have 0 points (zoom window is between points), the
+    // chart would be empty. Fall back to the full range so user never sees a
+    // blank chart.
+    let all_empty = filtered.iter().all(|s| s.points.is_empty());
+    if all_empty {
+        eprintln!("⚠️  Zoom window contains no points — resetting to full range");
+        app.plot_zoom_start = None;
+        app.plot_zoom_end = None;
+        app.plot_data = app.plot_full_data.clone();
+        return;
+    }
+
     app.plot_data = std::sync::Arc::from(filtered);
 }
 
@@ -1700,4 +1583,83 @@ pub fn extract_and_update_series_data(app: &mut CanViewApp) {
 
     // Now apply zoom filter to set plot_data
     apply_zoom_to_full_data(app);
+}
+
+/// 按 80px/刻度估算 X 轴刻度数量，clamp [2, 6]。
+/// chart_w_px 是 canvas 内可用于画折线的水平像素（已扣除左右 padding）。
+pub fn calc_x_tick_count(chart_w_px: f32) -> usize {
+    let approx = (chart_w_px / 80.0).floor() as usize;
+    approx.clamp(2, 6)
+}
+
+/// 按 50px/刻度估算 Y 轴刻度数量，clamp [3, 8]。
+/// chart_h_px 是 canvas 内可用于画折线的垂直像素（已扣除上下 padding）。
+/// 至少 3 个 (max / mid / min)，最多 8 个（避免标签过密）。
+pub fn calc_y_tick_count(chart_h_px: f32) -> usize {
+    let approx = (chart_h_px / 50.0).floor() as usize;
+    approx.clamp(3, 8)
+}
+
+/// 时间标签 fallback（series.time_labels 为空时用）。
+/// span 是 max_t - min_t（秒）。
+/// < 60s → 三位小数秒；< 1h → 一位小数秒；否则 → 一位小数分钟。
+pub fn format_time_label(t: f64, span: f64) -> String {
+    if span < 60.0 {
+        format!("{:.3}s", t)
+    } else if span < 3600.0 {
+        format!("{:.1}s", t)
+    } else {
+        format!("{:.1}min", t / 60.0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Verifies that the signal ID format produced by the sidebar matches what
+    /// `extract_series_data` will set as `Series.name`. This is a structural
+    /// test of the ID format — it doesn't run `extract_series_data` (which
+    /// needs a full message log) but locks the format convention.
+    #[test]
+    fn signal_id_format_matches_series_name_convention() {
+        let sidebar_signal_id = "CAN:1:256:EngineSpeed";
+        let parts: Vec<&str> = sidebar_signal_id.split(':').collect();
+        assert!(parts.len() >= 4, "signal id must have BUS:CH:MSG:NAME structure");
+        // The Series.name after this task's change will equal the full signal_id;
+        // display names extract the last segment:
+        let display_name = sidebar_signal_id.split(':').last().unwrap();
+        assert_eq!(display_name, "EngineSpeed");
+    }
+
+    #[test]
+    fn calc_x_tick_count_basic() {
+        assert_eq!(calc_x_tick_count(400.0), 5);
+        assert_eq!(calc_x_tick_count(80.0), 2);   // 80px → 1 → clamp 2
+        assert_eq!(calc_x_tick_count(40.0), 2);   // 40px → 0 → clamp 2
+        assert_eq!(calc_x_tick_count(600.0), 6);  // 600/80=7.5 → 7 → clamp 6
+        assert_eq!(calc_x_tick_count(160.0), 2);
+        assert_eq!(calc_x_tick_count(320.0), 4);
+    }
+
+    #[test]
+    fn calc_y_tick_count_basic() {
+        assert_eq!(calc_y_tick_count(150.0), 3);  // 150/50=3 → clamp 3
+        assert_eq!(calc_y_tick_count(100.0), 3);  // 100/50=2 → clamp 3
+        assert_eq!(calc_y_tick_count(50.0), 3);   // 50/50=1 → clamp 3
+        assert_eq!(calc_y_tick_count(300.0), 6);  // 300/50=6
+        assert_eq!(calc_y_tick_count(500.0), 8);  // 500/50=10 → clamp 8
+        assert_eq!(calc_y_tick_count(250.0), 5);
+    }
+
+    #[test]
+    fn format_time_label_ranges() {
+        assert_eq!(format_time_label(12.345, 30.0), "12.345s");
+        assert_eq!(format_time_label(5.0, 300.0), "5.0s");
+        assert_eq!(format_time_label(120.0, 4000.0), "2.0min");
+        // Boundary cases: at exactly 60.0 the first branch (< 60.0) fails → second branch → "60.0s";
+        // at exactly 3600.0 the second branch (< 3600.0) fails → else → 3600.0/60.0 = 60.0 → "60.0min".
+        assert_eq!(format_time_label(60.0, 60.0), "60.0s");
+        assert_eq!(format_time_label(3600.0, 3600.0), "60.0min");
+    }
 }
