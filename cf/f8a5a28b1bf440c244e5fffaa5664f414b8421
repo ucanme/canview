@@ -1,0 +1,53 @@
+assets/FIX_ICON_CACHE.md
+  s_790df9e047e933::t_17cedc91b9c037 102,167,307
+scripts/installer.iss
+  s_790df9e047e933::t_17cedc91b9c037 25
+scripts/package-linux.sh
+  s_790df9e047e933::t_17cedc91b9c037 69-70
+assets/verify_icon.py
+  s_790df9e047e933::t_17cedc91b9c037 16
+scripts/package-macos.sh
+  s_790df9e047e933::t_17cedc91b9c037 68-69,181-182
+assets/update_icons.sh
+  s_790df9e047e933::t_17cedc91b9c037 116,122,141,151,153,157-158
+src/view/build.rs
+  s_790df9e047e933::t_17cedc91b9c037 7,36
+.github/workflows/build.yml
+  s_790df9e047e933::t_17cedc91b9c037 154,159,172-173,176,197
+assets/draw_logo.py
+  s_790df9e047e933::t_17cedc91b9c037 240,279
+assets/QUICK_START.md
+  s_790df9e047e933::t_17cedc91b9c037 35-36,60,67,96,144
+assets/update_icons.py
+  s_790df9e047e933::t_17cedc91b9c037 106,128,159,207,209
+build.rs
+  s_790df9e047e933::t_17cedc91b9c037 5
+assets/APPLIED_SUCCESSFULLY.md
+  s_790df9e047e933::t_17cedc91b9c037 33,93,96,124,147,179,240
+assets/convert_online.py
+  s_790df9e047e933::t_17cedc91b9c037 187,267
+assets/README.md
+  s_790df9e047e933::t_17cedc91b9c037 51,137-139
+assets/update_icons.bat
+  s_790df9e047e933::t_17cedc91b9c037 67,76
+scripts/make-app-bundle.sh
+  s_790df9e047e933::t_17cedc91b9c037 24-25
+assets/UPDATE_ICONS.md
+  s_790df9e047e933::t_17cedc91b9c037 31,146,156,170,213,224-225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "cff8a5a28b1bf440c244e5fffaa5664f414b8421",
+  "prompts": {},
+  "sessions": {
+    "s_790df9e047e933": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d78f7f1-6460-4c57-b80a-37d892318959",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
