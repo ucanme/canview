@@ -1268,6 +1268,22 @@ impl CanViewerApp {
                     self.selected_library_id = Some(new_id.clone());
                 }
                 self.app_config.libraries = self.library_manager.libraries().to_vec();
+
+                // Migrate signal-set store key from old library id to new id
+                if let Some(sets) = self.signal_set_store.sets_by_library.remove(&old_id) {
+                    self.signal_set_store.sets_by_library.insert(new_id.clone(), sets);
+                    let _ = crate::library::save_signal_set_store(
+                        &self.signal_set_store,
+                        self.config_file_path.as_deref(),
+                    );
+                }
+                if let Some((lid, _)) = &self.active_signal_set {
+                    if lid == &old_id {
+                        let set_name = self.active_signal_set.as_ref().unwrap().1.clone();
+                        self.active_signal_set = Some((new_id.clone(), set_name));
+                    }
+                }
+
                 self.save_config(cx);
                 self.status_msg = format!("Library renamed to '{}'", new_name).into();
             }

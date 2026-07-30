@@ -51,6 +51,20 @@ pub fn delete_library(app: &mut CanViewerApp, library_id: &str, cx: &mut Context
             if app.selected_library_id.as_ref() == Some(&library_id.to_string()) {
                 app.selected_library_id = None;
             }
+
+            // Drop signal sets owned by the deleted library
+            if app.signal_set_store.sets_by_library.remove(library_id).is_some() {
+                let _ = crate::library::save_signal_set_store(
+                    &app.signal_set_store,
+                    app.config_file_path.as_deref(),
+                );
+            }
+            if let Some((lid, _)) = &app.active_signal_set {
+                if lid == library_id {
+                    app.active_signal_set = None;
+                }
+            }
+
             cx.notify();
         }
         Err(e) => {
@@ -229,6 +243,9 @@ pub fn apply_version_to_mappings(
 
     // Save config
     crate::controllers::config_controller::save_config(app, cx);
+
+    // Active library/version changed — old signal set no longer applies
+    app.active_signal_set = None;
 
     app.status_msg = format!("✅ Applied version {} to {} channels", version_name, count).into();
     cx.notify();
