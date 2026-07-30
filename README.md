@@ -1,8 +1,8 @@
 <div align="center">
 
-# CANVIEW
+# can-viewer
 
-![CANVIEW Logo](assets/svg/logo-256x256.svg)
+![can-viewer Logo](assets/svg/logo-256x256.svg)
 
 **Open-source cross-platform CAN/LIN bus data analysis tool**
 
@@ -21,7 +21,7 @@ Fully open source — your ⭐ keeps development going!
 
 ## Overview
 
-CANVIEW is a high-performance automotive bus analysis tool built in Rust. It integrates BLF log parsing, DBC/LDF signal library management, and a [GPUI](https://gpui.rs/)-powered GPU-accelerated desktop UI.
+can-viewer is a high-performance automotive bus analysis tool built in Rust. It integrates BLF log parsing, DBC/LDF signal library management, and a [GPUI](https://gpui.rs/)-powered GPU-accelerated desktop UI.
 
 - 🚀 **Rust native** — zero-copy parsing, fast startup
 - 🖥️ **GPU-accelerated UI** — built on GPUI, smooth rendering
@@ -58,7 +58,7 @@ sudo apt-get install libxkbcommon-dev libx11-dev libegl1-mesa-dev
 
 # Build and run
 git clone https://github.com/cantool/can-viewer.git
-cd canview
+cd can-viewer
 cargo run --release --bin view
 ```
 
@@ -119,7 +119,7 @@ Fork and submit a Pull Request. Please ensure your code passes `cargo fmt` and `
 
 ## License
 
-[MIT License](LICENSE.txt) © 2026 CANVIEW
+[MIT License](LICENSE.txt) © 2026 can-viewer
 
 ---
 

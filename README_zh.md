@@ -1,8 +1,8 @@
 <div align="center">
 
-# CANVIEW
+# can-viewer
 
-![CANVIEW Logo](assets/svg/logo-256x256.svg)
+![can-viewer Logo](assets/svg/logo-256x256.svg)
 
 **开源跨平台 CAN/LIN 总线数据分析工具**
 
@@ -21,7 +21,7 @@
 
 ## 简介
 
-CANVIEW 是用 Rust 构建的汽车总线数据分析工具，集成 BLF 日志解析、DBC/LDF 信号库管理和 [GPUI](https://gpui.rs/) GPU 加速界面。
+can-viewer 是用 Rust 构建的汽车总线数据分析工具，集成 BLF 日志解析、DBC/LDF 信号库管理和 [GPUI](https://gpui.rs/) GPU 加速界面。
 
 - 🚀 **Rust 原生** — 零拷贝解析，启动快
 - 🖥️ **GPU 加速 UI** — 基于 GPUI，渲染流畅
@@ -58,7 +58,7 @@ sudo apt-get install libxkbcommon-dev libx11-dev libegl1-mesa-dev
 
 # 构建运行
 git clone https://github.com/cantool/can-viewer.git
-cd canview
+cd can-viewer
 cargo run --release --bin view
 \`\`\`
 
@@ -119,7 +119,7 @@ cargo clippy --workspace # 静态检查
 
 ## 许可证
 
-[MIT License](LICENSE.txt) © 2026 CANVIEW
+[MIT License](LICENSE.txt) © 2026 can-viewer
 
 ---
 
