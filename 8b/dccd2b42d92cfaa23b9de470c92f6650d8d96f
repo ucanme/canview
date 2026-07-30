@@ -1,0 +1,21 @@
+Cargo.toml
+  s_790df9e047e933::t_5efd4002ddf8ec 2
+tests/test_ime_input.rs
+  s_790df9e047e933::t_d38e47bf354f6e 6-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "8bdccd2b42d92cfaa23b9de470c92f6650d8d96f",
+  "prompts": {},
+  "sessions": {
+    "s_790df9e047e933": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d78f7f1-6460-4c57-b80a-37d892318959",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
