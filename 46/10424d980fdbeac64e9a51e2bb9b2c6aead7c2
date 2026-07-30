@@ -1,0 +1,29 @@
+src/blf/src/parser.rs
+  s_790df9e047e933::t_20e0aba325a7ca 178-225
+src/view/src/ui/views/chart_view.rs
+  s_790df9e047e933::t_3a964f46298ec7 898-899,905
+  s_790df9e047e933::t_ba0cc37396557f 561-562,572,575
+  s_790df9e047e933::t_bf7dfdcd1a2bc0 1272-1279
+  s_790df9e047e933::t_71496471272b62 1389-1394
+  s_790df9e047e933::t_d6b412738c1df8 574
+  s_790df9e047e933::t_baf2a958e9d37f 563-571,573
+src/view/src/domain/multi_file.rs
+  s_790df9e047e933::t_ccfb64dd4924bb 153-155
+  s_790df9e047e933::t_8a65a2da5cee2d 96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "4610424d980fdbeac64e9a51e2bb9b2c6aead7c2",
+  "prompts": {},
+  "sessions": {
+    "s_790df9e047e933": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d78f7f1-6460-4c57-b80a-37d892318959",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
