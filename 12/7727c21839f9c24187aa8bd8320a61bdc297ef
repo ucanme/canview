@@ -1,0 +1,77 @@
+src/view/src/ui/views/chart_view.rs
+  s_790df9e047e933::t_6c3684a824fc02 1,15,90,117,134,150,183,247,263,322,380,585,1119,1162,1413,1486
+src/view/src/controllers/window_controller.rs
+  s_790df9e047e933::t_6c3684a824fc02 5,9,57
+src/view/src/ui/views/library_management.rs
+  s_790df9e047e933::t_6c3684a824fc02 47,138,284,325,525,552,629,730,942,1160,1300,1387-1388,1636,1674
+src/view/src/ui/components/status_bar.rs
+  s_790df9e047e933::t_6c3684a824fc02 6,63,118,140,188,213,233,331,373,383,690,775,851
+src/view/src/ui/components/top_bar.rs
+  s_790df9e047e933::t_6c3684a824fc02 8,15-17,153
+src/view/src/app/state.rs
+  s_790df9e047e933::t_6c3684a824fc02 84,299-300,305,310
+src/view/src/ui/views/library_view.rs
+  s_790df9e047e933::t_6c3684a824fc02 3,14,119,261,447,532
+src/view/src/views/config_view.rs
+  s_790df9e047e933::t_6c3684a824fc02 10,41
+src/view/src/handlers/drag_drop.rs
+  s_790df9e047e933::t_6c3684a824fc02 82-83,160-161,177-178,222-223,235
+src/view/src/main.rs
+  s_790df9e047e933::t_6c3684a824fc02 18,26,71,104,177
+src/view/src/ui/zed_style/ime_text_input.rs
+  s_790df9e047e933::t_6c3684a824fc02 46
+src/view/src/library_view.rs
+  s_790df9e047e933::t_6c3684a824fc02 22,79,359,442,700
+src/view/src/controllers/ui_controller.rs
+  s_790df9e047e933::t_6c3684a824fc02 5,26,68-69,208,220-221,275-276,370-371,483-484,571-572,578,580,590-591,597,599,695,702,710,718,724,734,790,807
+examples/ui_components/dropdown_examples.rs
+  s_790df9e047e933::t_6c3684a824fc02 8,11,24,41,80,109
+src/view/src/app/impls_rendering.rs
+  s_790df9e047e933::t_6c3684a824fc02 1,3,6,14,135-136,262,1313,1458,1649
+src/view/src/app/impls.rs
+  s_790df9e047e933::t_6c3684a824fc02 1,3,5,23,650,946,2168-2169,2196,2211,2223
+src/view/src/rendering/message.rs
+  s_790df9e047e933::t_6c3684a824fc02 368
+src/view/src/ui/views/plot_sidebar.rs
+  s_790df9e047e933::t_6c3684a824fc02 7,47,255,258,459-461,631-632
+src/view/src/ui/views/library_management_enhanced.rs
+  s_790df9e047e933::t_6c3684a824fc02 25,67,197,539,573
+src/view/src/views/status_view.rs
+  s_790df9e047e933::t_6c3684a824fc02 7,19,26-27,53
+src/view/src/app/commands/server.rs
+  s_790df9e047e933::t_6c3684a824fc02 5,7
+src/view/src/views/log_view.rs
+  s_790df9e047e933::t_6c3684a824fc02 6,24,31,92-93,145
+examples/ui_components/button_examples.rs
+  s_790df9e047e933::t_6c3684a824fc02 7,10,27,85,111,138,167
+src/view/src/controllers/library_controller.rs
+  s_790df9e047e933::t_6c3684a824fc02 5,10,44,64,135,138,158,161,169,172,239
+src/view/src/domain/multi_file.rs
+  s_790df9e047e933::t_6c3684a824fc02 59
+src/view/src/ui/components/library_picker.rs
+  s_790df9e047e933::t_6c3684a824fc02 8,21-22,70-71,136,176,275-276,335,341,348,356,362
+src/view/src/app/mod.rs
+  s_790df9e047e933::t_6c3684a824fc02 12
+src/view/src/controllers/config_controller.rs
+  s_790df9e047e933::t_6c3684a824fc02 5,11,117,124,141
+src/view/src/ui/views/database_preview.rs
+  s_790df9e047e933::t_6c3684a824fc02 1,15,113,246
+examples/views/common_examples.rs
+  s_790df9e047e933::t_6c3684a824fc02 6,45,83,95,112,304,345,421,603
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "127727c21839f9c24187aa8bd8320a61bdc297ef",
+  "prompts": {},
+  "sessions": {
+    "s_790df9e047e933": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d78f7f1-6460-4c57-b80a-37d892318959",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
