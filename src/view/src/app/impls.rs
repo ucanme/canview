@@ -150,6 +150,11 @@ impl CanViewerApp {
             expanded_channels: std::collections::HashSet::new(),
             expanded_messages: std::collections::HashSet::new(),
             pending_add_channel_focus: None,
+            // Signal sets
+            signal_set_store: crate::library::signal_sets::load_signal_set_store(None),
+            active_signal_set: None,
+            pending_signal_set_name: None,
+            show_save_set_input: false,
             // Server state
             server_handle: None,
             show_share_dialog: false,
@@ -904,6 +909,11 @@ impl CanViewerApp {
             expanded_channels: std::collections::HashSet::new(),
             expanded_messages: std::collections::HashSet::new(),
             pending_add_channel_focus: None,
+            // Signal sets
+            signal_set_store: crate::library::signal_sets::load_signal_set_store(None),
+            active_signal_set: None,
+            pending_signal_set_name: None,
+            show_save_set_input: false,
             // Server state
             server_handle: None,
             show_share_dialog: false,

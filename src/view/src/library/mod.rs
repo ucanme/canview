@@ -3,7 +3,7 @@
 //! 提供信号库的CRUD操作、版本管理和验证功能
 
 mod storage;
-mod signal_sets;
+pub mod signal_sets;
 
 pub use storage::{
     SignalLibraryStorage, build_library_file_subdir, copy_database_to_libraries,
