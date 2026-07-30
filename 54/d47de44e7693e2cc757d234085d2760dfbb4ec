@@ -1,0 +1,22 @@
+.github/workflows/build.yml
+  s_790df9e047e933::t_8e267b583ac625 102
+  s_790df9e047e933::t_1746c72668f5ca 106,144,148
+.github/workflows/release.yml
+  s_790df9e047e933::t_8e267b583ac625 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "54d47de44e7693e2cc757d234085d2760dfbb4ec",
+  "prompts": {},
+  "sessions": {
+    "s_790df9e047e933": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d78f7f1-6460-4c57-b80a-37d892318959",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
