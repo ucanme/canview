@@ -558,34 +558,21 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
         .into_any_element()
 }
 
-/// Helper to format time as relative (seconds) or absolute (based on file start time)
-fn format_time_relative_or_absolute(time: f64, start_time: Option<chrono::NaiveDateTime>) -> String {
-    if let Some(st) = start_time {
-        use chrono::{Timelike, Datelike};
-        // Convert start_time to total seconds since midnight
-        let start_hour = st.hour() as f64;
-        let start_min = st.minute() as f64;
-        let start_sec = st.second() as f64;
-        let start_nano = st.nanosecond() as f64;
-        let start_total_seconds = start_hour * 3600.0 + start_min * 60.0 + start_sec + start_nano / 1_000_000_000.0;
-        
-        // Calculate absolute time for this point
-        let abs_seconds = start_total_seconds + time;
-        
-        // Handle day overflow (wrap at 24 hours) - purely for display
-        let display_seconds = abs_seconds % 86400.0;
-        
-        let hours = (display_seconds / 3600.0).floor() as u32;
-        let remaining = display_seconds % 3600.0;
-        let minutes = (remaining / 60.0).floor() as u32;
-        let seconds = remaining % 60.0;
-        
-        format!("{:04}-{:02}-{:02} {:02}:{:02}:{:06.3}", 
-            st.year(), st.month(), st.day(), 
-            hours, minutes, seconds)
-    } else {
-        format!("Time: {:.3}s", time)
-    }
+/// Helper to format time as absolute `YYYY-MM-DD HH:MM:SS.ffffff` (microsecond
+/// precision, matching the log view's `%H:%M:%S%.6f`).
+///
+/// `time` is **Unix epoch seconds** (abs_ns / 1e9). The MergedView rewrites
+/// every LogObject's `object_time_stamp` to absolute Unix nanoseconds during
+/// multi-file merge (see `domain/multi_file.rs:160`), so we don't add
+/// `start_time` here — `time` already is the wall-clock instant.
+///
+/// `start_time` is kept in the signature only for backward compatibility with
+/// callers that still thread it through; it's not used.
+fn format_time_relative_or_absolute(time: f64, _start_time: Option<chrono::NaiveDateTime>) -> String {
+    use chrono::{TimeZone, Utc};
+    let ns = (time * 1_000_000_000.0) as i64;
+    let dt = Utc.timestamp_nanos(ns);
+    dt.naive_utc().format("%Y-%m-%d %H:%M:%S%.6f").to_string()
 }
 
 /// Render the hover tooltip as an overlay sibling of the scroll container.
@@ -908,14 +895,14 @@ fn render_single_chart(
                                         window.paint_path(path, stroke_color);
                                     }
                                 }
-                                // 时间标签：X 轴上省略年月日，用 HH:MM:SS.mmm（11 字符）；
-                                // 完整 YYYY-MM-DD HH:MM:SS.mmm 在悬停 tooltip 里显示。
+                                // 时间标签：X 轴上省略年月日，用 HH:MM:SS.ffffff（与 log view 同精度）；
+                                // 完整 YYYY-MM-DD HH:MM:SS.ffffff 在悬停 tooltip 里显示。
                                 let t = layout.min_t + layout.t_range * ratio as f64;
                                 let full_label = format_time_relative_or_absolute(t, start_time_for_paint);
                                 let label_text = if full_label.starts_with("Time: ") {
                                     full_label
                                 } else {
-                                    // 截取 HH:MM:SS.mmm（跳过 "YYYY-MM-DD " 的 11 字符）
+                                    // 截取 HH:MM:SS.ffffff（跳过 "YYYY-MM-DD " 的 11 字符）
                                     full_label.get(11..).unwrap_or(&full_label).to_string()
                                 };
                                 x_labels.push(
@@ -1282,22 +1269,14 @@ pub fn extract_series_data(app: &CanViewApp) -> Arc<[Series]> {
                 }
             }
 
-            // Convert timestamp to seconds based on object_flags
-            // TimeTenMics (0x01) = 10 microseconds per tick
-            // TimeOneNans (0x02) = 1 nanosecond per tick
-            let time = if flags & 0x01 != 0 {
-                // 10 microseconds per tick
-                if collected == 0 {
-                    eprintln!("    🕐 Using 10 microsecond timestamp (flags: 0x{:08X})", flags);
-                }
-                timestamp as f64 / 100_000.0
-            } else {
-                // Default to nanoseconds (most common)
-                if collected == 0 {
-                    eprintln!("    🕐 Using nanosecond timestamp (flags: 0x{:08X})", flags);
-                }
-                timestamp as f64 / 1_000_000_000.0
-            };
+            // Convert timestamp to seconds. After MergedView::from_segments,
+            // object_time_stamp is always absolute Unix nanoseconds (abs_ns),
+            // regardless of the original object_flags. The flags-based
+            // conversion (TimeTenMics / TimeOneNans) is done at merge time.
+            let time = timestamp as f64 / 1_000_000_000.0;
+            if collected == 0 {
+                eprintln!("    🕐 Using absolute Unix nanosecond timestamp");
+            }
 
             
             // Apply zoom filter if active
@@ -1407,62 +1386,12 @@ pub fn extract_series_data(app: &CanViewApp) -> Arc<[Series]> {
             p.index = i;
         }
 
-        // Pre-calculate time labels (absolute or relative)
-        let mut time_labels = Vec::with_capacity(points.len());
-        
-        if let Some(start_time) = app.start_time {
-            // Calculate precision based on time range
-            let mut min_t = points[0].time;
-            let mut max_t = points[0].time;
-            for p in points.iter().skip(1) {
-                if p.time < min_t { min_t = p.time; }
-                if p.time > max_t { max_t = p.time; }
-            }
-            let range = (max_t - min_t).abs();
-            let precision = if range < 0.01 { 4 }
-                           else if range < 0.1 { 3 }
-                           else if range < 1.0 { 2 }
-                           else { 1 };
-            
-            // Convert start_time to total seconds since midnight
-            let start_hour = start_time.hour() as f64;
-            let start_min = start_time.minute() as f64;
-            let start_sec = start_time.second() as f64;
-            let start_nano = start_time.nanosecond() as f64;
-            let start_total_seconds = start_hour * 3600.0 + start_min * 60.0 + start_sec + start_nano / 1_000_000_000.0;
-            
-            // Extract date components
-            let year = start_time.year();
-            let month = start_time.month();
-            let day = start_time.day();
-            
-            // Convert each point to absolute time using pure math
-            for point in points.iter() {
-                let abs_seconds = start_total_seconds + point.time;
-                
-                // Handle day overflow (wrap at 24 hours)
-                let abs_seconds = abs_seconds % 86400.0;
-                
-                let hours = (abs_seconds / 3600.0).floor() as u32;
-                let remaining = abs_seconds % 3600.0;
-                let minutes = (remaining / 60.0).floor() as u32;
-                let seconds = remaining % 60.0;
-                
-                let label = match precision {
-                    4 => format!("{:04}-{:02}-{:02} {:02}:{:02}:{:06.4}", year, month, day, hours, minutes, seconds),
-                    3 => format!("{:04}-{:02}-{:02} {:02}:{:02}:{:06.3}", year, month, day, hours, minutes, seconds),
-                    2 => format!("{:04}-{:02}-{:02} {:02}:{:02}:{:05.2}", year, month, day, hours, minutes, seconds),
-                    1 => format!("{:04}-{:02}-{:02} {:02}:{:02}:{:04.1}", year, month, day, hours, minutes, seconds),
-                    _ => format!("{:04}-{:02}-{:02} {:02}:{:02}:{:02}", year, month, day, hours, minutes, seconds.floor() as u32),
-                };
-                time_labels.push(label);
-            }
-        } else {
-            // Use relative time
-            for point in points.iter() {
-                time_labels.push(format!("{:.2}s", point.time));
-            }
-        }
+        // time_labels field is now unused by render (the X axis draws via
+        // format_time_relative_or_absolute directly). Leave it empty to avoid
+        // building misleading strings; apply_zoom_to_full_data handles the
+        // empty case via unwrap_or_default().
+        let time_labels: Vec<String> = Vec::new();
+        let _ = app.start_time; // silence unused warning
 
         eprintln!("    ✅ Final point count: {}", points.len());
 
