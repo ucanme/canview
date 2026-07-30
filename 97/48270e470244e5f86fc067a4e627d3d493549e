@@ -1,0 +1,23 @@
+.github/workflows/build.yml
+  s_790df9e047e933::t_1746c72668f5ca 106,144,148
+  s_790df9e047e933::t_74c594300526a7 35,41
+  s_790df9e047e933::t_8e267b583ac625 102
+.github/workflows/release.yml
+  s_790df9e047e933::t_8e267b583ac625 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "9748270e470244e5f86fc067a4e627d3d493549e",
+  "prompts": {},
+  "sessions": {
+    "s_790df9e047e933": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d78f7f1-6460-4c57-b80a-37d892318959",
+        "model": "glm-5.2"
+      },
+      "human_author": null
+    }
+  }
+}
