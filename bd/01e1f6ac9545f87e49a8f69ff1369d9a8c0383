@@ -1,0 +1,39 @@
+assets/QUICK_START.md
+  s_790df9e047e933::t_33a5f1f239975a 58-60
+  s_790df9e047e933::t_86396db156d43e 16,22,29,43,153
+assets/README.md
+  s_790df9e047e933::t_86396db156d43e 1,3,7,87,94,97,105
+assets/APPLIED_SUCCESSFULLY.md
+  s_790df9e047e933::t_86396db156d43e 1,58,93,104,165,171,223
+assets/update_icons.bat
+  s_790df9e047e933::t_86396db156d43e 2,9
+assets/FIX_ICON_CACHE.md
+  s_790df9e047e933::t_86396db156d43e 1,31,76,90,102,123,142,167,173,179,268,272
+assets/UPDATE_ICONS.md
+  s_790df9e047e933::t_86396db156d43e 81,87,94,200,202,204,228,230,233,260
+  s_790df9e047e933::t_33a5f1f239975a 188,191,212-213,255
+docs/index.html
+  s_790df9e047e933::t_86396db156d43e 6,12,24,51,67-68,72-73,76
+src/view/LIBRARY_MANAGEMENT_REDESIGN.md
+  s_790df9e047e933::t_18f484212b9b06 97
+assets/update_icons.sh
+  s_790df9e047e933::t_86396db156d43e 2,6
+assets/refresh_icon_cache.bat
+  s_790df9e047e933::t_86396db156d43e 3,9,51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "bd01e1f6ac9545f87e49a8f69ff1369d9a8c0383",
+  "prompts": {},
+  "sessions": {
+    "s_790df9e047e933": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d78f7f1-6460-4c57-b80a-37d892318959",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
