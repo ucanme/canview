@@ -1,0 +1,38 @@
+README_zh.md
+  s_790df9e047e933::t_d1e75ec52e7f63 62
+scripts/make-app-bundle.sh
+  s_790df9e047e933::t_d1e75ec52e7f63 21
+src/view/Cargo.toml
+  s_790df9e047e933::t_5da4d16cc5047b 2
+  s_790df9e047e933::t_ddbeec6fb7c3d4 43
+scripts/package-linux.sh
+  s_790df9e047e933::t_d1e75ec52e7f63 49
+scripts/package-macos.sh
+  s_790df9e047e933::t_d1e75ec52e7f63 48
+.github/workflows/build.yml
+  s_790df9e047e933::t_e3b29673233741 240
+  s_790df9e047e933::t_7ad2c7c5c2569d 152,195,228
+README.md
+  s_790df9e047e933::t_d1e75ec52e7f63 62
+.github/GITHUB_ACTIONS.md
+  s_790df9e047e933::t_d1e75ec52e7f63 182
+  s_790df9e047e933::t_3c50c36cac73e7 181
+scripts/package.sh
+  s_790df9e047e933::t_d1e75ec52e7f63 42,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "ada9469345144a1907118d3fd89beafeb031a48f",
+  "prompts": {},
+  "sessions": {
+    "s_790df9e047e933": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d78f7f1-6460-4c57-b80a-37d892318959",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
