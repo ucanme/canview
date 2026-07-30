@@ -1,4 +1,4 @@
-# ✅ CANVIEW Logo 更新完成！
+# ✅ can-viewer Logo 更新完成！
 
 **更新日期**: 2024年2月7日  
 **Logo来源**: `assets/svg/logo.svg`  
@@ -55,7 +55,7 @@
 ## 🔍 如何验证Logo已应用
 
 ### 方法1: 文件资源管理器
-1. 打开文件夹: `C:\Users\Administrator\RustroverProjects\canview\target\release\`
+1. 打开文件夹: `C:\Users\Administrator\RustroverProjects\can-viewer\target\release\`
 2. 找到 `view.exe` 文件
 3. 查看文件图标 - 应该显示新的示波器风格Logo
 
@@ -90,7 +90,7 @@ taskkill /f /im explorer.exe && start explorer.exe
 ### 验证图标文件
 ```cmd
 # 查看ICO文件信息
-dir "C:\Users\Administrator\RustroverProjects\canview\assets\ico\can-viewer.ico"
+dir "C:\Users\Administrator\RustroverProjects\can-viewer\assets\ico\can-viewer.ico"
 
 # 应该看到:
 # 15K can-viewer.ico (最新日期: 2024年2月7日)
@@ -101,7 +101,7 @@ dir "C:\Users\Administrator\RustroverProjects\canview\assets\ico\can-viewer.ico"
 ## 📁 项目文件结构
 
 ```
-canview/
+can-viewer/
 ├── assets/
 │   ├── svg/
 │   │   ├── logo.svg              ← 新的主Logo
@@ -162,13 +162,13 @@ fn main() {
 
 ### 方式1: 直接运行
 ```cmd
-cd C:\Users\Administrator\RustroverProjects\canview\target\release
+cd C:\Users\Administrator\RustroverProjects\can-viewer\target\release
 view.exe
 ```
 
 ### 方式2: 开发模式运行
 ```cmd
-cd C:\Users\Administrator\RustroverProjects\canview
+cd C:\Users\Administrator\RustroverProjects\can-viewer
 cargo run --release
 ```
 
@@ -220,7 +220,7 @@ cargo build --release -p view
 
 ## 🎉 总结
 
-新Logo已成功应用到CANVIEW应用中！
+新Logo已成功应用到can-viewer应用中！
 
 **Logo特点**:
 - ✅ 示波器屏幕设计，契合CAN总线分析主题

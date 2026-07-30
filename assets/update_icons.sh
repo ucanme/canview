@@ -1,9 +1,9 @@
 #!/bin/bash
-# CANVIEW Icon Conversion Script for macOS and Linux
+# can-viewer Icon Conversion Script for macOS and Linux
 # This script converts the new logo.svg to PNG and ICO formats
 
 echo "============================================"
-echo "CANVIEW Icon Conversion Script"
+echo "can-viewer Icon Conversion Script"
 echo "Using new logo from assets/svg/logo.svg"
 echo "============================================"
 echo ""

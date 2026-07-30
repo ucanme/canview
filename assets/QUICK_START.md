@@ -13,20 +13,20 @@ pip install Pillow cairosvg
 
 #### Windows (CMD)
 ```cmd
-cd C:\Users\Administrator\RustroverProjects\canview\assets
+cd C:\Users\Administrator\RustroverProjects\can-viewer\assets
 update_icons.bat
 ```
 
 #### macOS/Linux (Bash)
 ```bash
-cd /path/to/canview/assets
+cd /path/to/can-viewer/assets
 chmod +x update_icons.sh
 ./update_icons.sh
 ```
 
 #### Python (跨平台)
 ```bash
-cd /path/to/canview/assets
+cd /path/to/can-viewer/assets
 python3 update_icons.py
 ```
 
@@ -40,7 +40,7 @@ python3 update_icons.py
 ### 步骤 2: 编译应用
 
 ```bash
-cd C:\Users\Administrator\RustroverProjects\canview
+cd C:\Users\Administrator\RustroverProjects\can-viewer
 cargo build --release
 ```
 
@@ -55,9 +55,9 @@ cargo build --release
 #### macOS
 ```bash
 # 创建 .app 包（如果还没有）
-mkdir -p CanView.app/Contents/{MacOS,Resources}
-cp target/release/view CanView.app/Contents/MacOS/
-cp assets/can-viewer.icns CanView.app/Contents/Resources/
+mkdir -p can-viewer.app/Contents/{MacOS,Resources}
+cp target/release/view can-viewer.app/Contents/MacOS/
+cp assets/can-viewer.icns can-viewer.app/Contents/Resources/
 ```
 
 #### Linux
@@ -150,7 +150,7 @@ ie4uinit.exe -show
 
 ## 🎉 完成！
 
-现在你的 CANVIEW 应用已经使用新的示波器风格 Logo 了！
+现在你的 can-viewer 应用已经使用新的示波器风格 Logo 了！
 
 **Logo 特点：**
 - 🎨 示波器屏幕设计

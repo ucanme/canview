@@ -1,10 +1,10 @@
-# CANVIEW Logo Resources
+# can-viewer Logo Resources
 
-This directory contains the logo and icon assets for the CANVIEW application.
+This directory contains the logo and icon assets for the can-viewer application.
 
 ## 🎨 Logo Design
 
-CANVIEW features a modern **oscilloscope-style** logo representing CAN/LIN bus signal analysis.
+can-viewer features a modern **oscilloscope-style** logo representing CAN/LIN bus signal analysis.
 
 ### Design Characteristics
 - **Theme**: Oscilloscope screen with signal waveforms
@@ -84,17 +84,17 @@ The Windows executable will have the icon embedded.
 ### In Documentation
 
 ```markdown
-![CANVIEW Logo](svg/logo.svg)
+![can-viewer Logo](svg/logo.svg)
 ```
 
 ### In HTML/Web
 
 ```html
 <!-- Standard size -->
-<img src="svg/logo.svg" alt="CANVIEW Logo" width="200">
+<img src="svg/logo.svg" alt="can-viewer Logo" width="200">
 
 <!-- Specific size -->
-<img src="svg/logo-256x256.svg" alt="CANVIEW Icon" width="256">
+<img src="svg/logo-256x256.svg" alt="can-viewer Icon" width="256">
 ```
 
 ### In README Files
@@ -102,7 +102,7 @@ The Windows executable will have the icon embedded.
 ```markdown
 <div align="center">
 
-![CANVIEW Logo](svg/logo.svg)
+![can-viewer Logo](svg/logo.svg)
 
 *Modern CAN/LIN Bus Data Analyzer*
 

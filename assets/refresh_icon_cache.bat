@@ -1,12 +1,12 @@
 @echo off
 REM ============================================
-REM CANVIEW 图标缓存清除工具
+REM can-viewer 图标缓存清除工具
 REM 用于强制Windows重新加载应用图标
 REM ============================================
 
 echo.
 echo ============================================
-echo CANVIEW 图标缓存清除工具
+echo can-viewer 图标缓存清除工具
 echo ============================================
 echo.
 echo 此工具将：
@@ -48,7 +48,7 @@ echo.
 echo 现在请执行以下步骤验证图标：
 echo.
 echo 1. 打开文件夹：
-echo    C:\Users\Administrator\RustroverProjects\canview\target\release\
+echo    C:\Users\Administrator\RustroverProjects\can-viewer\target\release\
 echo.
 echo 2. 找到 view.exe 文件
 echo.
