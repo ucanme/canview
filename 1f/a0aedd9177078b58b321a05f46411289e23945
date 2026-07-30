@@ -1,0 +1,24 @@
+src/view/src/library/signal_sets.rs
+  s_04d90952119fff::t_17fd9eeee3eaaa 212-214
+  s_04d90952119fff::t_a2cf2ed9fa4522 198
+  s_04d90952119fff::t_cb5dea40d48601 68
+  s_04d90952119fff::t_0b6e424695bde1 184
+docs/superpowers/specs/2026-07-31-signal-sets-design.md
+  s_04d90952119fff::t_d9fbbf12d6af6d 79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "1fa0aedd9177078b58b321a05f46411289e23945",
+  "prompts": {},
+  "sessions": {
+    "s_04d90952119fff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8e61c224-a58a-4b5b-a842-5d741ff2c1da",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
