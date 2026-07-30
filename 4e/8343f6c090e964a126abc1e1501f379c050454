@@ -1,0 +1,23 @@
+docs/superpowers/specs/2026-07-31-signal-sets-design.md
+  s_04d90952119fff::t_79d8e85d452b48 261,266
+  s_04d90952119fff::t_c1d35f59411fe4 1-120,134-135,137-138,143,146-260,262-265,267-433,435-437,441-444,452-562
+  s_04d90952119fff::t_59ab49a8dd027f 145
+  s_04d90952119fff::t_07a0a924e903a9 121-133,136,139-142,144
+  s_04d90952119fff::t_355949ae3fd72f 434,438-440,445-451
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "4e8343f6c090e964a126abc1e1501f379c050454",
+  "prompts": {},
+  "sessions": {
+    "s_04d90952119fff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8e61c224-a58a-4b5b-a842-5d741ff2c1da",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
