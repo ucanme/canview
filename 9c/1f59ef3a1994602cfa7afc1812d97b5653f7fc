@@ -1,0 +1,47 @@
+src/view/Cargo.toml
+  s_790df9e047e933::t_e4080e826002b2 52-53
+scripts/build-installer.ps1
+  s_790df9e047e933::t_5db45ea0bb595c 1,10,90,96-97
+scripts/installer.iss
+  s_790df9e047e933::t_5db45ea0bb595c 1,4,8,24
+scripts/package-macos.sh
+  s_790df9e047e933::t_5db45ea0bb595c 2,8-9,13,48-49,85,103,105,216,219
+scripts/package-linux.sh
+  s_790df9e047e933::t_5db45ea0bb595c 2,8,13,106,121,149,151,167-168,180-181,190,228,249,292
+scripts/make-app-bundle.sh
+  s_790df9e047e933::t_5db45ea0bb595c 3,13,21-22,34-35,37,43
+src/view/src/app/impls_rendering.rs
+  s_790df9e047e933::t_e4080e826002b2 2147
+scripts/package.ps1
+  s_790df9e047e933::t_5db45ea0bb595c 1,10,26,48-49,152-153,155,167,172,174,194
+scripts/package.bat
+  s_790df9e047e933::t_5db45ea0bb595c 2,4
+src/view/build.rs
+  s_790df9e047e933::t_e4080e826002b2 59,83
+scripts/package.sh
+  s_790df9e047e933::t_5db45ea0bb595c 2,10,30,42,44,46,97,106,117
+src/view/src/main.rs
+  s_790df9e047e933::t_e4080e826002b2 143
+.github/workflows/build.yml
+  s_790df9e047e933::t_5db45ea0bb595c 25,29-30,36,42,175,188,190,195-196,206-207,209,215,235,253,268
+.github/workflows/release.yml
+  s_790df9e047e933::t_5db45ea0bb595c 249,251,256-257,260-261,264-267
+.github/GITHUB_ACTIONS.md
+  s_790df9e047e933::t_5db45ea0bb595c 55-59,156,180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "9c1f59ef3a1994602cfa7afc1812d97b5653f7fc",
+  "prompts": {},
+  "sessions": {
+    "s_790df9e047e933": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d78f7f1-6460-4c57-b80a-37d892318959",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
