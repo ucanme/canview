@@ -452,6 +452,41 @@ pub fn extract_signal_items(app: &CanViewerApp) -> Vec<SidebarItem> {
     items
 }
 
+/// Items produced by `build_set_dropdown_items` for the signal-sets dropdown.
+#[derive(Clone, Debug, PartialEq)]
+pub enum SetDropdownItem {
+    /// Disabled placeholder (no active library / no sets)
+    Placeholder(String),
+    /// A named set with its entry count
+    Set { name: String, count: usize },
+    /// "✕ Clear set selection" trailing item
+    ClearActive,
+}
+
+/// Pure function: build the list of items shown in the signal-sets dropdown.
+pub fn build_set_dropdown_items(app: &CanViewerApp) -> Vec<SetDropdownItem> {
+    let Some(lib_id) = &app.app_config.active_library_id else {
+        return vec![SetDropdownItem::Placeholder("先激活一个信号库".into())];
+    };
+    let Some(sets) = app.signal_set_store.sets_by_library.get(lib_id) else {
+        return vec![SetDropdownItem::Placeholder("当前库无信号集".into())];
+    };
+    if sets.is_empty() {
+        return vec![SetDropdownItem::Placeholder("当前库无信号集".into())];
+    }
+    let mut items: Vec<SetDropdownItem> = sets
+        .iter()
+        .map(|s| SetDropdownItem::Set {
+            name: s.name.clone(),
+            count: s.entries.len(),
+        })
+        .collect();
+    if app.active_signal_set.is_some() {
+        items.push(SetDropdownItem::ClearActive);
+    }
+    items
+}
+
 /// Render the signal selection sidebar: header + search box + virtualized list
 /// + bottom action bar with "Clear all" and "Plot N signals" buttons.
 pub fn render_signal_sidebar(
@@ -639,6 +674,86 @@ mod tests {
             version_name: Some("v1.0".to_string()),
         });
         app
+    }
+
+    /// App with active library `lib_x` and a given list of (set_name, count) sets under it.
+    fn app_with_sets(active_lib_id: Option<&str>, sets: Vec<(&str, usize)>, active_set: Option<(&str, &str)>) -> CanViewerApp {
+        let mut app = CanViewerApp::new_state();
+        if let Some(id) = active_lib_id {
+            app.app_config.active_library_id = Some(id.to_string());
+            let store_sets: Vec<_> = sets.into_iter().map(|(name, n)| crate::library::signal_sets::SignalSet {
+                name: name.to_string(),
+                entries: (0..n).map(|i| crate::library::signal_sets::SignalSetEntry {
+                    channel_id: 1, msg_id: i as u32, signal_name: format!("sig{}", i),
+                }).collect(),
+            }).collect();
+            app.signal_set_store.sets_by_library.insert(id.to_string(), store_sets);
+        }
+        if let Some((lid, sname)) = active_set {
+            app.active_signal_set = Some((lid.to_string(), sname.to_string()));
+        }
+        app
+    }
+
+    #[test]
+    fn build_set_dropdown_items_no_active_library() {
+        let app = app_with_sets(None, Vec::new(), None);
+        let items = build_set_dropdown_items(&app);
+        assert_eq!(items.len(), 1);
+        match &items[0] {
+            SetDropdownItem::Placeholder(msg) => assert_eq!(msg, "先激活一个信号库"),
+            other => panic!("expected Placeholder, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn build_set_dropdown_items_active_lib_no_sets() {
+        let app = app_with_sets(Some("lib_x"), Vec::new(), None);
+        let items = build_set_dropdown_items(&app);
+        assert_eq!(items.len(), 1);
+        match &items[0] {
+            SetDropdownItem::Placeholder(msg) => assert_eq!(msg, "当前库无信号集"),
+            other => panic!("expected Placeholder, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn build_set_dropdown_items_active_lib_with_sets_no_active() {
+        let app = app_with_sets(Some("lib_x"), vec![("Engine", 2), ("Battery", 3)], None);
+        let items = build_set_dropdown_items(&app);
+        assert_eq!(items.len(), 2);
+        assert!(matches!(&items[0], SetDropdownItem::Set { name, count: 2 } if name == "Engine"));
+        assert!(matches!(&items[1], SetDropdownItem::Set { name, count: 3 } if name == "Battery"));
+    }
+
+    #[test]
+    fn build_set_dropdown_items_with_active_set_appends_clear() {
+        let app = app_with_sets(
+            Some("lib_x"),
+            vec![("Engine", 2)],
+            Some(("lib_x", "Engine")),
+        );
+        let items = build_set_dropdown_items(&app);
+        assert_eq!(items.len(), 2);
+        assert!(matches!(&items[0], SetDropdownItem::Set { name, .. } if name == "Engine"));
+        assert!(matches!(&items[1], SetDropdownItem::ClearActive));
+    }
+
+    #[test]
+    fn build_set_dropdown_items_active_set_on_other_lib_still_lists() {
+        // Edge case: active_signal_set points at a non-active library.
+        // build_set_dropdown_items is driven by active_library_id for listing;
+        // ClearActive is appended whenever active_signal_set.is_some(), regardless of lib match.
+        // (The dropdown UI itself only shows ClearActive when the active set is on the
+        // currently-active library, but that's a UI concern, not this pure function's.)
+        let app = app_with_sets(
+            Some("lib_x"),
+            vec![("Engine", 2)],
+            Some(("lib_other", "OtherSet")),
+        );
+        let items = build_set_dropdown_items(&app);
+        assert_eq!(items.len(), 2);
+        assert!(matches!(&items[1], SetDropdownItem::ClearActive));
     }
 
     #[test]
