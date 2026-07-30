@@ -6,10 +6,10 @@
 
 **Open-source cross-platform CAN/LIN bus data analysis tool**
 
-[![Build](https://img.shields.io/github/actions/workflow/status/ucanme/canview/build.yml?branch=main&style=flat-square)](https://github.com/ucanme/canview/actions)
+[![Build](https://img.shields.io/github/actions/workflow/status/cantool/can-viewer/build.yml?branch=main&style=flat-square)](https://github.com/cantool/can-viewer/actions)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE.txt)
 [![Rust](https://img.shields.io/badge/rust-nightly-orange?style=flat-square)](https://www.rust-lang.org/)
-[![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-lightgrey?style=flat-square)](https://github.com/ucanme/canview/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-lightgrey?style=flat-square)](https://github.com/cantool/can-viewer/releases)
 
 Fully open source — your ⭐ keeps development going!
 
@@ -57,12 +57,12 @@ CANVIEW is a high-performance automotive bus analysis tool built in Rust. It int
 sudo apt-get install libxkbcommon-dev libx11-dev libegl1-mesa-dev
 
 # Build and run
-git clone https://github.com/ucanme/canview.git
+git clone https://github.com/cantool/can-viewer.git
 cd canview
 cargo run --release --bin view
 ```
 
-Pre-built binaries: [Releases](https://github.com/ucanme/canview/releases) (Windows / macOS / Linux)
+Pre-built binaries: [Releases](https://github.com/cantool/can-viewer/releases) (Windows / macOS / Linux)
 
 ---
 
@@ -127,6 +127,6 @@ Fork and submit a Pull Request. Please ensure your code passes `cargo fmt` and `
 
 **Built with ❤️ in Rust**
 
-[Issues](https://github.com/ucanme/canview/issues) · [Discussions](https://github.com/ucanme/canview/discussions) · admin@ucan.me
+[Issues](https://github.com/cantool/can-viewer/issues) · [Discussions](https://github.com/cantool/can-viewer/discussions) · admin@ucan.me
 
 </div>

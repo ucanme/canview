@@ -4,7 +4,7 @@
 #define MyAppName "CANVIEW"
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "Your Company"
-#define MyAppURL "https://github.com/yourusername/canview"
+#define MyAppURL "https://github.com/cantool/can-viewer"
 #define MyAppExeName "canview.exe"
 
 [Setup]

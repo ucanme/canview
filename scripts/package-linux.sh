@@ -155,7 +155,7 @@ Description: CAN/LIN Bus Analysis Tool
   - Multi-channel configuration
   - Signal decoding and display
   - Chart analysis
-Homepage: https://github.com/yourusername/canview
+Homepage: https://github.com/cantool/can-viewer
 EOF
 
 # 创建 postinst 脚本
@@ -218,7 +218,7 @@ Release:        1%{?dist}
 Summary:        CAN/LIN Bus Analysis Tool
 
 License:        MIT
-URL:            https://github.com/yourusername/canview
+URL:            https://github.com/cantool/can-viewer
 Source0:        %{name}-%{version}.tar.gz
 
 BuildArch:      x86_64

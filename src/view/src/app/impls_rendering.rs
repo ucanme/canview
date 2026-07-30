@@ -2179,7 +2179,7 @@ impl Render for CanViewerApp {
                                             let _ = rfd::AsyncMessageDialog::new()
                                                 .set_title("About can-viewer")
                                                 .set_description(&format!(
-                                                    "can-viewer v{}\n\nOpen-source cross-platform CAN/LIN bus data analysis tool\n\nhttps://github.com/ucanme/can-viewer",
+                                                    "can-viewer v{}\n\nOpen-source cross-platform CAN/LIN bus data analysis tool\n\nhttps://github.com/cantool/can-viewer",
                                                     v
                                                 ))
                                                 .set_buttons(rfd::MessageButtons::Ok)
@@ -2215,7 +2215,7 @@ impl Render for CanViewerApp {
                                 .cursor_pointer()
                                 .on_mouse_down(gpui::MouseButton::Left, move |_event, _window, cx| {
                                     cx.stop_propagation();
-                                    cx.open_url("https://github.com/ucanme/can-viewer");
+                                    cx.open_url("https://github.com/cantool/can-viewer");
                                     view_for_github.update(cx, |app, cx| {
                                         app.show_help_menu = false;
                                         cx.notify();

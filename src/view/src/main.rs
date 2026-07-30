@@ -131,7 +131,7 @@ fn main() {
             },
         ]);
         cx.on_action(|_action: &help::OpenGitHubUrl, cx| {
-            cx.open_url("https://github.com/ucanme/can-viewer");
+            cx.open_url("https://github.com/cantool/can-viewer");
         });
         cx.on_action(|_action: &help::SendFeedbackEmail, cx| {
             cx.open_url("mailto:admin@ucan.me?subject=can-viewer%20Feedback");
@@ -145,7 +145,7 @@ fn main() {
                 let _ = rfd::AsyncMessageDialog::new()
                     .set_title("About can-viewer")
                     .set_description(&format!(
-                        "can-viewer {}\n\nOpen-source cross-platform CAN/LIN bus data analysis tool\n\nhttps://github.com/ucanme/can-viewer",
+                        "can-viewer {}\n\nOpen-source cross-platform CAN/LIN bus data analysis tool\n\nhttps://github.com/cantool/can-viewer",
                         version
                     ))
                     .set_buttons(rfd::MessageButtons::Ok)
