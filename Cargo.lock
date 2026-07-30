@@ -1016,7 +1016,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "canview"
+name = "can-viewer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
