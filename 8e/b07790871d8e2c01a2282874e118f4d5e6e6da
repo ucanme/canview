@@ -1,0 +1,40 @@
+src/view/src/app/impls_rendering.rs
+  s_04d90952119fff::t_fc9ddeb5b117d7 1709-1723
+src/view/src/ui/views/plot_sidebar.rs
+  s_04d90952119fff::t_429ae3f39b5e2a 777
+  s_04d90952119fff::t_03220ce9c1a795 563
+  s_04d90952119fff::t_75d0a8073a27ab 627-631,688-703
+  s_04d90952119fff::t_cf666359e4d61e 230-231
+  s_04d90952119fff::t_454934494e3739 788,798
+  s_04d90952119fff::t_137491f81abede 713-776,778-787,789-797,799-873,875-893,896-904,907-923
+  s_04d90952119fff::t_70b9bd5c47cdef 706-708
+  s_04d90952119fff::t_f30b81ef43a7c7 509,524-554
+  s_04d90952119fff::t_8d998b604e3f6a 874,924
+src/view/src/app/impls.rs
+  s_04d90952119fff::t_7abd4ed377dd13 158-159,919-920
+src/view/src/controllers/config_controller.rs
+  s_04d90952119fff::t_a27a6ad7338d35 39
+src/view/src/controllers/mod.rs
+  s_04d90952119fff::t_2b9d4ffcc05f03 5-12,17,23
+src/view/src/app/state.rs
+  s_04d90952119fff::t_f4d51e44456d12 270-275
+  s_04d90952119fff::t_b00fa1e6b0a3d7 452-453
+src/view/src/main.rs
+  s_04d90952119fff::t_145caa7f392774 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "8eb07790871d8e2c01a2282874e118f4d5e6e6da",
+  "prompts": {},
+  "sessions": {
+    "s_04d90952119fff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8e61c224-a58a-4b5b-a842-5d741ff2c1da",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
