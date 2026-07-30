@@ -76,7 +76,7 @@ signal_set_controller::apply_signal_set
    ├─ 取 set.entries
    ├─ 根据 library.channel_type 决定 bus = "CAN" | "LIN"
    ├─ 清空 selected_signals
-   ├─ 推入 "BUS:CH:0xMSG:SIG" 形式字符串
+   ├─ 推入 "BUS:CH:MSG:SIG" 形式字符串
    ├─ active_signal_set = Some((lib_id, set_name))
    └─ extract_and_update_series_data(this)  // 触发绘图
 ```
@@ -496,8 +496,8 @@ pub fn build_set_dropdown_items(app: &CanViewerApp) -> Vec<SetDropdownItem> {
 
 2. `signal_sets.rs::tests::test_build_selected_signals_from_set`
    - 空集 → 空 vec
-   - 1 个条目 + CAN → `vec!["CAN:1:0x100:EngineSpeed".to_string()]`
-   - 1 个条目 + LIN → `vec!["LIN:2:0x20:Speed".to_string()]`
+   - 1 个条目 + CAN → `vec!["CAN:1:256:EngineSpeed".to_string()]`
+   - 1 个条目 + LIN → `vec!["LIN:2:32:Speed".to_string()]`
    - 多条目保持顺序
 
 3. `signal_sets.rs::tests::test_store_roundtrip`

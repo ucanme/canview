@@ -65,7 +65,7 @@ pub fn build_selected_signals_from_set(
     };
     set.entries
         .iter()
-        .map(|e| format!("{}:{}:0x{:x}:{}", bus, e.channel_id, e.msg_id, e.signal_name))
+        .map(|e| format!("{}:{}:{}:{}", bus, e.channel_id, e.msg_id, e.signal_name))
         .collect()
 }
 
@@ -181,7 +181,7 @@ mod tests {
             }],
         };
         let out = build_selected_signals_from_set(&set, ChannelType::CAN);
-        assert_eq!(out, vec!["CAN:1:0x100:EngineSpeed".to_string()]);
+        assert_eq!(out, vec!["CAN:1:256:EngineSpeed".to_string()]);
     }
 
     #[test]
@@ -195,7 +195,7 @@ mod tests {
             }],
         };
         let out = build_selected_signals_from_set(&set, ChannelType::LIN);
-        assert_eq!(out, vec!["LIN:2:0x20:Speed".to_string()]);
+        assert_eq!(out, vec!["LIN:2:32:Speed".to_string()]);
     }
 
     #[test]
@@ -209,9 +209,9 @@ mod tests {
             ],
         };
         let out = build_selected_signals_from_set(&set, ChannelType::CAN);
-        assert_eq!(out[0], "CAN:1:0x100:A");
-        assert_eq!(out[1], "CAN:1:0x200:B");
-        assert_eq!(out[2], "CAN:2:0x300:C");
+        assert_eq!(out[0], "CAN:1:256:A");
+        assert_eq!(out[1], "CAN:1:512:B");
+        assert_eq!(out[2], "CAN:2:768:C");
     }
 
     #[test]
