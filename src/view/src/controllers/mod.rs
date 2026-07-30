@@ -7,8 +7,10 @@ pub mod library_controller;
 pub mod config_controller;
 pub mod window_controller;
 pub mod ui_controller;
+pub mod signal_set_controller;
 
 pub use library_controller::*;
 pub use config_controller::*;
 pub use window_controller::*;
 pub use ui_controller::*;
+pub use signal_set_controller::*;
