@@ -267,6 +267,12 @@ pub struct CanViewerApp {
     pub pending_signal_set_name: Option<String>,
     /// Whether the inline "save as set" input row is currently shown
     pub show_save_set_input: bool,
+    /// Whether the signal-sets dropdown menu is currently open
+    pub show_signal_set_dropdown: bool,
+    /// Inline-input entity for the "save as signal set" name field.
+    /// Lazily created on first show (see render_signal_set_dropdown_row
+    /// initialization in impls_rendering.rs render loop).
+    pub signal_set_name_input: Option<gpui::Entity<gpui_component::input::InputState>>,
 
     // Server state
     pub server_handle: Option<crate::server::ServerHandle>,
@@ -443,6 +449,8 @@ impl CanViewerApp {
             active_signal_set: None,
             pending_signal_set_name: None,
             show_save_set_input: false,
+            show_signal_set_dropdown: false,
+            signal_set_name_input: None,
             // Server state
             server_handle: None,
             show_share_dialog: false,

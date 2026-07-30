@@ -36,7 +36,7 @@ pub fn load_startup_config(app: &mut CanViewerApp) {
 
                         // Load libraries into library_manager
                         app.library_manager =
-                            crate::app::LibraryManager::from_libraries(config.libraries.clone());
+                            crate::library::LibraryManager::from_libraries(config.libraries.clone());
 
                         // Statistics
                         let total_versions: usize = app

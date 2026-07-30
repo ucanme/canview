@@ -155,6 +155,8 @@ impl CanViewerApp {
             active_signal_set: None,
             pending_signal_set_name: None,
             show_save_set_input: false,
+            show_signal_set_dropdown: false,
+            signal_set_name_input: None,
             // Server state
             server_handle: None,
             show_share_dialog: false,
@@ -914,6 +916,8 @@ impl CanViewerApp {
             active_signal_set: None,
             pending_signal_set_name: None,
             show_save_set_input: false,
+            show_signal_set_dropdown: false,
+            signal_set_name_input: None,
             // Server state
             server_handle: None,
             show_share_dialog: false,

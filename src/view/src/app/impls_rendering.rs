@@ -1706,6 +1706,21 @@ impl Render for CanViewerApp {
             self.signal_search_input = Some(input);
         }
 
+        // Initialize signal set name input (lazily, on first render)
+        if self.signal_set_name_input.is_none() {
+            let input = cx.new(|cx| InputState::new(window, cx).placeholder("输入集名并按回车保存…"));
+            cx.subscribe(&input, |this, input, event, cx| {
+                if let gpui_component::input::InputEvent::PressEnter { .. } = event {
+                    let name = input.read(cx).value().to_string();
+                    crate::controllers::signal_set_controller::save_current_selection_as_signal_set(
+                        this, &name, cx,
+                    );
+                }
+            })
+            .detach();
+            self.signal_set_name_input = Some(input);
+        }
+
         // Check for file dialog result (non-blocking poll)
         self.handle_file_dialog_result(cx);
 

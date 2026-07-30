@@ -227,6 +227,8 @@ pub fn render_sidebar_item(item: &SidebarItem, view: Entity<CanViewerApp>) -> An
                                     } else {
                                         this.selected_signals.push(sig_id.clone());
                                     }
+                                    // Manual edit: clear active set binding so the dropdown reverts to "Select a set…"
+                                    this.active_signal_set = None;
                                     cx.notify();
                                 });
                             }
@@ -504,6 +506,7 @@ pub fn render_signal_sidebar(
         .size_full()
         .flex()
         .flex_col()
+        .relative()
         .bg(rgb(0x0a0a0b))
         .child(
             // Sidebar Header
@@ -518,10 +521,37 @@ pub fn render_signal_sidebar(
                 .justify_between()
                 .child(
                     div()
-                        .text_xs()
-                        .font_weight(FontWeight::BOLD)
-                        .text_color(rgb(0xe4e4e7))
-                        .child("信号选择 (Signals)")
+                        .flex()
+                        .items_center()
+                        .gap_2()
+                        .child(
+                            div()
+                                .text_xs()
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(rgb(0xe4e4e7))
+                                .child("信号选择 (Signals)")
+                        )
+                        .when_some(
+                            app.active_signal_set.as_ref().and_then(|(lid, sname)| {
+                                if app.app_config.active_library_id.as_ref() == Some(lid) {
+                                    Some(sname.clone())
+                                } else {
+                                    None
+                                }
+                            }),
+                            |this, set_name| {
+                                this.child(
+                                    div()
+                                        .px_1p5()
+                                        .py(px(1.0))
+                                        .bg(rgb(0x3b82f6))
+                                        .rounded(px(3.0))
+                                        .text_xs()
+                                        .text_color(rgb(0xffffff))
+                                        .child(set_name)
+                                )
+                            }
+                        )
                 )
                 .child(
                     div()
@@ -530,6 +560,7 @@ pub fn render_signal_sidebar(
                         .child(format!("{}", item_count))
                 )
         )
+        .child(render_signal_set_dropdown_row(app, view.clone(), cx))
         .child(
             // Search Box
             div()
@@ -593,8 +624,11 @@ pub fn render_signal_sidebar(
                 )
         )
         .child(
-            // Bottom Action Bar: Clear all | Plot N signals
-            if selected_count > 0 {
+            // Bottom Action Bar: Clear all | Plot N signals | Save as set
+            if app.show_save_set_input {
+                // Inline rename input row
+                render_save_set_input_row(app, view.clone(), cx)
+            } else if selected_count > 0 {
                 div()
                     .p_2()
                     .bg(rgb(0x131314))
@@ -651,10 +685,243 @@ pub fn render_signal_sidebar(
                                     )
                             )
                     )
+                    .child(
+                        // Save as signal set button (NEW)
+                        div()
+                            .px_3()
+                            .py_1p5()
+                            .bg(rgb(0x3f3f46))
+                            .rounded(px(4.0))
+                            .cursor_pointer()
+                            .hover(|s| s.bg(rgb(0x52525b)))
+                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                this.show_save_set_input = true;
+                                this.pending_signal_set_name = Some(String::new());
+                                cx.notify();
+                            }))
+                            .child(
+                                div().text_xs().text_color(rgb(0xffffff)).child("保存为信号集…")
+                            )
+                    )
+                    .into_any_element()
             } else {
-                div()
+                div().into_any_element()
             }
         )
+}
+
+/// Render the signal-sets dropdown row: trigger button + popup menu.
+fn render_signal_set_dropdown_row(
+    app: &CanViewerApp,
+    view: Entity<CanViewerApp>,
+    cx: &mut Context<CanViewerApp>,
+) -> impl IntoElement {
+    let items = build_set_dropdown_items(app);
+    let is_open = app.show_signal_set_dropdown;
+    let active_set_label = app.active_signal_set.as_ref()
+        .and_then(|(lid, sname)| {
+            if app.app_config.active_library_id.as_ref() == Some(lid) {
+                Some(sname.clone())
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| "选择信号集…".to_string());
+
+    // Determine disabled state from the items list
+    let is_disabled = matches!(items.first(), Some(SetDropdownItem::Placeholder(_)));
+
+    let view_for_items = view.clone();
+
+    let trigger = div()
+        .w_full()
+        .px_4()
+        .py_2()
+        .border_b_1()
+        .border_color(rgb(0x27272a))
+        .flex()
+        .items_center()
+        .gap_2()
+        .when(!is_disabled, |el| el.cursor_pointer().hover(|s| s.bg(rgb(0x1a1a1b))))
+        .when(is_disabled, |el| el.opacity(0.5))
+        .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
+            if !this.show_signal_set_dropdown {
+                this.show_signal_set_dropdown = true;
+                cx.notify();
+            }
+        }))
+        .child(
+            div()
+                .text_xs()
+                .text_color(rgb(0x71717a))
+                .w(px(56.0))
+                .child("信号集:")
+        )
+        .child(
+            div()
+                .flex_1()
+                .text_xs()
+                .text_color(if is_disabled { rgb(0x52525b) } else { rgb(0xe4e4e7) })
+                .child(active_set_label.clone())
+        )
+        .child(
+            div()
+                .text_xs()
+                .text_color(rgb(0x71717a))
+                .child(if is_disabled { "" } else if is_open { "▴" } else { "▾" })
+        );
+
+    // Popup menu (only when open)
+    let popup = if is_open && !is_disabled {
+        let mut children: Vec<AnyElement> = Vec::new();
+        for item in items.iter() {
+            let view = view_for_items.clone();
+            let elem = match item {
+                SetDropdownItem::Placeholder(msg) => div()
+                    .px_4().py_2()
+                    .text_xs().text_color(rgb(0x52525b))
+                    .child(msg.clone())
+                    .into_any_element(),
+                SetDropdownItem::Set { name, count } => {
+                    let name = name.clone();
+                    let count = *count;
+                    let name_for_closure = name.clone();
+                    div()
+                        .px_4().py_2()
+                        .cursor_pointer().hover(|s| s.bg(rgb(0x1f1f22)))
+                        .on_mouse_down(MouseButton::Left, {
+                            let view = view.clone();
+                            move |_, _, cx| {
+                                view.update(cx, |this, cx| {
+                                    let lib_id = this.app_config.active_library_id.clone().unwrap_or_default();
+                                    crate::controllers::signal_set_controller::apply_signal_set(
+                                        this, &lib_id, &name_for_closure, cx,
+                                    );
+                                    this.show_signal_set_dropdown = false;
+                                    cx.notify();
+                                });
+                            }
+                        })
+                        .flex().items_center().justify_between()
+                        .child(div().text_xs().text_color(rgb(0xd4d4d8)).child(name.clone()))
+                        .child(div().text_xs().text_color(rgb(0x71717a)).child(format!("({})", count)))
+                        .into_any_element()
+                }
+                SetDropdownItem::ClearActive => div()
+                    .px_4().py_2()
+                    .border_t_1().border_color(rgb(0x27272a))
+                    .cursor_pointer().hover(|s| s.bg(rgb(0x1f1f22)))
+                    .on_mouse_down(MouseButton::Left, {
+                        let view = view.clone();
+                        move |_, _, cx| {
+                            view.update(cx, |this, cx| {
+                                crate::controllers::signal_set_controller::clear_active_signal_set(this, cx);
+                                this.show_signal_set_dropdown = false;
+                                cx.notify();
+                            });
+                        }
+                    })
+                    .text_xs().text_color(rgb(0xef4444))
+                    .child("✕ 清除当前选择")
+                    .into_any_element(),
+            };
+            children.push(elem);
+        }
+        // Click-outside handler: an invisible full-screen overlay behind the popup that closes on click
+        Some(
+            div()
+                .absolute()
+                .top_0().left_0()
+                .size_full()
+                .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                    this.show_signal_set_dropdown = false;
+                    cx.notify();
+                }))
+                // Position the popup just below the trigger (top: ~50px from sidebar top)
+                .child(
+                    div()
+                        .absolute()
+                        .top(px(50.0))
+                        .left_0()
+                        .right_0()
+                        .bg(rgb(0x18181b))
+                        .border_1()
+                        .border_color(rgb(0x27272a))
+                        .rounded_b(px(4.0))
+                        .shadow_lg()
+                        .flex().flex_col()
+                        .children(children)
+                )
+        )
+    } else {
+        None
+    };
+
+    div()
+        .relative()
+        .child(trigger)
+        .children(popup)
+}
+
+/// Render the inline "save as signal set" input row (replaces the bottom bar
+/// when show_save_set_input is true). Enter saves (via InputState subscribe);
+/// 取消 button aborts. The Input entity is created lazily in impls_rendering.rs
+/// render loop (Sub-step 0b) and bound here.
+fn render_save_set_input_row(
+    app: &CanViewerApp,
+    view: Entity<CanViewerApp>,
+    _cx: &mut Context<CanViewerApp>,
+) -> AnyElement {
+    let input_entity = app.signal_set_name_input.clone();
+    let view_for_cancel = view.clone();
+
+    div()
+        .p_2()
+        .bg(rgb(0x131314))
+        .border_t_1()
+        .border_color(rgb(0x27272a))
+        .flex()
+        .gap_2()
+        .child(
+            if let Some(input) = input_entity {
+                div()
+                    .flex_1()
+                    .h(px(32.0))
+                    .flex()
+                    .items_center()
+                    .child(gpui_component::input::Input::new(&input).appearance(true))
+                    .into_any_element()
+            } else {
+                div()
+                    .flex_1()
+                    .h(px(32.0))
+                    .flex()
+                    .items_center()
+                    .px_2()
+                    .text_xs()
+                    .text_color(rgb(0x52525b))
+                    .child("初始化输入…")
+                    .into_any_element()
+            }
+        )
+        .child(
+            div()
+                .px_3()
+                .py_1p5()
+                .bg(rgb(0x3f3f46))
+                .rounded(px(4.0))
+                .cursor_pointer()
+                .hover(|s| s.bg(rgb(0x52525b)))
+                .on_mouse_down(MouseButton::Left, move |_, _, cx| {
+                    view_for_cancel.update(cx, |this, cx| {
+                        this.show_save_set_input = false;
+                        this.pending_signal_set_name = None;
+                        cx.notify();
+                    });
+                })
+                .child(div().text_xs().text_color(rgb(0xffffff)).child("取消"))
+        )
+        .into_any_element()
 }
 
 #[cfg(test)]

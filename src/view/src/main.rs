@@ -5,6 +5,7 @@ use gpui::{prelude::*, *};
 // Declare modules
 mod app;
 mod config;
+mod controllers;
 mod domain;
 mod handlers;
 mod library;
