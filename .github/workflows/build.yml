@@ -22,24 +22,24 @@ jobs:
       matrix:
         include:
           # macOS ARM (Apple Silicon) — builds a .app bundle so the
-          # canview icon shows in Dock and Cmd-Tab. Uses nightly because
+          # can-viewer icon shows in Dock and Cmd-Tab. Uses nightly because
           # the project depends on edition 2024 + #![recursion_limit].
           - os: macos-14
             target: aarch64-apple-darwin
-            artifact_name: canview.app
-            asset_name: canview-macos-aarch64
+            artifact_name: can-viewer.app
+            asset_name: can-viewer-macos-aarch64
 
           # Linux x86_64
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact_name: view
-            asset_name: canview-linux-x86_64
+            asset_name: can-viewer-linux-x86_64
 
           # Windows x86_64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact_name: view.exe
-            asset_name: canview-windows-x86_64
+            asset_name: can-viewer-windows-x86_64
 
     steps:
       - name: Checkout code
@@ -172,7 +172,7 @@ jobs:
           iconutil -c icns "$ICONSET" -o assets/ico/can-viewer.icns
           echo "Regenerated can-viewer.icns from PNG sources"
 
-      # macOS: wrap the binary in a .app bundle so the canview icon shows
+      # macOS: wrap the binary in a .app bundle so the can-viewer icon shows
       # in Dock and Cmd-Tab. The bundle includes Info.plist + can-viewer.icns.
       - name: Create .app bundle (macOS)
         if: runner.os == 'macOS'
@@ -185,15 +185,15 @@ jobs:
           # Strip leading "v" and any "-N-gabc" / "-dirty" suffix for the
           # plist short version string (must be x.y[.z]).
           VERSION_SHORT="$(echo "$VERSION" | sed -E 's/^v//; s/-.*//')"
-          echo "canview version: $VERSION (short: $VERSION_SHORT)"
+          echo "can-viewer version: $VERSION (short: $VERSION_SHORT)"
 
-          APP_DIR=target/${{ matrix.target }}/release/canview.app
+          APP_DIR=target/${{ matrix.target }}/release/can-viewer.app
           CONTENTS="$APP_DIR/Contents"
           MACOS_DIR="$CONTENTS/MacOS"
           RESOURCES_DIR="$CONTENTS/Resources"
           mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
-          cp target/${{ matrix.target }}/release/view "$MACOS_DIR/canview"
-          chmod +x "$MACOS_DIR/canview"
+          cp target/${{ matrix.target }}/release/view "$MACOS_DIR/can-viewer"
+          chmod +x "$MACOS_DIR/can-viewer"
           cp assets/ico/can-viewer.icns "$RESOURCES_DIR/can-viewer.icns"
           # Write Info.plist without indentation (plist parser is strict
           # about leading whitespace; printf gives full control).
@@ -203,16 +203,16 @@ jobs:
             printf '%s\n' '<plist version="1.0">'
             printf '%s\n' '<dict>'
             printf '%s\n' '  <key>CFBundleDevelopmentRegion</key><string>en</string>'
-            printf '%s\n' '  <key>CFBundleExecutable</key><string>canview</string>'
-            printf '%s\n' '  <key>CFBundleIdentifier</key><string>com.canview.app</string>'
+            printf '%s\n' '  <key>CFBundleExecutable</key><string>can-viewer</string>'
+            printf '%s\n' '  <key>CFBundleIdentifier</key><string>com.can-viewer.app</string>'
             printf '%s\n' '  <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>'
-            printf '%s\n' '  <key>CFBundleName</key><string>canview</string>'
+            printf '%s\n' '  <key>CFBundleName</key><string>can-viewer</string>'
             printf '%s\n' '  <key>CFBundlePackageType</key><string>APPL</string>'
             printf '%s\n' "  <key>CFBundleShortVersionString</key><string>${VERSION_SHORT}</string>"
             printf '%s\n' "  <key>CFBundleVersion</key><string>${VERSION_SHORT}</string>"
             printf '%s\n' '  <key>LSMinimumSystemVersion</key><string>10.13</string>'
             printf '%s\n' '  <key>NSHighResolutionCapable</key><true/>'
-            printf '%s\n' '  <key>CFBundleIconFile</key><string>canview</string>'
+            printf '%s\n' '  <key>CFBundleIconFile</key><string>can-viewer</string>'
             printf '%s\n' '</dict>'
             printf '%s\n' '</plist>'
           } > "$CONTENTS/Info.plist"
@@ -232,7 +232,7 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          cp -R target/${{ matrix.target }}/release/canview.app upload/
+          cp -R target/${{ matrix.target }}/release/can-viewer.app upload/
 
       - name: Copy binary (Windows)
         if: runner.os == 'Windows'
@@ -250,7 +250,7 @@ jobs:
         shell: bash
         run: |
           cd upload
-          tar czf ../${{ matrix.asset_name }}.tar.gz canview.app
+          tar czf ../${{ matrix.asset_name }}.tar.gz can-viewer.app
 
       - name: Create archive (Windows)
         if: runner.os == 'Windows'
@@ -265,7 +265,7 @@ jobs:
           name: ${{ matrix.asset_name }}
           path: |
             upload/${{ matrix.artifact_name }}
-            upload/canview.app
+            upload/can-viewer.app
           retention-days: 30
 
       - name: Upload artifact (Windows)

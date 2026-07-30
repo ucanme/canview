@@ -49,6 +49,6 @@ strip = true  # 减小文件大小
 
 # Windows 特定配置
 [package.metadata.winres]
-OriginalFilename = "canview.exe"
-ProductName = "CANVIEW"
+OriginalFilename = "can-viewer.exe"
+ProductName = "can-viewer"
 FileDescription = "CAN/LIN Bus Analysis Tool"

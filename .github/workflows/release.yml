@@ -246,25 +246,25 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          name: canview v${{ steps.get_version.outputs.VERSION }}
+          name: can-viewer v${{ steps.get_version.outputs.VERSION }}
           body: |
-            ## canview v${{ steps.get_version.outputs.VERSION }}
+            ## can-viewer v${{ steps.get_version.outputs.VERSION }}
 
             ### 🚀 下载
 
             #### Windows
-            - **安装程序**: `canview-Setup-v${{ steps.get_version.outputs.VERSION }}.exe` - 推荐
-            - **便携版**: `canview-v${{ steps.get_version.outputs.VERSION }}.zip`
+            - **安装程序**: `can-viewer-Setup-v${{ steps.get_version.outputs.VERSION }}.exe` - 推荐
+            - **便携版**: `can-viewer-v${{ steps.get_version.outputs.VERSION }}.zip`
 
             #### macOS
-            - **DMG 镜像**: `canview-v${{ steps.get_version.outputs.VERSION }}.dmg`
-            - **压缩包**: `canview-v${{ steps.get_version.outputs.VERSION }}-macos.tar.gz`
+            - **DMG 镜像**: `can-viewer-v${{ steps.get_version.outputs.VERSION }}.dmg`
+            - **压缩包**: `can-viewer-v${{ steps.get_version.outputs.VERSION }}-macos.tar.gz`
 
             #### Linux
-            - **AppImage**: `canview-v${{ steps.get_version.outputs.VERSION }}-x86_64.AppImage` - 推荐
-            - **Debian/Ubuntu**: `canview_${{ steps.get_version.outputs.VERSION }}_amd64.deb`
-            - **Fedora/RHEL**: `canview-${{ steps.get_version.outputs.VERSION }}-1.*.rpm`
-            - **通用包**: `canview-v${{ steps.get_version.outputs.VERSION }}-linux-amd64.tar.gz`
+            - **AppImage**: `can-viewer-v${{ steps.get_version.outputs.VERSION }}-x86_64.AppImage` - 推荐
+            - **Debian/Ubuntu**: `can-viewer_${{ steps.get_version.outputs.VERSION }}_amd64.deb`
+            - **Fedora/RHEL**: `can-viewer-${{ steps.get_version.outputs.VERSION }}-1.*.rpm`
+            - **通用包**: `can-viewer-v${{ steps.get_version.outputs.VERSION }}-linux-amd64.tar.gz`
 
             ---
             **构建时间**: ${{ github.event.head_commit.timestamp }}

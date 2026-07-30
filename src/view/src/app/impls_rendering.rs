@@ -2144,7 +2144,7 @@ impl Render for CanViewerApp {
                     let view_for_github = view.clone();
                     let view_for_feedback = view.clone();
                     let view_for_about = view.clone();
-                    let version = env!("CANVIEW_VERSION");
+                    let version = env!("CAN_VIEWER_VERSION");
                     div()
                         .absolute()
                         .top(px(36.))

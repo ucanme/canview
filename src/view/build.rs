@@ -56,7 +56,7 @@ fn main() {
     emit_version();
 }
 
-/// Emit CANVIEW_VERSION env var from `git describe --tags --always --dirty`.
+/// Emit CAN_VIEWER_VERSION env var from `git describe --tags --always --dirty`.
 /// Falls back to CARGO_PKG_VERSION when git is unavailable or no tags exist.
 fn emit_version() {
     // Re-run when HEAD moves so the version stays accurate.
@@ -80,5 +80,5 @@ fn emit_version() {
             env!("CARGO_PKG_VERSION").to_string()
         });
 
-    println!("cargo:rustc-env=CANVIEW_VERSION={}", version);
+    println!("cargo:rustc-env=CAN_VIEWER_VERSION={}", version);
 }

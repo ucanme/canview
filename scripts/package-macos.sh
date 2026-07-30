@@ -1,16 +1,16 @@
 #!/bin/bash
-# CANVIEW macOS 打包脚本
+# can-viewer macOS 打包脚本
 # 创建 .app 应用包和 .dmg 安装镜像
 
 set -e
 
 VERSION="${1:-1.0.0}"
-APP_NAME="canview"
-BUNDLE_ID="com.canview.app"
+APP_NAME="can-viewer"
+BUNDLE_ID="com.can-viewer.app"
 OUTPUT_DIR="./release-package"
 
 echo "========================================"
-echo "CANVIEW macOS 打包脚本 v$VERSION"
+echo "can-viewer macOS 打包脚本 v$VERSION"
 echo "========================================"
 echo ""
 
@@ -45,8 +45,8 @@ echo ""
 
 # 3. 复制可执行文件
 echo "📋 步骤 3: 复制文件..."
-cp "./target/release/view" "$MACOS_DIR/canview"
-chmod +x "$MACOS_DIR/canview"
+cp "./target/release/view" "$MACOS_DIR/can-viewer"
+chmod +x "$MACOS_DIR/can-viewer"
 
 # 4. 复制资源文件
 if [ -f "sample.dbc" ]; then
@@ -82,7 +82,7 @@ cat > "$CONTENTS_DIR/Info.plist" << EOF
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleExecutable</key>
-    <string>canview</string>
+    <string>can-viewer</string>
     <key>CFBundleIdentifier</key>
     <string>$BUNDLE_ID</string>
     <key>CFBundleInfoDictionaryVersion</key>
@@ -100,9 +100,9 @@ cat > "$CONTENTS_DIR/Info.plist" << EOF
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSHumanReadableCopyright</key>
-    <string>Copyright © 2026 CANVIEW. All rights reserved.</string>
+    <string>Copyright © 2026 can-viewer. All rights reserved.</string>
     <key>CFBundleIconFile</key>
-    <string>canview</string>
+    <string>can-viewer</string>
 </dict>
 </plist>
 EOF
@@ -213,8 +213,8 @@ echo "  tar.gz: $TAR_PATH"
 echo ""
 echo "安装方法:"
 echo "  1. 双击 .dmg 文件"
-echo "  2. 将 canview.app 拖到 Applications 文件夹"
+echo "  2. 将 can-viewer.app 拖到 Applications 文件夹"
 echo "  或者"
 echo "  1. 解压 .tar.gz 文件"
-echo "  2. 将 canview.app 移动到 Applications 文件夹"
+echo "  2. 将 can-viewer.app 移动到 Applications 文件夹"
 echo ""

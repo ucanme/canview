@@ -140,7 +140,7 @@ fn main() {
             cx.quit();
         });
         cx.on_action(|_action: &help::ShowAbout, cx| {
-            let version = env!("CANVIEW_VERSION");
+            let version = env!("CAN_VIEWER_VERSION");
             cx.spawn(async move |cx| {
                 let _ = rfd::AsyncMessageDialog::new()
                     .set_title("About can-viewer")
