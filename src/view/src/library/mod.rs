@@ -3,11 +3,17 @@
 //! 提供信号库的CRUD操作、版本管理和验证功能
 
 mod storage;
+mod signal_sets;
 
 pub use storage::{
     SignalLibraryStorage, build_library_file_subdir, copy_database_to_libraries,
     delete_channel_from_libraries, delete_library_from_libraries,
     delete_version_from_libraries, libraries_base_path, sanitize_filename,
+};
+
+pub use signal_sets::{
+    SignalSet, SignalSetEntry, SignalSetStore, build_selected_signals_from_set,
+    load_signal_set_store, parse_signal_id, save_signal_set_store, signal_set_store_path,
 };
 
 use crate::models::{
