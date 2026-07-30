@@ -1,4 +1,4 @@
-use crate::app::CanViewApp;
+use crate::app::CanViewerApp;
 use gpui_component::input::{Input, InputState};
 use crate::models::{DataPoint, Series};
 use blf::LogObject;
@@ -12,7 +12,7 @@ use std::sync::Arc;
 use chrono::{Timelike, Datelike};
 
 /// Render the plot view with signal charts
-pub fn render_plot_view(window: &mut Window, app: &mut CanViewApp, view: Entity<CanViewApp>, cx: &mut Context<CanViewApp>) -> impl IntoElement {
+pub fn render_plot_view(window: &mut Window, app: &mut CanViewerApp, view: Entity<CanViewerApp>, cx: &mut Context<CanViewerApp>) -> impl IntoElement {
     // Safety check: prevent crash from invalid plot state after window operations
     let series_data = app.plot_data.clone();
 
@@ -87,7 +87,7 @@ pub fn render_plot_view(window: &mut Window, app: &mut CanViewApp, view: Entity<
 }
 
 /// Render the toolbar at the top of the plot area
-fn render_toolbar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoElement {
+fn render_toolbar(app: &CanViewerApp, cx: &mut Context<CanViewerApp>) -> impl IntoElement {
     let is_zoomed = app.plot_zoom_start.is_some() || app.plot_zoom_end.is_some();
 
     div()
@@ -114,7 +114,7 @@ fn render_toolbar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoEl
                             .rounded(px(4.0))
                             .cursor_pointer()
                             .hover(|s| s.bg(rgb(0x374151)))
-                            .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this: &mut CanViewApp, _, _, cx| {
+                            .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this: &mut CanViewerApp, _, _, cx| {
                                 this.plot_zoom_start = None;
                                 this.plot_zoom_end = None;
                                 crate::ui::views::chart_view::extract_and_update_series_data(this);
@@ -131,7 +131,7 @@ fn render_toolbar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoEl
                         .rounded(px(4.0))
                         .cursor_pointer()
                         .hover(|s| s.bg(if app.show_plot_points { rgb(0x059669) } else { rgb(0x4b5563) }))
-                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this: &mut CanViewApp, _, _, cx| {
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this: &mut CanViewerApp, _, _, cx| {
                             this.show_plot_points = !this.show_plot_points;
                             cx.notify();
                         }))
@@ -147,7 +147,7 @@ fn render_toolbar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoEl
 
 
 /// Render empty state when no signals are selected
-fn render_empty_state(app: &CanViewApp) -> AnyElement {
+fn render_empty_state(app: &CanViewerApp) -> AnyElement {
     let msg_count = app.messages.len();
     let sel_count = app.selected_signals.len();
 
@@ -180,7 +180,7 @@ fn render_empty_state(app: &CanViewApp) -> AnyElement {
 }
 
 /// Render the chart canvas — legend + zoom box + hover tooltip + per-signal canvas cards.
-fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Context<CanViewApp>) -> AnyElement {
+fn render_chart_canvas(app: &CanViewerApp, series_data: Arc<[Series]>, cx: &mut Context<CanViewerApp>) -> AnyElement {
     let is_dragging = app.is_dragging_zoom;
     let drag_start = app.zoom_drag_start_x;
     let drag_current = app.zoom_drag_current_x;
@@ -244,7 +244,7 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
         // Hover tooltip is rendered in render_plot_view as a sibling of the
         // scroll container (NOT inside v_flex) — see render_hover_tooltip_overlay.
         // Global Canvas Interactions
-        .on_mouse_down(MouseButton::Left, cx.listener(move |this: &mut CanViewApp, event: &MouseDownEvent, _, cx| {
+        .on_mouse_down(MouseButton::Left, cx.listener(move |this: &mut CanViewerApp, event: &MouseDownEvent, _, cx| {
              // Check for double-click to reset zoom
              if event.click_count == 2 {
                  this.plot_zoom_start = None;
@@ -260,7 +260,7 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
              this.zoom_drag_current_x = Some(event.position.x);
              cx.notify();
         }))
-        .on_mouse_move(cx.listener(move |this: &mut CanViewApp, event: &MouseMoveEvent, window, cx| {
+        .on_mouse_move(cx.listener(move |this: &mut CanViewerApp, event: &MouseMoveEvent, window, cx| {
             // Handle Zoom Dragging
             if this.is_dragging_zoom {
                 this.zoom_drag_current_x = Some(event.position.x);
@@ -319,7 +319,7 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                  cx.notify();
             }
         }))
-        .on_mouse_up(MouseButton::Left, cx.listener(move |this: &mut CanViewApp, event: &MouseUpEvent, window, cx| {
+        .on_mouse_up(MouseButton::Left, cx.listener(move |this: &mut CanViewerApp, event: &MouseUpEvent, window, cx| {
             if !this.is_dragging_zoom { return; }
             
             if let Some(start_x) = this.zoom_drag_start_x {
@@ -377,7 +377,7 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
             cx.notify();
         }))
         // Mouse wheel zoom
-        .on_scroll_wheel(cx.listener(move |this: &mut CanViewApp, event: &ScrollWheelEvent, window, cx| {
+        .on_scroll_wheel(cx.listener(move |this: &mut CanViewerApp, event: &ScrollWheelEvent, window, cx| {
             // Stop event propagation to prevent parent container from scrolling
             cx.stop_propagation();
 
@@ -582,7 +582,7 @@ fn format_time_relative_or_absolute(time: f64, _start_time: Option<chrono::Naive
 ///
 /// If hover state is None, returns an empty div (no tooltip shown).
 fn render_hover_tooltip_overlay(
-    app: &CanViewApp,
+    app: &CanViewerApp,
     series_data: &[Series],
     sidebar_width: Pixels,
 ) -> impl IntoElement {
@@ -1116,7 +1116,7 @@ fn render_legend(series_data: &[Series]) -> impl IntoElement {
 
 /// Filter existing plot data by zoom range
 /// This is used when messages is empty but plot_data has already been extracted
-fn filter_series_data_by_zoom(app: &CanViewApp) -> Arc<[Series]> {
+fn filter_series_data_by_zoom(app: &CanViewerApp) -> Arc<[Series]> {
     eprintln!("🔍 Filtering existing plot data by zoom range...");
 
     let has_zoom = app.plot_zoom_start.is_some() || app.plot_zoom_end.is_some();
@@ -1159,7 +1159,7 @@ fn filter_series_data_by_zoom(app: &CanViewApp) -> Arc<[Series]> {
 }
 
 /// Extract series data from application state - SAFE VERSION
-pub fn extract_series_data(app: &CanViewApp) -> Arc<[Series]> {
+pub fn extract_series_data(app: &CanViewerApp) -> Arc<[Series]> {
     eprintln!("🔍 Starting data extraction...");
 
     // If messages is empty but we have plot_data, filter the existing plot_data
@@ -1410,7 +1410,7 @@ pub fn extract_series_data(app: &CanViewApp) -> Arc<[Series]> {
 
 /// Fast zoom filter: slice plot_full_data by zoom range without re-decoding messages.
 /// This is called every time zoom changes; it's O(points), not O(messages).
-pub fn apply_zoom_to_full_data(app: &mut CanViewApp) {
+pub fn apply_zoom_to_full_data(app: &mut CanViewerApp) {
     if app.plot_full_data.is_empty() {
         // plot_full_data hasn't been populated yet.
         // Do NOT call extract_and_update_series_data here — that would cause
@@ -1483,7 +1483,7 @@ pub fn apply_zoom_to_full_data(app: &mut CanViewApp) {
 
 /// Wrapper that extracts series data and updates the full time range in app state.
 /// Call this instead of extract_series_data directly.
-pub fn extract_and_update_series_data(app: &mut CanViewApp) {
+pub fn extract_and_update_series_data(app: &mut CanViewerApp) {
     // Always decode ALL data (ignoring zoom range) into plot_full_data
     let saved_start = app.plot_zoom_start.take();
     let saved_end = app.plot_zoom_end.take();

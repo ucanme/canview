@@ -9,7 +9,7 @@ mod helpers;
 mod commands;
 
 // Re-export the main types
-pub use state::{AppView, CanViewApp, LibraryDialogType, LoadingProgress, PendingAddChannelFocus};
+pub use state::{AppView, CanViewerApp, LibraryDialogType, LoadingProgress, PendingAddChannelFocus};
 
 // Re-export helper functions
 pub use helpers::{

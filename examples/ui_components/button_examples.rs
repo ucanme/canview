@@ -4,10 +4,10 @@
 
 use gpui::{prelude::*, *};
 use crate::ui::components::button::{Button, ButtonSize, ButtonVariant};
-use crate::app::{AppView, CanViewApp};
+use crate::app::{AppView, CanViewerApp};
 
 /// Example: Create a simple primary button
-pub fn example_simple_button(cx: &mut Context<CanViewApp>) -> impl IntoElement {
+pub fn example_simple_button(cx: &mut Context<CanViewerApp>) -> impl IntoElement {
     Button::new("Click Me")
         .size(ButtonSize::Medium)
         .variant(ButtonVariant::Primary)
@@ -24,7 +24,7 @@ pub fn example_simple_button(cx: &mut Context<CanViewApp>) -> impl IntoElement {
 }
 
 /// Example: Create navigation buttons (like File, Library, Plot tabs)
-pub fn example_nav_buttons(cx: &mut Context<CanViewApp>) -> impl IntoElement {
+pub fn example_nav_buttons(cx: &mut Context<CanViewerApp>) -> impl IntoElement {
     let view = cx.entity().clone();
 
     div()
@@ -82,7 +82,7 @@ pub fn example_nav_buttons(cx: &mut Context<CanViewApp>) -> impl IntoElement {
 }
 
 /// Example: Button with different sizes
-pub fn example_button_sizes(cx: &mut Context<CanViewApp>) -> impl IntoElement {
+pub fn example_button_sizes(cx: &mut Context<CanViewerApp>) -> impl IntoElement {
     div()
         .flex()
         .gap_2()
@@ -108,7 +108,7 @@ pub fn example_button_sizes(cx: &mut Context<CanViewApp>) -> impl IntoElement {
 }
 
 /// Example: Button with different variants
-pub fn example_button_variants(cx: &mut Context<CanViewApp>) -> impl IntoElement {
+pub fn example_button_variants(cx: &mut Context<CanViewerApp>) -> impl IntoElement {
     div()
         .flex()
         .gap_2()
@@ -135,7 +135,7 @@ pub fn example_button_variants(cx: &mut Context<CanViewApp>) -> impl IntoElement
 }
 
 /// Example: Active state button (for tabs)
-pub fn example_active_tab_button(cx: &mut Context<CanViewApp>) -> impl IntoElement {
+pub fn example_active_tab_button(cx: &mut Context<CanViewerApp>) -> impl IntoElement {
     let is_active = true;
 
     Button::new("Active Tab")
@@ -164,7 +164,7 @@ pub fn example_disabled_button() -> impl IntoElement {
 }
 
 /// Example: Convenience functions
-pub fn example_convenience_functions(cx: &mut Context<CanViewApp>) -> impl IntoElement {
+pub fn example_convenience_functions(cx: &mut Context<CanViewerApp>) -> impl IntoElement {
     let view = cx.entity().clone();
 
     div()

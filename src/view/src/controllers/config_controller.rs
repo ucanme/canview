@@ -2,13 +2,13 @@
 //!
 //! Handles business logic for application configuration management.
 
-use crate::app::CanViewApp;
+use crate::app::CanViewerApp;
 use crate::AppConfig;
 use gpui::Context;
 use std::path::PathBuf;
 
 /// Load configuration at startup
-pub fn load_startup_config(app: &mut CanViewApp) {
+pub fn load_startup_config(app: &mut CanViewerApp) {
     let exe_config = std::env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(|d| d.join("multi_channel_config.json")));
@@ -114,14 +114,14 @@ pub fn load_startup_config(app: &mut CanViewApp) {
 }
 
 /// Load configuration from file
-pub fn load_config(app: &mut CanViewApp, _cx: &mut Context<CanViewApp>) {
+pub fn load_config(app: &mut CanViewerApp, _cx: &mut Context<CanViewerApp>) {
     // TODO: Implement file dialog for config selection
     app.status_msg = "Load config - file dialog not yet implemented".into();
     eprintln!("⚠️  Load config: file dialog not yet implemented");
 }
 
 /// Save configuration to file
-pub fn save_config(app: &CanViewApp, _cx: &mut Context<CanViewApp>) {
+pub fn save_config(app: &CanViewerApp, _cx: &mut Context<CanViewerApp>) {
     let config_path = app.config_file_path.clone().unwrap_or_else(|| {
         std::env::current_exe()
             .ok()
@@ -138,7 +138,7 @@ pub fn save_config(app: &CanViewApp, _cx: &mut Context<CanViewApp>) {
 }
 
 /// Import database file
-pub fn import_database_file(app: &mut CanViewApp, _cx: &mut Context<CanViewApp>) {
+pub fn import_database_file(app: &mut CanViewerApp, _cx: &mut Context<CanViewerApp>) {
     // TODO: Implement file dialog for database import
     app.status_msg = "Import database - file dialog not yet implemented".into();
     eprintln!("⚠️  Import database: file dialog not yet implemented");

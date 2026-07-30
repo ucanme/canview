@@ -5,16 +5,16 @@
 //! Data view tabs (Log/Plot) and the active-library badge live in the
 //! StatusBar, not here.
 
-use crate::app::{AppView, CanViewApp};
+use crate::app::{AppView, CanViewerApp};
 use crate::ui::theme::colors;
 use crate::ui::theme::spacing;
 use gpui::{prelude::*, *};
 
 /// Render the top bar.
 pub fn render_top_bar(
-    app: &CanViewApp,
-    view: Entity<CanViewApp>,
-    _cx: &mut Context<CanViewApp>,
+    app: &CanViewerApp,
+    view: Entity<CanViewerApp>,
+    _cx: &mut Context<CanViewerApp>,
 ) -> impl IntoElement {
     let is_macos = cfg!(target_os = "macos");
     let show_file_menu = app.show_file_menu;
@@ -150,7 +150,7 @@ pub fn render_top_bar(
 }
 
 /// Render the Win/Linux window controls (minimize, maximize, close).
-fn render_window_controls(view: Entity<CanViewApp>) -> impl IntoElement {
+fn render_window_controls(view: Entity<CanViewerApp>) -> impl IntoElement {
     let view_min = view.clone();
     let view_max = view.clone();
     let _view_close = view.clone();

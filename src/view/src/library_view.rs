@@ -19,7 +19,7 @@ pub fn render_library_management_view(
     show_version_input: bool,
     new_version_name: String,
     new_version_cursor_position: usize,
-    cx: &mut gpui::Context<crate::CanViewApp>,
+    cx: &mut gpui::Context<crate::CanViewerApp>,
 ) -> impl IntoElement {
     let libraries = &library_manager.libraries();
 
@@ -76,7 +76,7 @@ pub fn render_library_management_view(
 
 /// Render library section header with New button and input
 fn render_library_header(
-    cx: &mut gpui::Context<crate::CanViewApp>,
+    cx: &mut gpui::Context<crate::CanViewerApp>,
     new_library_name: String,
     cursor_position: usize,
 ) -> impl IntoElement {
@@ -356,7 +356,7 @@ fn render_library_list(
     libraries: &[SignalLibrary],
     selected_id: &Option<String>,
     mappings: &[ChannelMapping],
-    cx: &mut gpui::Context<crate::CanViewApp>,
+    cx: &mut gpui::Context<crate::CanViewerApp>,
 ) -> impl IntoElement {
     if libraries.is_empty() {
         return div().flex_1().flex().items_center().justify_center().child(
@@ -439,7 +439,7 @@ fn render_library_list(
 fn render_library_detail(
     library: &SignalLibrary,
     mappings: &[ChannelMapping],
-    cx: &mut gpui::Context<crate::CanViewApp>,
+    cx: &mut gpui::Context<crate::CanViewerApp>,
 ) -> impl IntoElement {
     // Find all mappings for this library
     let library_mappings: Vec<_> = mappings
@@ -697,7 +697,7 @@ fn render_selected_library_info(
     show_version_input: bool,
     new_version_name: String,
     new_version_cursor_position: usize,
-    cx: &mut gpui::Context<crate::CanViewApp>,
+    cx: &mut gpui::Context<crate::CanViewerApp>,
 ) -> impl IntoElement {
     let view = cx.entity().clone();
 

@@ -2,11 +2,11 @@
 //!
 //! Handles business logic for window management operations.
 
-use crate::app::CanViewApp;
+use crate::app::CanViewerApp;
 use gpui::{px, Context, Bounds, Point, Size, Window};
 
 /// Toggle window maximize state
-pub fn toggle_maximize(app: &mut CanViewApp, window: &mut Window, cx: &mut Context<CanViewApp>) {
+pub fn toggle_maximize(app: &mut CanViewerApp, window: &mut Window, cx: &mut Context<CanViewerApp>) {
     // Initialize display bounds on first use
     if app.display_bounds.is_none() {
         let displays = cx.displays();
@@ -54,7 +54,7 @@ pub fn toggle_maximize(app: &mut CanViewApp, window: &mut Window, cx: &mut Conte
 }
 
 /// Update container height based on window size
-pub fn update_container_height(app: &mut CanViewApp, window: &mut Window) {
+pub fn update_container_height(app: &mut CanViewerApp, window: &mut Window) {
     let bounds = window.bounds();
     let header_height = px(80.0); // Approximate header height
     let padding = px(100.0); // Bottom padding

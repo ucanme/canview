@@ -79,8 +79,8 @@ pub fn expand_folders(paths: Vec<PathBuf>) -> (Vec<PathBuf>, Vec<String>) {
 /// 5. Otherwise, clear and start the concurrent load (reuses the
 ///    existing `apply_blf_result_append_one` pipeline).
 pub fn handle_drop(
-    app: &mut crate::app::CanViewApp,
-    cx: &mut gpui::Context<crate::app::CanViewApp>,
+    app: &mut crate::app::CanViewerApp,
+    cx: &mut gpui::Context<crate::app::CanViewerApp>,
     paths: Vec<PathBuf>,
 ) {
     let (blf_paths, skipped) = filter_blf_paths(paths);
@@ -157,8 +157,8 @@ pub fn handle_drop(
 
 /// Decide: if a load is in flight, cancel it and queue; else start now.
 fn start_load_or_queue(
-    app: &mut crate::app::CanViewApp,
-    cx: &mut gpui::Context<crate::app::CanViewApp>,
+    app: &mut crate::app::CanViewerApp,
+    cx: &mut gpui::Context<crate::app::CanViewerApp>,
     blf_paths: Vec<PathBuf>,
 ) {
     if let Some(p) = &mut app.loading_progress {
@@ -174,8 +174,8 @@ fn start_load_or_queue(
 
 /// Concurrent load pipeline (reuses the existing multi-file menu path).
 fn start_concurrent_load(
-    app: &mut crate::app::CanViewApp,
-    cx: &mut gpui::Context<crate::app::CanViewApp>,
+    app: &mut crate::app::CanViewerApp,
+    cx: &mut gpui::Context<crate::app::CanViewerApp>,
     paths: Vec<PathBuf>,
 ) {
     use crate::app::LoadingProgress;
@@ -219,8 +219,8 @@ fn start_concurrent_load(
 /// `pending_drop_paths` is non-empty. Clears current files (replace
 /// semantics) then runs the concurrent load.
 pub fn drain_pending_drop(
-    app: &mut crate::app::CanViewApp,
-    cx: &mut gpui::Context<crate::app::CanViewApp>,
+    app: &mut crate::app::CanViewerApp,
+    cx: &mut gpui::Context<crate::app::CanViewerApp>,
 ) {
     if app.loading_progress.is_none() && !app.pending_drop_paths.is_empty() {
         let pending = std::mem::take(&mut app.pending_drop_paths);
@@ -232,7 +232,7 @@ pub fn drain_pending_drop(
 /// Pull paths dropped on the Dock icon (stashed by `main.rs`'s
 /// `on_open_urls` handler) into `pending_drop_paths` so the regular
 /// tick drain will pick them up. Called from the render tick.
-pub fn drain_dock_drop_queue(app: &mut crate::app::CanViewApp) {
+pub fn drain_dock_drop_queue(app: &mut crate::app::CanViewerApp) {
     if let Ok(mut q) = crate::DOCK_DROP_QUEUE.lock() {
         if !q.is_empty() {
             app.pending_drop_paths.extend(q.drain(..));

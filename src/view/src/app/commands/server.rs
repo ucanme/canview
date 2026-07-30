@@ -2,9 +2,9 @@
 //!
 //! Command handlers for starting/stopping the sharing server and importing libraries.
 
-use crate::app::CanViewApp;
+use crate::app::CanViewerApp;
 
-impl CanViewApp {
+impl CanViewerApp {
     /// Start the sharing server
     pub fn start_share_server(&mut self) {
         if self.server_handle.is_some() {

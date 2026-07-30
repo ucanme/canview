@@ -3,7 +3,7 @@
 //! This file demonstrates how to use the reusable components from `views/common.rs`
 //! in various scenarios. Each example shows the component API and practical usage.
 
-use crate::app::CanViewApp;
+use crate::app::CanViewerApp;
 use crate::views::common::*;
 use gpui::{prelude::*, *};
 
@@ -42,7 +42,7 @@ pub fn example_mixed_table_header() -> Div {
 /// Example 3: Table header with extra actions
 ///
 /// Demonstrates adding a search button or other actions to the header.
-pub fn example_table_header_with_actions(view: Entity<CanViewApp>) -> Div {
+pub fn example_table_header_with_actions(view: Entity<CanViewerApp>) -> Div {
     let columns = vec![
         TableColumn::fixed("#", px(60.)),
         TableColumn::fixed("Message", px(200.)),
@@ -80,7 +80,7 @@ pub fn example_table_header_with_actions(view: Entity<CanViewApp>) -> Div {
 /// Example 4: Filter toggle button (inactive state)
 ///
 /// Shows a filter toggle button that is not currently active.
-pub fn example_filter_toggle_inactive(view: Entity<CanViewApp>) -> Div {
+pub fn example_filter_toggle_inactive(view: Entity<CanViewerApp>) -> Div {
     render_filter_toggle(FilterState::inactive(), None, move |_event, _window, cx| {
         view.update(cx, |app, cx| {
             // Toggle filter visibility
@@ -92,7 +92,7 @@ pub fn example_filter_toggle_inactive(view: Entity<CanViewApp>) -> Div {
 /// Example 5: Filter toggle button (active state)
 ///
 /// Shows a filter toggle button with an active filter.
-pub fn example_filter_toggle_active(view: Entity<CanViewApp>) -> Div {
+pub fn example_filter_toggle_active(view: Entity<CanViewerApp>) -> Div {
     render_filter_toggle(
         FilterState::with_value(true),
         Some("Filter active"),
@@ -109,7 +109,7 @@ pub fn example_filter_toggle_active(view: Entity<CanViewApp>) -> Div {
 /// Example 6: Filter dropdown with items
 ///
 /// Demonstrates a filter dropdown with multiple selectable items.
-pub fn example_filter_dropdown(view: Entity<CanViewApp>) -> Div {
+pub fn example_filter_dropdown(view: Entity<CanViewerApp>) -> Div {
     let items = vec![
         FilterDropdownItem::new("Channel 1", "1"),
         FilterDropdownItem::new("Channel 2", "2"),
@@ -301,7 +301,7 @@ pub fn example_card_grid() -> Div {
 /// Example 13: Section header with actions
 ///
 /// Shows a section header with title and action buttons.
-pub fn example_section_header(view: Entity<CanViewApp>) -> Div {
+pub fn example_section_header(view: Entity<CanViewerApp>) -> Div {
     let actions = div()
         .flex()
         .items_center()
@@ -342,7 +342,7 @@ pub fn example_empty_state_with_icon() -> Div {
 /// Example 15: Empty state with action
 ///
 /// Shows an empty state with a call-to-action button.
-pub fn example_empty_state_with_action(view: Entity<CanViewApp>) -> Div {
+pub fn example_empty_state_with_action(view: Entity<CanViewerApp>) -> Div {
     render_empty_state(
         EmptyStateConfig::new("No libraries configured")
             .icon("📚")
@@ -418,7 +418,7 @@ pub fn example_scrollable_content() -> Div {
 /// Example 19: Complete view using multiple components
 ///
 /// Shows how to combine multiple common components into a complete view.
-pub fn example_complete_view(view: Entity<CanViewApp>) -> Div {
+pub fn example_complete_view(view: Entity<CanViewerApp>) -> Div {
     div()
         .size_full()
         .flex()
@@ -600,7 +600,7 @@ mod tests {
 ///
 /// Shows how the common components can be used to build the actual log view header.
 pub fn example_log_view_header_integration(
-    view: Entity<CanViewApp>,
+    view: Entity<CanViewerApp>,
     time_width: Pixels,
     ch_width: Pixels,
     has_channel_filter: bool,

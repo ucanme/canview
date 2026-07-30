@@ -1,8 +1,8 @@
-//! CanViewApp implementation blocks
+//! CanViewerApp implementation blocks
 //!
-//! This file contains all impl blocks for CanViewApp.
+//! This file contains all impl blocks for CanViewerApp.
 
-use super::state::{AppView, CanViewApp, LibraryManager};
+use super::state::{AppView, CanViewerApp, LibraryManager};
 use crate::AppConfig;
 use crate::ChannelType;
 use blf::{BlfResult, LogObject};
@@ -20,7 +20,7 @@ fn next_file_id() -> u32 {
     FILE_ID_COUNTER.fetch_add(1, Ordering::Relaxed)
 }
 
-impl CanViewApp {
+impl CanViewerApp {
     pub fn new() -> Self {
         let mut app = Self {
             current_view: AppView::LogView,
@@ -647,7 +647,7 @@ impl CanViewApp {
         }
     }
 }
-impl CanViewApp {
+impl CanViewerApp {
     pub(crate) fn toggle_maximize(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         // Initialize display bounds on first use
         self.initialize_display_bounds(cx);
@@ -943,7 +943,7 @@ impl CanViewApp {
 }
 
 // ========== Library Management Methods ==========
-impl CanViewApp {
+impl CanViewerApp {
     /// Create a new library
     pub fn create_library(&mut self, cx: &mut Context<Self>) {
         if self.new_library_name.trim().is_empty() {
@@ -2165,8 +2165,8 @@ mod tests {
     use super::*;
     use crate::models::{DataPoint, Series};
 
-    fn make_app_with_selected(signal_id: &str) -> CanViewApp {
-        let mut app = CanViewApp::new_state();
+    fn make_app_with_selected(signal_id: &str) -> CanViewerApp {
+        let mut app = CanViewerApp::new_state();
         app.selected_signals = vec![signal_id.to_string()];
         let series = Series {
             name: signal_id.to_string(),
@@ -2193,7 +2193,7 @@ mod tests {
 
     #[test]
     fn toggle_channel_expanded_accordion_mode() {
-        let mut app = CanViewApp::new_state();
+        let mut app = CanViewerApp::new_state();
         // Expand channel 1
         app.toggle_channel_expanded(1);
         assert!(app.expanded_channels.contains(&1));
@@ -2208,7 +2208,7 @@ mod tests {
 
     #[test]
     fn toggle_channel_expanded_clears_other_channel_messages() {
-        let mut app = CanViewApp::new_state();
+        let mut app = CanViewerApp::new_state();
         // Expand channel 1 + a message under it
         app.toggle_channel_expanded(1);
         app.toggle_message_expanded(1, 0x100);
@@ -2220,7 +2220,7 @@ mod tests {
 
     #[test]
     fn toggle_message_expanded_independent_per_message() {
-        let mut app = CanViewApp::new_state();
+        let mut app = CanViewerApp::new_state();
         app.toggle_message_expanded(1, 0x100);
         app.toggle_message_expanded(1, 0x200);
         assert!(app.expanded_messages.contains(&(1, 0x100)));

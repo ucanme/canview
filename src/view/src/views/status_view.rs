@@ -4,7 +4,7 @@
 //! into a separate module. This is a simplified example that can be used as
 //! a reference for extracting more complex views.
 
-use crate::app::CanViewApp;
+use crate::app::CanViewerApp;
 use gpui::{prelude::*, rgb, *};
 
 /// Render a simple status view
@@ -16,15 +16,15 @@ use gpui::{prelude::*, rgb, *};
 ///
 /// # Example Usage in impls.rs
 /// ```rust
-/// impl CanViewApp {
+/// impl CanViewerApp {
 ///     fn render_status_view(&self, cx: &mut Context<Self>) -> impl IntoElement {
 ///         views::status_view::render(self, cx)
 ///     }
 /// }
 /// ```
 pub fn render_status_view(
-    app: &CanViewApp,
-    _cx: &mut Context<CanViewApp>,
+    app: &CanViewerApp,
+    _cx: &mut Context<CanViewerApp>,
 ) -> impl IntoElement {
     div()
         .size_full()
@@ -50,7 +50,7 @@ pub fn render_status_view(
 }
 
 /// Render status badges showing system information
-fn render_status_badges(app: &CanViewApp) -> Div {
+fn render_status_badges(app: &CanViewerApp) -> Div {
     let message_count = app.messages.len();
     let dbc_count = app.dbc_channels.len();
     let ldf_count = app.ldf_channels.len();

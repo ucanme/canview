@@ -15,7 +15,7 @@ pub mod server;
 mod ui;
 
 // Import rendering utilities and app types
-use app::CanViewApp;
+use app::CanViewerApp;
 
 // Re-export common types from models for use in other modules
 pub use models::{AppConfig, ChannelMapping, ChannelType};
@@ -23,7 +23,7 @@ pub use models::{AppConfig, ChannelMapping, ChannelType};
 // Shared stash of paths dropped on the Dock icon while no window was
 // available to dispatch them. Drained by the render tick via
 // `crate::handlers::drag_drop::drain_dock_drop_queue` (registered below
-// as an cx observer on each new CanViewApp). The callback signature for
+// as an cx observer on each new CanViewerApp). The callback signature for
 // `Application::on_open_urls` is `FnMut(Vec<String>)` with no cx arg,
 // so we can't dispatch directly — stash and drain instead.
 static DOCK_DROP_QUEUE: std::sync::Mutex<Vec<std::path::PathBuf>> = std::sync::Mutex::new(Vec::new());
@@ -68,7 +68,7 @@ fn main() {
     let app = Application::new();
     // macOS Dock-icon drop → on_open_urls fires with file:// URLs.
     // The callback has no cx, so we stash paths to a global queue. The
-    // first CanViewApp's render tick drains it via drain_dock_drop_queue.
+    // first CanViewerApp's render tick drains it via drain_dock_drop_queue.
     app.on_open_urls(move |urls: Vec<String>| {
         let paths = parse_file_urls(urls);
         if paths.is_empty() { return; }
@@ -101,7 +101,7 @@ fn main() {
                 ..Default::default()
             };
             cx.open_window(options, |window, cx| {
-                let view = cx.new(|_cx| CanViewApp::new());
+                let view = cx.new(|_cx| CanViewerApp::new());
                 cx.new(|cx| gpui_component::Root::new(view, window, cx))
             })?;
             Ok::<_, anyhow::Error>(())
@@ -174,7 +174,7 @@ fn main() {
                 ..Default::default()
             };
             cx.open_window(options, |window, cx| {
-                let view = cx.new(|_cx| CanViewApp::new());
+                let view = cx.new(|_cx| CanViewerApp::new());
                 // This first level on the window should be a Root for gpui-component
                 cx.new(|cx| gpui_component::Root::new(view, window, cx))
             })?;

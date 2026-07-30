@@ -4,7 +4,7 @@
 //! builds the flattened, filtered list of sidebar items (unit-testable).
 //! `render_signal_sidebar` wraps it in a `uniform_list`.
 
-use crate::app::CanViewApp;
+use crate::app::CanViewerApp;
 use crate::models::ChannelMapping;
 use gpui::prelude::*;
 use gpui::*;
@@ -44,7 +44,7 @@ pub enum SidebarItem {
 
 /// Render a single sidebar item. Click handlers for ChannelHeader / MessageHeader
 /// toggle fold state via `toggle_channel_expanded` / `toggle_message_expanded`.
-pub fn render_sidebar_item(item: &SidebarItem, view: Entity<CanViewApp>) -> AnyElement {
+pub fn render_sidebar_item(item: &SidebarItem, view: Entity<CanViewerApp>) -> AnyElement {
     match item {
         SidebarItem::ChannelHeader { name, ch_id, is_can, is_loaded, mapping, is_expanded, selected_count } => {
             let lib_id = mapping.as_ref().and_then(|m| m.library_id.clone()).unwrap_or_default();
@@ -252,10 +252,10 @@ pub fn render_sidebar_item(item: &SidebarItem, view: Entity<CanViewApp>) -> AnyE
 
 /// Build the flattened, filtered list of sidebar items.
 ///
-/// Pure function: reads only `&CanViewApp`, no cx / window / side effects.
+/// Pure function: reads only `&CanViewerApp`, no cx / window / side effects.
 /// Search filter non-empty → force-expands matching channels/messages
 /// without modifying `expanded_channels` / `expanded_messages`.
-pub fn extract_signal_items(app: &CanViewApp) -> Vec<SidebarItem> {
+pub fn extract_signal_items(app: &CanViewerApp) -> Vec<SidebarItem> {
     let mut items = Vec::new();
     let filter_text = app.signal_filter_text.to_lowercase();
     let force_expand = !filter_text.is_empty();
@@ -456,9 +456,9 @@ pub fn extract_signal_items(app: &CanViewApp) -> Vec<SidebarItem> {
 /// + bottom action bar with "Clear all" and "Plot N signals" buttons.
 pub fn render_signal_sidebar(
     _window: &mut Window,
-    app: &CanViewApp,
-    view: Entity<CanViewApp>,
-    cx: &mut Context<CanViewApp>,
+    app: &CanViewerApp,
+    view: Entity<CanViewerApp>,
+    cx: &mut Context<CanViewerApp>,
 ) -> impl IntoElement {
     let items = extract_signal_items(app);
     let item_count = items.len();
@@ -628,8 +628,8 @@ mod tests {
     use crate::models::{ChannelMapping, ChannelType};
 
     /// Helper: an app with one unloaded channel mapping (no DBC loaded).
-    fn app_with_unloaded_channel(ch_id: u16, ch_type: ChannelType) -> CanViewApp {
-        let mut app = CanViewApp::new_state();
+    fn app_with_unloaded_channel(ch_id: u16, ch_type: ChannelType) -> CanViewerApp {
+        let mut app = CanViewerApp::new_state();
         app.app_config.mappings.push(ChannelMapping {
             channel_type: ch_type,
             channel_id: ch_id,

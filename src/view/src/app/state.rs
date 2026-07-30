@@ -81,7 +81,7 @@ pub struct ScrollbarDragState {
 }
 
 /// Main application state
-pub struct CanViewApp {
+pub struct CanViewerApp {
     // View state
     pub current_view: AppView,
 
@@ -296,18 +296,18 @@ pub enum LibraryDialogType {
     QuickImport,
 }
 
-impl CanViewApp {
-    /// Create a new CanViewApp instance with default state
+impl CanViewerApp {
+    /// Create a new CanViewerApp instance with default state
     pub fn new_state() -> Self {
         Self::new_with_maximized_state(false)
     }
 
-    /// Create a new CanViewApp instance with specified maximize state
+    /// Create a new CanViewerApp instance with specified maximize state
     pub fn new_with_maximized_state(is_maximized: bool) -> Self {
         Self::new_with_maximized_state_and_bounds(is_maximized, None)
     }
 
-    /// Create a new CanViewApp instance with maximize state and saved bounds
+    /// Create a new CanViewerApp instance with maximize state and saved bounds
     pub fn new_with_maximized_state_and_bounds(is_maximized: bool, saved_window_bounds: Option<Bounds<Pixels>>) -> Self {
         Self {
             current_view: AppView::LogView, // Force LogView to prevent chart/library crashes

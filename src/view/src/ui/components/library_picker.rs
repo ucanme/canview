@@ -5,7 +5,7 @@
 //! user pick a library + version and activate without leaving the data
 //! view, or jump to the full Library management view.
 
-use crate::app::{AppView, CanViewApp, LibraryDialogType};
+use crate::app::{AppView, CanViewerApp, LibraryDialogType};
 use crate::ui::theme::colors;
 use crate::ui::theme::spacing;
 use gpui::{prelude::*, *};
@@ -18,8 +18,8 @@ use gpui::{prelude::*, *};
 /// - no active library version (`active_library_id` or `active_version_name` is None)
 /// - `app.library_picker_dismissed == false`
 pub fn render_library_picker_overlay(
-    app: &CanViewApp,
-    view: Entity<CanViewApp>,
+    app: &CanViewerApp,
+    view: Entity<CanViewerApp>,
 ) -> Option<impl IntoElement> {
     if app.current_file_name.is_none() {
         return None;
@@ -67,8 +67,8 @@ pub fn render_library_picker_overlay(
 /// Render the centered card.
 fn render_card(
     libraries: &[crate::models::SignalLibrary],
-    view_for_new: Entity<CanViewApp>,
-    view_for_manage: Entity<CanViewApp>,
+    view_for_new: Entity<CanViewerApp>,
+    view_for_manage: Entity<CanViewerApp>,
 ) -> impl IntoElement {
     let view_for_close = view_for_new.clone();
 
@@ -133,7 +133,7 @@ fn render_card(
 /// the card caps visible height).
 fn render_library_list(
     libraries: &[crate::models::SignalLibrary],
-    view: Entity<CanViewApp>,
+    view: Entity<CanViewerApp>,
 ) -> AnyElement {
     if libraries.is_empty() {
         return div()
@@ -173,7 +173,7 @@ fn render_library_list(
 /// Render one library row: 📚 name | [version ▾] | [Activate]
 fn render_library_row(
     lib: &crate::models::SignalLibrary,
-    view: Entity<CanViewApp>,
+    view: Entity<CanViewerApp>,
 ) -> impl IntoElement {
     let lib_id = lib.id.clone();
     let lib_name = lib.name.clone();
@@ -272,8 +272,8 @@ fn render_version_dropdown(selected: &str) -> impl IntoElement {
 
 /// Render the footer: "+ Create new library" (left) + "Open Library →" (right)
 fn render_footer(
-    view_for_new: Entity<CanViewApp>,
-    view_for_manage: Entity<CanViewApp>,
+    view_for_new: Entity<CanViewerApp>,
+    view_for_manage: Entity<CanViewerApp>,
 ) -> impl IntoElement {
     div()
         .flex()
@@ -332,20 +332,20 @@ mod tests {
 
     #[test]
     fn test_overlay_not_shown_without_file() {
-        let app = CanViewApp::new_state();
+        let app = CanViewerApp::new_state();
         assert!(app.current_file_name.is_none());
     }
 
     #[test]
     fn test_overlay_not_shown_when_dismissed() {
-        let mut app = CanViewApp::new_state();
+        let mut app = CanViewerApp::new_state();
         app.library_picker_dismissed = true;
         assert!(app.library_picker_dismissed);
     }
 
     #[test]
     fn test_overlay_not_shown_when_active_library() {
-        let mut app = CanViewApp::new_state();
+        let mut app = CanViewerApp::new_state();
         app.active_library_id = Some("lib1".to_string());
         app.active_version_name = Some("v1.0".to_string());
         assert!(app.active_library_id.is_some() && app.active_version_name.is_some());
@@ -353,13 +353,13 @@ mod tests {
 
     #[test]
     fn test_overlay_shown_when_in_data_view() {
-        let app = CanViewApp::new_state();
+        let app = CanViewerApp::new_state();
         assert!(matches!(app.current_view, AppView::LogView));
     }
 
     #[test]
     fn test_selected_version_starts_empty() {
-        let app = CanViewApp::new_state();
+        let app = CanViewerApp::new_state();
         assert!(app.library_picker_selected_version.is_empty());
     }
 }

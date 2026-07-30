@@ -1,9 +1,9 @@
-//! CanViewApp Rendering Implementation
+//! CanViewerApp Rendering Implementation
 //!
-//! This file contains all rendering methods for CanViewApp.
+//! This file contains all rendering methods for CanViewerApp.
 //! Separated from impls.rs to improve code organization and reduce file size.
 
-use super::state::{AppView, CanViewApp, ScrollbarDragState};
+use super::state::{AppView, CanViewerApp, ScrollbarDragState};
 use crate::ChannelType;
 use crate::rendering::{calculate_column_widths, render_message_row_static_with_widths};
 use blf::{LogObject, read_blf_from_file};
@@ -11,7 +11,7 @@ use gpui::{prelude::*, *};
 use smol::Timer;
 use gpui_component::input::{InputEvent, InputState};
 
-impl CanViewApp {
+impl CanViewerApp {
     // ===== Rendering Methods =====
     // All rendering methods are organized in this section for better maintainability
 
@@ -132,8 +132,8 @@ impl CanViewApp {
         use crate::ui::views::library_management::render_library_management_view;
 
         // TODO: wire up FilterBar for Library view in follow-up commit.
-        // render_library_management_view takes &LibraryManager (not &CanViewApp),
-        // so wiring requires either threading an Entity<CanViewApp> through its
+        // render_library_management_view takes &LibraryManager (not &CanViewerApp),
+        // so wiring requires either threading an Entity<CanViewerApp> through its
         // signature or wrapping the call here with a FilterBar child added to
         // this outer div. Deferred to keep this commit's surface small.
 
@@ -259,7 +259,7 @@ impl CanViewApp {
                 .collect(),
         }
     }
-    fn render_log_view(&self, view: Entity<CanViewApp>) -> impl IntoElement {
+    fn render_log_view(&self, view: Entity<CanViewerApp>) -> impl IntoElement {
         // Clone view for use in multiple closures
         let view_clone1 = view.clone();
         let view_clone2 = view.clone();
@@ -1310,7 +1310,7 @@ impl CanViewApp {
     fn render_channel_filter_dropdown(
         &self,
         parent: gpui::Div,
-        view: Entity<CanViewApp>,
+        view: Entity<CanViewerApp>,
         _ch_width: gpui::Pixels,
         time_width: gpui::Pixels,
     ) -> gpui::Div {
@@ -1455,7 +1455,7 @@ impl CanViewApp {
                                                 move |_event, _window, cx| {
                                                     cx.stop_propagation();
                                                     eprintln!("Selected Channel: {}", channel);
-                                                    view.update(cx, |app: &mut CanViewApp, cx: &mut Context<CanViewApp>| {
+                                                    view.update(cx, |app: &mut CanViewerApp, cx: &mut Context<CanViewerApp>| {
                                                         app.channel_filter = Some(channel);
                                                         app.channel_filter_text =
                                                             channel.to_string().into();
@@ -1646,7 +1646,7 @@ impl CanViewApp {
     }
 }
 
-impl Render for CanViewApp {
+impl Render for CanViewerApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // Update container height based on current window size
         self.update_container_height(window);
