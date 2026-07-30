@@ -151,12 +151,12 @@ jobs:
         if: runner.os == 'Linux'
         run: strip target/${{ matrix.target }}/release/view || true
 
-      - name: Regenerate canview.icns from PNG sources (macOS)
+      - name: Regenerate can-viewer.icns from PNG sources (macOS)
         if: runner.os == 'macOS'
         shell: bash
         run: |
           set -e
-          ICONSET=/tmp/canview.iconset
+          ICONSET=/tmp/can-viewer.iconset
           rm -rf "$ICONSET"
           mkdir -p "$ICONSET"
           sips -z 16 16 assets/png/logo_16.png --out "$ICONSET/icon_16x16.png" > /dev/null
@@ -169,11 +169,11 @@ jobs:
           sips -z 512 512 assets/png/logo_512.png --out "$ICONSET/icon_256x256@2x.png" > /dev/null
           sips -z 512 512 assets/png/logo_512.png --out "$ICONSET/icon_512x512.png" > /dev/null
           sips -z 1024 1024 assets/png/logo_512.png --out "$ICONSET/icon_512x512@2x.png" > /dev/null
-          iconutil -c icns "$ICONSET" -o assets/ico/canview.icns
-          echo "Regenerated canview.icns from PNG sources"
+          iconutil -c icns "$ICONSET" -o assets/ico/can-viewer.icns
+          echo "Regenerated can-viewer.icns from PNG sources"
 
       # macOS: wrap the binary in a .app bundle so the canview icon shows
-      # in Dock and Cmd-Tab. The bundle includes Info.plist + canview.icns.
+      # in Dock and Cmd-Tab. The bundle includes Info.plist + can-viewer.icns.
       - name: Create .app bundle (macOS)
         if: runner.os == 'macOS'
         shell: bash
@@ -194,7 +194,7 @@ jobs:
           mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
           cp target/${{ matrix.target }}/release/view "$MACOS_DIR/canview"
           chmod +x "$MACOS_DIR/canview"
-          cp assets/ico/canview.icns "$RESOURCES_DIR/canview.icns"
+          cp assets/ico/can-viewer.icns "$RESOURCES_DIR/can-viewer.icns"
           # Write Info.plist without indentation (plist parser is strict
           # about leading whitespace; printf gives full control).
           {

@@ -4,7 +4,7 @@ fn main() {
 
     // 使用绝对路径设置图标
     let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let icon_path = manifest_dir.join("../../assets/ico/canview.ico");
+    let icon_path = manifest_dir.join("../../assets/ico/can-viewer.ico");
 
     // 转换为字符串
     let icon_path_str = icon_path.to_str().expect("Invalid icon path");
@@ -33,7 +33,7 @@ fn main() {
 fn main() {
     // Emit rerun-if-changed for the icon so cargo rebuilds when it changes.
     let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let icon_path = manifest_dir.join("../../assets/ico/canview.icns");
+    let icon_path = manifest_dir.join("../../assets/ico/can-viewer.icns");
     println!("cargo:rerun-if-changed={}", icon_path.display());
 
     // macOS: place the .icns inside the binary's Resources dir so the

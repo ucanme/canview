@@ -65,8 +65,8 @@ if [ -f "BUILD.md" ]; then
 fi
 
 # 复制图标（如果存在）
-if [ -f "assets/ico/canview.icns" ]; then
-    cp "assets/ico/canview.icns" "$RESOURCES_DIR/canview.icns"
+if [ -f "assets/ico/can-viewer.icns" ]; then
+    cp "assets/ico/can-viewer.icns" "$RESOURCES_DIR/can-viewer.icns"
 fi
 
 echo "✅ 文件复制完成！"
@@ -178,8 +178,8 @@ if command -v create-dmg &> /dev/null; then
     )
 
     # 只有当图标存在时才添加图标参数
-    if [ -f "$RESOURCES_DIR/canview.icns" ]; then
-        ARGS+=(--volicon "$RESOURCES_DIR/canview.icns")
+    if [ -f "$RESOURCES_DIR/can-viewer.icns" ]; then
+        ARGS+=(--volicon "$RESOURCES_DIR/can-viewer.icns")
     fi
 
     create-dmg "${ARGS[@]}" "$DMG_PATH" "$APP_DIR"

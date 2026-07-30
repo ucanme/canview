@@ -99,7 +99,7 @@ C:\Users\Administrator\RustroverProjects\canview\target\release\view.exe
 - 应该能在列表中看到新的示波器风格图标
 - 点击浏览，手动选择：
   ```
-  C:\Users\Administrator\RustroverProjects\canview\assets\ico\canview.ico
+  C:\Users\Administrator\RustroverProjects\canview\assets\ico\can-viewer.ico
   ```
 
 ---
@@ -164,7 +164,7 @@ $icon.ToBitmap().Save("$env:USERPROFILE\Desktop\view_icon.png")
 
 ### 检查1: 验证ICO文件
 ```cmd
-dir "C:\Users\Administrator\RustroverProjects\canview\assets\ico\canview.ico"
+dir "C:\Users\Administrator\RustroverProjects\canview\assets\ico\can-viewer.ico"
 ```
 应该显示: `14,346 bytes` 或类似大小
 
@@ -304,7 +304,7 @@ Windows会将图标缓存在以下位置：
 当前配置（已验证正确）：
 ```rust
 let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-let icon_path = manifest_dir.join("../../assets/ico/canview.ico");
+let icon_path = manifest_dir.join("../../assets/ico/can-viewer.ico");
 res.set_icon(icon_path.to_str().expect("Invalid icon path"));
 ```
 

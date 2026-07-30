@@ -113,13 +113,13 @@ $CONVERT_CMD \
     png/logo_48.png \
     png/logo_32.png \
     png/logo_16.png \
-    ico/canview.ico
+    ico/can-viewer.ico
 
 # For macOS: Create ICNS
 if [[ "$OSTYPE" == "darwin"* ]]; then
     echo ""
     echo "Creating ICNS for macOS..."
-    ICONSET=canview.iconset
+    ICONSET=can-viewer.iconset
     rm -rf $ICONSET
     mkdir -p $ICONSET
 
@@ -138,7 +138,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     iconutil -c icns $ICONSET
     rm -rf $ICONSET
 
-    echo "macOS ICNS created: canview.icns"
+    echo "macOS ICNS created: can-viewer.icns"
 fi
 
 echo ""
@@ -148,13 +148,13 @@ echo "============================================"
 echo ""
 echo "Output files:"
 echo "  - PNG files: ./png/"
-echo "  - ICO file: ./ico/canview.ico"
+echo "  - ICO file: ./ico/can-viewer.ico"
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    echo "  - ICNS file: ./canview.icns"
+    echo "  - ICNS file: ./can-viewer.icns"
 fi
 echo ""
 echo "Next steps:"
-echo "  Windows: Run 'cargo build --release' (build.rs will use ico/canview.ico)"
-echo "  macOS:   Use canview.icns for .app bundle"
+echo "  Windows: Run 'cargo build --release' (build.rs will use ico/can-viewer.ico)"
+echo "  macOS:   Use can-viewer.icns for .app bundle"
 echo "  Linux:   Install png/logo_256.png or png/logo_512.png as desktop icon"
 echo ""

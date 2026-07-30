@@ -21,8 +21,8 @@ mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 cp ./target/debug/view "$MACOS_DIR/canview"
 chmod +x "$MACOS_DIR/canview"
 
-if [ -f assets/ico/canview.icns ]; then
-    cp assets/ico/canview.icns "$RESOURCES_DIR/canview.icns"
+if [ -f assets/ico/can-viewer.icns ]; then
+    cp assets/ico/can-viewer.icns "$RESOURCES_DIR/can-viewer.icns"
 fi
 
 cat > "$CONTENTS/Info.plist" <<EOF

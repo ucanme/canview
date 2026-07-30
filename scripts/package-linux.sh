@@ -66,8 +66,8 @@ if [ -f "BUILD.md" ]; then
 fi
 
 # 复制图标
-if [ -f "assets/ico/canview.png" ]; then
-    cp "assets/ico/canview.png" "$PACKAGE_DIR/usr/share/icons/hicolor/256x256/apps/$APP_NAME.png"
+if [ -f "assets/ico/can-viewer.png" ]; then
+    cp "assets/ico/can-viewer.png" "$PACKAGE_DIR/usr/share/icons/hicolor/256x256/apps/$APP_NAME.png"
 elif [ -f "assets/png/icon_256.png" ]; then
     cp "assets/png/icon_256.png" "$PACKAGE_DIR/usr/share/icons/hicolor/256x256/apps/$APP_NAME.png"
 fi

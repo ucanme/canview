@@ -48,7 +48,7 @@ Pre-rendered PNG files for various uses:
 - **logo_512.png** (5,602 bytes)
 
 ### Windows Icon
-**Location**: `ico/canview.ico` (14 KB)
+**Location**: `ico/can-viewer.ico` (14 KB)
 
 Contains all sizes (16-256 pixels) for Windows executable icons.
 
@@ -134,9 +134,9 @@ Contains: 16×16, 32×32, 48×48, 64×64, 128×128, 256×256
 To create ICNS (mac only):
 ```bash
 # Use iconutil
-mkdir -p canview.iconset
-cp png/logo_*.png canview.iconset/
-iconutil -c icns canview.iconset
+mkdir -p can-viewer.iconset
+cp png/logo_*.png can-viewer.iconset/
+iconutil -c icns can-viewer.iconset
 ```
 
 ### Linux PNG

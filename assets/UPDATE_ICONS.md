@@ -28,7 +28,7 @@ assets/
 │   ├── logo-256x256.svg      # 256×256 尺寸
 │   └── logo-512x512.svg      # 512×512 尺寸
 ├── ico/
-│   └── canview.ico           # Windows 图标 (自动生成)
+│   └── can-viewer.ico           # Windows 图标 (自动生成)
 ├── png/
 │   ├── logo_16.png           # PNG 格式 (自动生成)
 │   ├── logo_32.png
@@ -143,7 +143,7 @@ Windows 用户会在 `target/release/view.exe` 看到新的图标。
 操作：
 1. 上传多个 PNG 文件（256, 128, 64, 48, 32, 16）
 2. 生成 ICO 文件
-3. 下载并保存为 `assets/ico/canview.ico`
+3. 下载并保存为 `assets/ico/can-viewer.ico`
 
 ### 步骤 3: PNG 转 ICNS（macOS）
 
@@ -153,7 +153,7 @@ Windows 用户会在 `target/release/view.exe` 看到新的图标。
 操作：
 1. 上传 `assets/svg/logo.svg`
 2. 生成 ICNS 文件
-3. 下载并保存为 `assets/canview.icns`
+3. 下载并保存为 `assets/can-viewer.icns`
 
 ---
 
@@ -167,7 +167,7 @@ Windows 用户会在 `target/release/view.exe` 看到新的图标。
 #[cfg(target_os = "windows")]
 fn main() {
     let mut res = winres::WindowsResource::new();
-    res.set_icon("../../assets/ico/canview.ico");
+    res.set_icon("../../assets/ico/can-viewer.ico");
     res.compile().expect("Failed to compile resources");
 }
 ```
@@ -210,7 +210,7 @@ EOF
 
 # 复制文件
 cp target/release/view CanView.app/Contents/MacOS/
-cp assets/canview.icns CanView.app/Contents/Resources/
+cp assets/can-viewer.icns CanView.app/Contents/Resources/
 ```
 
 ---
@@ -221,8 +221,8 @@ cp assets/canview.icns CanView.app/Contents/Resources/
 ```bash
 # 用户级安装
 mkdir -p ~/.local/share/icons/hicolor/{256x256,512x512}/apps
-cp assets/png/logo_256.png ~/.local/share/icons/hicolor/256x256/apps/canview.png
-cp assets/png/logo_512.png ~/.local/share/icons/hicolor/512x512/apps/canview.png
+cp assets/png/logo_256.png ~/.local/share/icons/hicolor/256x256/apps/can-viewer.png
+cp assets/png/logo_512.png ~/.local/share/icons/hicolor/512x512/apps/can-viewer.png
 
 # 创建 .desktop 文件
 cat > ~/.local/share/applications/canview.desktop << 'EOF'

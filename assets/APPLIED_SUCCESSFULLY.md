@@ -30,7 +30,7 @@
 - `assets/png/logo_512.png` - 5,602 bytes
 
 #### Windows图标文件
-- `assets/ico/canview.ico` - 15KB (包含所有尺寸)
+- `assets/ico/can-viewer.ico` - 15KB (包含所有尺寸)
 
 ### 2. ✅ 编译完成
 
@@ -90,10 +90,10 @@ taskkill /f /im explorer.exe && start explorer.exe
 ### 验证图标文件
 ```cmd
 # 查看ICO文件信息
-dir "C:\Users\Administrator\RustroverProjects\canview\assets\ico\canview.ico"
+dir "C:\Users\Administrator\RustroverProjects\canview\assets\ico\can-viewer.ico"
 
 # 应该看到:
-# 15K canview.ico (最新日期: 2024年2月7日)
+# 15K can-viewer.ico (最新日期: 2024年2月7日)
 ```
 
 ---
@@ -121,7 +121,7 @@ canview/
 │   │   ├── logo_256.png
 │   │   └── logo_512.png
 │   ├── ico/
-│   │   └── canview.ico           ← 自动生成 (15KB)
+│   │   └── can-viewer.ico           ← 自动生成 (15KB)
 │   ├── draw_logo.py              ← 图标生成脚本
 │   ├── convert_online.py         ← 在线转换工具
 │   ├── UPDATE_ICONS.md           ← 详细更新指南
@@ -144,7 +144,7 @@ canview/
 #[cfg(target_os = "windows")]
 fn main() {
     let mut res = winres::WindowsResource::new();
-    res.set_icon("../../assets/ico/canview.ico");
+    res.set_icon("../../assets/ico/can-viewer.ico");
     res.compile().expect("Failed to compile resources");
 }
 ```
@@ -176,7 +176,7 @@ cargo run --release
 ```cmd
 1. 复制 target\release\view.exe 到桌面
 2. 右键 → 属性 → 更改图标
-3. 选择 assets\ico\canview.ico（可选）
+3. 选择 assets\ico\can-viewer.ico（可选）
 ```
 
 ---
@@ -237,7 +237,7 @@ cargo build --release -p view
 **文件位置**:
 - 📦 可执行文件: `target/release/view.exe`
 - 🎨 源文件: `assets/svg/logo.svg`
-- 🖼️ 图标文件: `assets/ico/canview.ico`
+- 🖼️ 图标文件: `assets/ico/can-viewer.ico`
 
 ---
 
