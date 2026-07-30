@@ -1,0 +1,40 @@
+scripts/installer.iss
+  s_790df9e047e933::t_b2bbbce60ba1ca 7
+src/view/src/app/impls_rendering.rs
+  s_790df9e047e933::t_2fce94438c2af5 2182,2218
+scripts/package-linux.sh
+  s_790df9e047e933::t_b2bbbce60ba1ca 158,221
+src/view/src/main.rs
+  s_790df9e047e933::t_2fce94438c2af5 134,148
+docs/index.html
+  s_790df9e047e933::t_b2bbbce60ba1ca 16,78
+README_zh.md
+  s_ef368fd9f13ac0::t_c5043cceb177b1 77
+  s_790df9e047e933::t_b2bbbce60ba1ca 9,12,60,65,130
+README.md
+  s_790df9e047e933::t_b2bbbce60ba1ca 9,12,60,65,130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "7f3ccde58c3d96d120fe27f4f1170790a68df612",
+  "prompts": {},
+  "sessions": {
+    "s_790df9e047e933": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d78f7f1-6460-4c57-b80a-37d892318959",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    },
+    "s_ef368fd9f13ac0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89bf9fed-0f83-4348-adf1-a239972eaef7",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
