@@ -1,0 +1,22 @@
+src/view/src/controllers/signal_set_controller.rs
+  s_04d90952119fff::t_19b0abb6f438f9 147-149
+src/view/src/ui/views/plot_sidebar.rs
+  s_04d90952119fff::t_6579c14f44f2de 789,808-822,824-837
+  s_04d90952119fff::t_222c53296b59b8 823
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "1e55d12a2451cc02e47c327cd22bef050d9b82ba",
+  "prompts": {},
+  "sessions": {
+    "s_04d90952119fff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8e61c224-a58a-4b5b-a842-5d741ff2c1da",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
