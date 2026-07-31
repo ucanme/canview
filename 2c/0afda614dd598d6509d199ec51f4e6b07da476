@@ -1,0 +1,19 @@
+src/blf/Cargo.toml
+  s_349fb020453866::t_02cb2b3753cb5c 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "2c0afda614dd598d6509d199ec51f4e6b07da476",
+  "prompts": {},
+  "sessions": {
+    "s_349fb020453866": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c1a9f41-2be4-4922-bf47-1a016c616bb3",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
