@@ -143,49 +143,48 @@ impl MergedView {
         // 加 start_time。单文件时 abs_ns 就是该文件内的绝对纳秒
         // (因为 start_ns 直接由 measurement_start_time 转换)。
 
-        // 多 segment：收集 (abs_sec, file_id, msg_idx, source_file_id, LogObject) 然后稳定排序
-        // 用 seg.start_ns (精确到 ns, 包含 ms) 而不是 start_time (只到秒)。
+        // Optimization: sort lightweight index keys instead of cloned LogObjects.
+        // Each LogObject is a large enum (CAN FD carries up to 64 data bytes);
+        // cloning them just to throw away 5/6 of the tuple during sort was the
+        // dominant cost for big files. We collect (abs_sec, seg_idx, msg_idx) and
+        // clone each LogObject exactly once when building the final messages_vec.
         let start_ns: Vec<i64> = segments.iter().map(|s| s.start_ns).collect();
 
-        let mut entries: Vec<(f64, i64, u32, usize, u32, LogObject)> = Vec::new();
+        let total: usize = segments.iter().map(|s| s.messages.len()).sum();
+        let mut keys: Vec<(f64, usize, usize)> = Vec::with_capacity(total);
         for (seg_idx, seg) in segments.iter().enumerate() {
             for (msg_idx, msg) in seg.messages.iter().enumerate() {
-                // 按每条消息的 object_flags 把 raw timestamp 转成 ns 再加 start_ns。
-                // BLF spec: 0x1=TimeTenMics (10µs/tick → ×10000ns), 0x2=TimeOneNans (1ns/tick)
                 let abs_ns = start_ns[seg_idx] + msg.timestamp_nanos() as i64;
                 let abs_sec = abs_ns as f64 / 1_000_000_000.0;
-                let mut cloned = msg.clone();
-                // 把每条消息的 timestamp 重写为全局绝对纳秒,这样后续
-                // 调用 msg.timestamp() 拿到的是 abs_ns,排序和显示都基于
-                // 全局时间。单文件路径(start_ns = file_start)也走这条
-                // 路径,行为与之前一致 —— abs_ns 就是该文件内的绝对纳秒。
-                cloned.set_timestamp(abs_ns as u64);
-                entries.push((abs_sec, abs_ns, seg.file_id, msg_idx, seg.file_id, cloned));
+                keys.push((abs_sec, seg_idx, msg_idx));
             }
         }
 
-        entries.sort_by(|a, b| {
+        keys.sort_by(|a, b| {
             a.0.partial_cmp(&b.0)
                 .unwrap_or(std::cmp::Ordering::Equal)
+                .then(a.1.cmp(&b.1))
                 .then(a.2.cmp(&b.2))
-                .then(a.3.cmp(&b.3))
         });
 
-        let total = entries.len();
-        let mut messages_vec = Vec::with_capacity(total);
-        let mut source_ids_vec = Vec::with_capacity(total);
+        let mut messages_vec: Vec<LogObject> = Vec::with_capacity(total);
+        let mut source_ids_vec: Vec<u32> = Vec::with_capacity(total);
         let mut min_sec = f64::INFINITY;
         let mut max_sec = f64::NEG_INFINITY;
 
-        for (abs_sec, _abs_ns, _fid, _idx, src_fid, msg) in entries {
+        for (abs_sec, seg_idx, msg_idx) in keys {
             if abs_sec < min_sec {
                 min_sec = abs_sec;
             }
             if abs_sec > max_sec {
                 max_sec = abs_sec;
             }
-            messages_vec.push(msg);
-            source_ids_vec.push(src_fid);
+            let seg = &segments[seg_idx];
+            let abs_ns = start_ns[seg_idx] + seg.messages[msg_idx].timestamp_nanos() as i64;
+            let mut cloned = seg.messages[msg_idx].clone();
+            cloned.set_timestamp(abs_ns as u64);
+            messages_vec.push(cloned);
+            source_ids_vec.push(seg.file_id);
         }
 
         Self {

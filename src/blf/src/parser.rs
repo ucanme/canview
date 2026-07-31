@@ -5,6 +5,7 @@ use crate::objects::*;
 use crate::{BlfParseError, BlfParseResult, LogContainer, ObjectType};
 use crate::BlfResultContext;
 
+use rayon::prelude::*;
 use std::io::{Cursor, Read};
 
 // Log object enum for all supported BLF objects
@@ -267,7 +268,13 @@ impl BlfParser {
         }
 
         // The top-level of a BLF file (after the initial FileStatistics header, which is handled elsewhere)
-        // consists of a series of LogContainer objects. This loop iterates through them.
+        // consists of a series of LogContainer objects. LogContainers are independent:
+        // each has its own zlib stream and inner objects that don't reference other containers.
+        // We exploit this by collecting container descriptors in a single pass, then
+        // decompressing + parsing their inner objects in parallel with rayon. Per-container
+        // results are collected back in original file order so timestamps stay monotonic.
+        let mut pending_containers: Vec<(usize, ObjectHeaderBase)> = Vec::new();
+
         while (cursor.position() as usize) < data_len {
             let start_pos = cursor.position();
 
@@ -329,42 +336,63 @@ impl BlfParser {
                     );
                 }
             } else {
-                println!("Parsing container {}", header.object_size);
-                match LogContainer::read(&mut cursor, header.clone()).context("BlfParser.LogContainer") {
-                    Ok(container) => {
-                        let mut container_cursor = Cursor::new(&container.uncompressed_data[..]);
-                        match self
-                            .parse_inner_objects(&mut container_cursor)
-                            .context("BlfParser.parse_inner_objects")
-                        {
-                            Ok(objects) => {
-                                if self.debug {
-                                    println!(
-                                        "Successfully parsed {} objects from container",
-                                        objects.len()
-                                    );
-                                }
-                                all_objects.extend(objects);
-                            }
-                            Err(e) => {
-                                if self.debug {
-                                    println!("Error parsing inner objects: {:?}", e);
-                                }
-                                all_errors.push(e);
-                                // Continue with next container instead of failing completely
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        if self.debug {
-                            println!("Error reading LogContainer: {:?}", e);
-                        }
-                        all_errors.push(e);
-                        // Continue with next object
-                    }
+                if self.debug {
+                    println!("Parsing container {}", header.object_size);
                 }
+                // Defer the actual decompress+parse to the parallel phase. Capture
+                // the byte range of this container so the worker can re-read it
+                // from the original `data` slice without copying.
+                pending_containers.push((start_pos as usize, header.clone()));
             }
             self.advance_cursor_to_next_object(&mut cursor, start_pos, header.object_size);
+        }
+
+        let consumed = cursor.position().min(data_len as u64);
+
+        // Parallel phase: decompress + parse_inner_objects for each container.
+        // Each task returns (container_index, Result<Vec<LogObject>, BlfParseError>).
+        // The original `data` slice is shared (read-only) across threads via &data[..].
+        let per_container_results: Vec<(usize, BlfParseResult<Vec<LogObject>>)> = pending_containers
+            .into_par_iter()
+            .map(|(start_pos, header)| {
+                // Worker cursor starts at the LogContainer payload (after the
+                // ObjectHeaderBase), since LogContainer::read expects to read
+                // the compression_method field next, not the header.
+                let payload_start = start_pos + header.header_size as usize;
+                let mut worker_cursor = Cursor::new(&data[payload_start..]);
+                let inner_result = LogContainer::read(&mut worker_cursor, header)
+                    .context("BlfParser.LogContainer")
+                    .and_then(|container| {
+                        let mut inner_cursor = Cursor::new(&container.uncompressed_data[..]);
+                        self.parse_inner_objects(&mut inner_cursor)
+                            .context("BlfParser.parse_inner_objects")
+                    });
+                (start_pos, inner_result)
+            })
+            .collect();
+
+        // Sequential merge phase: preserve original container order. The
+        // pending_containers Vec was built in file order, and `into_par_iter()`
+        // preserves order through `collect()`, so iterating results in order
+        // gives us the same sequence as the old sequential code.
+        for (_start_pos, result) in per_container_results {
+            match result {
+                Ok(objects) => {
+                    if self.debug {
+                        println!(
+                            "Successfully parsed {} objects from container",
+                            objects.len()
+                        );
+                    }
+                    all_objects.extend(objects);
+                }
+                Err(e) => {
+                    if self.debug {
+                        println!("Error parsing inner objects: {:?}", e);
+                    }
+                    all_errors.push(e);
+                }
+            }
         }
 
         if self.debug {
@@ -375,7 +403,6 @@ impl BlfParser {
             );
         }
 
-        let consumed = cursor.position().min(data_len as u64);
         Ok((all_objects, all_errors, consumed))
     }
 

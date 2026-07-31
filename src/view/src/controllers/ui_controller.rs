@@ -25,7 +25,7 @@ pub enum FilterType {
 /// Apply message filters based on current filter state
 pub fn apply_message_filters(app: &CanViewerApp) -> Vec<LogObject> {
     match (app.id_filter, app.channel_filter) {
-        (None, None) => app.messages.clone(),
+        (None, None) => app.messages.iter().cloned().collect(),
         (Some(filter_id), None) => app
             .messages
             .iter()
