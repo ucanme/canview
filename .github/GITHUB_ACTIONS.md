@@ -171,10 +171,10 @@ git push origin v1.0.0
 
 ```bash
 # Apple Silicon
-cargo build --release -p view --target aarch64-apple-darwin
+cargo build --release -p viewer --target aarch64-apple-darwin
 
 # Intel
-cargo build --release -p view --target x86_64-apple-darwin
+cargo build --release -p viewer --target x86_64-apple-darwin
 
 # Universal
 lipo -create -output can-viewer-universal \
@@ -185,7 +185,7 @@ lipo -create -output can-viewer-universal \
 ### Windows
 
 ```bash
-cargo build --release -p view
+cargo build --release -p viewer
 ```
 
 ---
@@ -204,7 +204,7 @@ cargo build --release -p view
 ```bash
 cargo clean
 cargo update
-cargo build --release -p view
+cargo build --release -p viewer
 ```
 
 ### 缓存问题
@@ -227,9 +227,9 @@ cargo build --release -p view
 
 2. **开发和测试**
    ```bash
-   cargo check -p view
-   cargo clippy -p view
-   cargo test -p view
+   cargo check -p viewer
+   cargo clippy -p viewer
+   cargo test -p viewer
    ```
 
 3. **提交并推送**
@@ -290,7 +290,7 @@ cargo build --release -p view
 3. **使用 `cargo-bloat`** 检查大小区块：
    ```bash
    cargo install cargo-bloat
-   cargo bloat --release -p view
+   cargo bloat --release -p viewer
    ```
 
 ---

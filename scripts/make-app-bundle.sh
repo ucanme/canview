@@ -7,8 +7,8 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-echo "🛠  Building view (debug)..."
-cargo +nightly build -p view
+echo "🛠  Building viewer (debug)..."
+cargo +nightly build -p viewer
 
 APP_DIR="./target/debug/can-viewer.app"
 CONTENTS="$APP_DIR/Contents"

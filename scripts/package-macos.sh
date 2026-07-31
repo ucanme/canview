@@ -16,7 +16,7 @@ echo ""
 
 # 1. 编译 Release 版本
 echo "📦 步骤 1: 编译 Release 版本..."
-cargo build --release -p view
+cargo build --release -p viewer
 if [ $? -ne 0 ]; then
     echo "❌ 编译失败！"
     exit 1

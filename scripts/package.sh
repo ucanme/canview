@@ -21,7 +21,7 @@ case "$OS_TYPE" in
 esac
 
 echo "📦 步骤 1: 编译 Release 版本..."
-cargo build --release -p view
+cargo build --release -p viewer
 echo "✅ 编译成功！"
 echo ""
 
