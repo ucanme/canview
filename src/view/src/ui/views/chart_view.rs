@@ -99,7 +99,12 @@ fn render_toolbar(app: &CanViewerApp, cx: &mut Context<CanViewerApp>) -> impl In
         .bg(rgb(0x18181b))
         .border_b_1()
         .border_color(rgb(0x27272a))
-        .child(div().flex_1())
+        .child(
+            div()
+                .text_xs()
+                .text_color(rgb(0x71717a))
+                .child("⌘/Ctrl + 滚轮 = 缩放 · 滚轮 = 滚动")
+        )
         .child(
             div()
                 .flex()
@@ -189,10 +194,20 @@ fn render_chart_canvas(app: &CanViewerApp, series_data: Arc<[Series]>, cx: &mut 
     let hover_x = app.plot_hover_x;
     let hover_time = app.plot_hover_time;
 
-    // Constant offsets based on layout (Sidebar: 320px, Padding: 16px)
+    // Constant offsets based on layout:
+    //   sidebar 320 → v_flex p_4 left 16 → card p_2 left 8 → canvas pad_left 36
+    // 每张 chart 卡片的实际绘图区原点（相对于窗口左边）= 380px，
+    // 右边界 = window_width - 16 - 8 - 4 = window_width - 28。
+    // 之前用 chart_start_x = 336 当绘图原点，导致 hover 竖线、zoom 拖拽框、
+    // 缩放中心都向左偏 ~44px。
     let sidebar_offset = px(320.0);
-    let padding = px(16.0);
-    let chart_start_x = sidebar_offset + padding;
+    let padding = px(16.0);          // v_flex .p_4()
+    let card_pad = px(8.0);          // card .p_2()
+    let canvas_pad_left = px(36.0);  // canvas pad_left
+    let canvas_pad_right = px(4.0);  // canvas pad_right
+    // 真正的绘图区几何（与 render_single_chart 内 canvas 的 pad_left/pad_right 一致）
+    let draw_origin_x = sidebar_offset + padding + card_pad + canvas_pad_left; // 380
+    let draw_right_margin = padding + card_pad + canvas_pad_right;             // 28
 
     // The v_flex itself is the scroll container: it has overflow_y_scroll +
     // track_scroll, and its children (legend + charts) take natural height so
@@ -219,13 +234,16 @@ fn render_chart_canvas(app: &CanViewerApp, series_data: Arc<[Series]>, cx: &mut 
         // Zoom Box Overlay Layer
         .when(is_dragging, |this| {
             if let (Some(start), Some(current)) = (drag_start, drag_current) {
-                // Convert global mouse coordinates to local container coordinates
+                // Convert global mouse coordinates to local container coordinates.
+                // The overlay is a child of this v_flex, whose bounds.origin.x =
+                // sidebar_offset (320). Use sidebar_offset, NOT chart_start_x (336),
+                // otherwise the box is shifted 16px left of the actual drag.
                 let left_global = start.min(current);
                 let right_global = start.max(current);
-                
-                let left_local = (left_global - chart_start_x).max(px(0.0));
+
+                let left_local = (left_global - sidebar_offset).max(px(0.0));
                 let width = right_global - left_global; // Width is the delta
-                
+
                 this.child(
                     div()
                         .absolute()
@@ -270,18 +288,21 @@ fn render_chart_canvas(app: &CanViewerApp, series_data: Arc<[Series]>, cx: &mut 
             // Handle Hover
             // We need to calculate time based on mouse position
             let mouse_x = event.position.x;
-            
+
             // Throttle: only notify if mouse moved more than 1px to reduce render load
             let prev_hover_x = this.plot_hover_x.unwrap_or(px(-9999.0));
             let moved_enough = (mouse_x - prev_hover_x).abs() > px(1.0);
-            
-            // Calculate visible width
+
+            // Calculate visible width — use the actual drawing area (matches
+            // what render_single_chart uses for canvas pad_left/pad_right), not
+            // the outer scroll-container bounds.
             let window_width = window.bounds().size.width;
-            let chart_width_px = window_width - chart_start_x - padding;
-            this.plot_width_px = chart_width_px;
-            
-            // Bounds check
-            if mouse_x >= chart_start_x && mouse_x <= (window_width - padding) {
+            let draw_width = window_width - draw_origin_x - draw_right_margin;
+            this.plot_width_px = draw_width;
+
+            // Bounds check: only fire hover when mouse is over the actual chart
+            // drawing area (380 .. window_width - 28).
+            if mouse_x >= draw_origin_x && mouse_x <= (window_width - draw_right_margin) {
                 if moved_enough || this.is_dragging_zoom {
                     this.plot_hover_x = Some(mouse_x);
                     this.plot_hover_y = Some(event.position.y);
@@ -301,8 +322,10 @@ fn render_chart_canvas(app: &CanViewerApp, series_data: Arc<[Series]>, cx: &mut 
                         if min_t == f64::MAX { (0.0, 1.0) } else { (min_t, max_t) }
                     };
 
-                    // Interpolate
-                    let rel_x = (mouse_x - chart_start_x) / chart_width_px;
+                    // Interpolate against the actual drawing-area geometry so the
+                    // hover vertical line drawn by each chart card lines up with
+                    // the mouse cursor.
+                    let rel_x = (mouse_x - draw_origin_x) / draw_width;
                     let rel_x = f32::max(0.0, f32::min(1.0, rel_x)); // Clamp
 
                     let time_range = max_t - min_t;
@@ -353,16 +376,18 @@ fn render_chart_canvas(app: &CanViewerApp, series_data: Arc<[Series]>, cx: &mut 
                     
                     if cur_min < cur_max {
                         let window_width = window.bounds().size.width;
-                        let plot_width = f32::from(window_width - chart_start_x - padding); 
-                        
+                        // Match the actual chart drawing area used by render_single_chart
+                        // (sidebar + v_flex p_4 + card p_2 + canvas pad_left = 380).
+                        let plot_width = f32::from(window_width - draw_origin_x - draw_right_margin);
+
                         // Map relative x to time within current visible range
-                        let start_rel = f32::from(x1 - chart_start_x) / plot_width; 
-                        let end_rel = f32::from(x2 - chart_start_x) / plot_width;
-                        
+                        let start_rel = f32::from(x1 - draw_origin_x) / plot_width;
+                        let end_rel = f32::from(x2 - draw_origin_x) / plot_width;
+
                         let cur_range = cur_max - cur_min;
                         let new_start = cur_min + cur_range * start_rel as f64;
                         let new_end = cur_min + cur_range * end_rel as f64;
-                        
+
                         this.plot_zoom_start = Some(new_start.max(min_t));
                         this.plot_zoom_end = Some(new_end.min(max_t));
                         // Fast filter: just slice plot_full_data, no message re-scan
@@ -376,33 +401,43 @@ fn render_chart_canvas(app: &CanViewerApp, series_data: Arc<[Series]>, cx: &mut 
             this.zoom_drag_current_x = None;
             cx.notify();
         }))
-        // Mouse wheel zoom
+        // Mouse wheel: scroll canvas by default; zoom only when Ctrl/Cmd is held.
+        // 同一个 div 上同时挂了 `.overflow_y_scroll()` 和这个 `.on_scroll_wheel` 监听器，
+        // gpui 内部把内置滚动处理器放在用户监听器之后注册，Bubble 阶段反向遍历会让
+        // 内置滚动**先**执行（已经把 scroll_offset.y += delta 应用掉了），用户监听器
+        // 之后才跑。所以这里 `stop_propagation` 没法回退本 div 的滚动 —— 我们改成：
+        // 缩放时显式把 ScrollHandle 的 offset 减回去，撤销刚才那一下滚动。
         .on_scroll_wheel(cx.listener(move |this: &mut CanViewerApp, event: &ScrollWheelEvent, window, cx| {
-            // Stop event propagation to prevent parent container from scrolling
-            cx.stop_propagation();
+            // 未按修饰键 → 走默认滚动，不缩放
+            if !event.modifiers.secondary() {
+                return;
+            }
 
-            // Prevent zooming if no data
             if this.plot_data.is_empty() {
                 return;
             }
 
-            // Let's remove unused chart_width_px
-            // Calculate chart dimensions
             let window_width = window.bounds().size.width;
-
-            // Check if mouse is over the chart area
             let mouse_x = event.position.x;
-            if mouse_x < chart_start_x || mouse_x > (window_width - padding) {
+            if mouse_x < draw_origin_x || mouse_x > (window_width - draw_right_margin) {
                 return;
             }
 
-            // Use stored full data time range (not from filtered plot_data!)
-            // plot_data is filtered by zoom range, so computing min/max from it
-            // would give us the zoomed range, not the full data range.
+            // 撤销本事件刚刚被内置滚动处理器施加的滚动，让画布在缩放时保持不动。
+            let delta = event.delta.pixel_delta(window.line_height());
+            if !delta.y.is_zero() {
+                let cur = this.plot_scroll_handle.offset();
+                this.plot_scroll_handle.set_offset(gpui::point(
+                    cur.x - delta.x,
+                    cur.y - delta.y,
+                ));
+            }
+
+            // plot_data is filtered by zoom range, so its min/max is the zoomed
+            // range, not the full data range. Prefer the stored full-time bounds.
             let (abs_min_t, abs_max_t) = match (this.plot_full_time_min, this.plot_full_time_max) {
                 (Some(min_t), Some(max_t)) if min_t < max_t => (min_t, max_t),
                 _ => {
-                    // Fallback: compute from plot_data (only correct when not zoomed)
                     let mut min_t = f64::MAX;
                     let mut max_t = f64::MIN;
                     for series in this.plot_data.iter() {
@@ -416,7 +451,6 @@ fn render_chart_canvas(app: &CanViewerApp, series_data: Arc<[Series]>, cx: &mut 
                 }
             };
 
-            // Get current zoomed range (or use full data range if not zoomed)
             let (current_min, current_max) = if let (Some(s), Some(e)) = (this.plot_zoom_start, this.plot_zoom_end) {
                 (s, e)
             } else {
@@ -428,16 +462,12 @@ fn render_chart_canvas(app: &CanViewerApp, series_data: Arc<[Series]>, cx: &mut 
                 return;
             }
 
-            // Determine zoom direction based on scroll delta
             let scroll_delta = match event.delta {
                 gpui::ScrollDelta::Lines(point) => point.y,
                 gpui::ScrollDelta::Pixels(pixels) => f32::from(pixels.y),
             };
 
-            eprintln!("🖱️  scroll_delta = {:.4}", scroll_delta);
-
             // Mac 触控板会产生大量微小滚动事件，过低的阈值会导致轻微触碰就触发缩放。
-            // 提高 threshold 并降低 zoom_factor，让缩放更"稳重"。
             if scroll_delta.abs() < 0.5 {
                 return;
             }
@@ -489,15 +519,14 @@ fn render_chart_canvas(app: &CanViewerApp, series_data: Arc<[Series]>, cx: &mut 
                 };
 
                 if new_range < min_range {
-                    eprintln!("⚠️  Cannot zoom in further: minimum range ({:.6}s) reached", min_range);
                     return;
                 }
 
                 // Zoom centered on the mouse position, not the chart center,
                 // so the data under the cursor stays put.
-                let chart_width_px = window_width - padding - chart_start_x;
+                let chart_width_px = window_width - draw_origin_x - draw_right_margin;
                 let mouse_t_ratio = if current_max > current_min && chart_width_px > gpui::px(0.0) {
-                    let r = (mouse_x - chart_start_x) / chart_width_px;
+                    let r = (mouse_x - draw_origin_x) / chart_width_px;
                     f32::max(0.0, f32::min(1.0, r)) as f64
                 } else {
                     0.5
@@ -513,9 +542,9 @@ fn render_chart_canvas(app: &CanViewerApp, series_data: Arc<[Series]>, cx: &mut 
                 let abs_range = abs_max_t - abs_min_t;
                 let new_range = (current_range * zoom_factor).max(current_range + 0.1 * abs_range);
 
-                let chart_width_px = window_width - padding - chart_start_x;
+                let chart_width_px = window_width - draw_origin_x - draw_right_margin;
                 let mouse_t_ratio = if current_max > current_min && chart_width_px > gpui::px(0.0) {
-                    let r = (mouse_x - chart_start_x) / chart_width_px;
+                    let r = (mouse_x - draw_origin_x) / chart_width_px;
                     f32::max(0.0, f32::min(1.0, r)) as f64
                 } else {
                     0.5
@@ -542,13 +571,9 @@ fn render_chart_canvas(app: &CanViewerApp, series_data: Arc<[Series]>, cx: &mut 
                 // Reset to show full data
                 this.plot_zoom_start = None;
                 this.plot_zoom_end = None;
-                eprintln!("🔍 Zoom OUT - reset to full range ({:.3}s)", abs_range);
             } else {
                 this.plot_zoom_start = Some(new_min);
                 this.plot_zoom_end = Some(new_max);
-                eprintln!("🔍 Zoom {}: {:.3}s -> {:.3}s (span: {:.3}s)",
-                    if zoom_in { "IN" } else { "OUT" },
-                    new_min, new_max, new_range);
             }
 
             // Fast filter: slice plot_full_data without re-decoding messages
