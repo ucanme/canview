@@ -786,6 +786,7 @@ fn render_signal_set_dropdown_row(
                     let name = name.clone();
                     let count = *count;
                     let name_for_closure = name.clone();
+                    let name_for_delete = name.clone();
                     div()
                         .px_4().py_2()
                         .cursor_pointer().hover(|s| s.bg(rgb(0x1f1f22)))
@@ -804,7 +805,36 @@ fn render_signal_set_dropdown_row(
                         })
                         .flex().items_center().justify_between()
                         .child(div().text_xs().text_color(rgb(0xd4d4d8)).child(name.clone()))
-                        .child(div().text_xs().text_color(rgb(0x71717a)).child(format!("({})", count)))
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap_2()
+                                .child(div().text_xs().text_color(rgb(0x71717a)).child(format!("({})", count)))
+                                .child(
+                                    // Delete button — stop propagation so the row's apply click doesn't fire
+                                    div()
+                                        .px_1()
+                                        .text_xs()
+                                        .text_color(rgb(0x71717a))
+                                        .hover(|s| s.text_color(rgb(0xef4444)))
+                                        .on_mouse_down(MouseButton::Left, {
+                                            let view = view.clone();
+                                            move |_, _, cx| {
+                                                cx.stop_propagation();
+                                                view.update(cx, |this, cx| {
+                                                    let lib_id = this.app_config.active_library_id.clone().unwrap_or_default();
+                                                    crate::controllers::signal_set_controller::delete_signal_set(
+                                                        this, &lib_id, &name_for_delete, cx,
+                                                    );
+                                                    // Keep dropdown open so user can delete multiple sets
+                                                    cx.notify();
+                                                });
+                                            }
+                                        })
+                                        .child("✕")
+                                )
+                        )
                         .into_any_element()
                 }
                 SetDropdownItem::ClearActive => div()

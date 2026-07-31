@@ -144,8 +144,9 @@ pub fn delete_signal_set(
     }
 
     let _ = save_signal_set_store(&app.signal_set_store, app.config_file_path.as_deref());
-    if let Some((lid, _)) = &app.active_signal_set {
-        if lid == library_id {
+    // Only clear the active set if the deleted set WAS the active set.
+    if let Some((lid, sname)) = &app.active_signal_set {
+        if lid == library_id && sname == set_name {
             app.active_signal_set = None;
         }
     }
