@@ -1,0 +1,21 @@
+README.md
+  s_349fb020453866::t_624d3a30763304 59,63
+README_zh.md
+  s_349fb020453866::t_80ad4d149f580c 59,63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "8b8bc9ba6ffe39cc21e3518fcbc243187e0ef27d",
+  "prompts": {},
+  "sessions": {
+    "s_349fb020453866": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c1a9f41-2be4-4922-bf47-1a016c616bb3",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
