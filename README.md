@@ -112,25 +112,25 @@ Configuration is auto-saved to `multi_channel_config.json` next to the binary.
 
 ### Done
 
-- ✓ BLF parsing core (CAN / CAN FD / LIN / FlexRay / Ethernet)
-- ✓ DBC / LDF database parsing
-- ✓ GPUI desktop UI (GPU-accelerated, cross-platform)
-- ✓ Message filtering (by ID and channel) and signal decoding
-- ✓ Signal waveform plot — zoom, hover, absolute time, live plot on selection, no-data placeholders
-- ✓ Multi-version signal library management (create / activate / share via LAN, one-click import)
-- ✓ Signal sets — named channel+message+signal collections, batch-apply to plot
-- ✓ Multi-file loading with merged timeline (Open BLF... replaces, Open Multiple BLF... appends)
-- ✓ Drag-and-drop BLF loading (in-window + macOS Dock-icon), folder expansion, large-file guard
-- ✓ Status bar multi-file segment with ⚠️ parse-error indicator and Loaded Files popover
-- ✓ Parallel BLF loading (rayon parallel zlib decompress + index-sort merge, ~3× faster on multi-core CPUs)
+- ✅ BLF parsing core (CAN / CAN FD / LIN / FlexRay / Ethernet)
+- ✅ DBC / LDF database parsing
+- ✅ GPUI desktop UI (GPU-accelerated, cross-platform)
+- ✅ Message filtering (by ID and channel) and signal decoding
+- ✅ Signal waveform plot — zoom, hover, absolute time, live plot on selection, no-data placeholders
+- ✅ Multi-version signal library management (create / activate / share via LAN, one-click import)
+- ✅ Signal sets — named channel+message+signal collections, batch-apply to plot
+- ✅ Multi-file loading with merged timeline (Open BLF... replaces, Open Multiple BLF... appends)
+- ✅ Drag-and-drop BLF loading (in-window + macOS Dock-icon), folder expansion, large-file guard
+- ✅ Status bar multi-file segment with ⚠️ parse-error indicator and Loaded Files popover
+- ✅ Parallel BLF loading (rayon parallel zlib decompress + index-sort merge, ~3× faster on multi-core CPUs)
 
 ### Planned
 
-- ○ Live streaming mode (socketcan / virtual bus)
-- ○ Export to CSV / JSON
-- ○ Diagnostic rule DSL (custom warning / error conditions)
-- ○ DBC generator from observed traffic
-- ○ Replay / re-injection (send back to bus)
+- ⬜ Live streaming mode (socketcan / virtual bus)
+- ⬜ Export to CSV / JSON
+- ⬜ Diagnostic rule DSL (custom warning / error conditions)
+- ⬜ DBC generator from observed traffic
+- ⬜ Replay / re-injection (send back to bus)
 
 ---
 
