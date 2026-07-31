@@ -29,7 +29,7 @@ Write-Host ""
 
 # 2. 编译 Release 版本
 Write-Host "📦 步骤 2: 编译 Release 版本..." -ForegroundColor Green
-cargo build --release -p view
+cargo build --release -p viewer
 if ($LASTEXITCODE -ne 0) {
     Write-Host "❌ 编译失败！" -ForegroundColor Red
     exit 1

@@ -44,7 +44,7 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 
 [Files]
 ; 主程序
-Source: "target\release\view.exe"; DestDir: "{app}\bin"; DestName: "{#MyAppExeName}"; Flags: ignoreversion
+Source: "target\release\viewer.exe"; DestDir: "{app}\bin"; DestName: "{#MyAppExeName}"; Flags: ignoreversion
 
 ; 配置目录
 Source: "config\*"; DestDir: "{app}\config"; Flags: ignoreversion recursesubdirs createallsubdirs

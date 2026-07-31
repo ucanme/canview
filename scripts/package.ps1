@@ -13,7 +13,7 @@ Write-Host ""
 
 # 1. 编译 Release 版本
 Write-Host "📦 步骤 1: 编译 Release 版本..." -ForegroundColor Green
-cargo build --release -p view
+cargo build --release -p viewer
 if ($LASTEXITCODE -ne 0) {
     Write-Host "❌ 编译失败！" -ForegroundColor Red
     exit 1
@@ -45,7 +45,7 @@ Write-Host ""
 
 # 3. 复制可执行文件
 Write-Host "📋 步骤 3: 复制可执行文件..." -ForegroundColor Green
-Copy-Item -Path ".\target\release\view.exe" -Destination "$PackageDir\bin\can-viewer.exe"
+Copy-Item -Path ".\target\release\viewer.exe" -Destination "$PackageDir\bin\can-viewer.exe"
 Write-Host "✅ 可执行文件已复制到 bin\can-viewer.exe" -ForegroundColor Green
 Write-Host ""
 
