@@ -8,7 +8,7 @@
 
 [![Build](https://img.shields.io/github/actions/workflow/status/cantool/can-viewer/build.yml?branch=main&style=flat-square)](https://github.com/cantool/can-viewer/actions)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE.txt)
-[![Rust](https://img.shields.io/badge/rust-nightly-orange?style=flat-square)](https://www.rust-lang.org/)
+[![Rust](https://img.shields.io/badge/rust-stable-orange?style=flat-square)](https://www.rust-lang.org/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-lightgrey?style=flat-square)](https://github.com/cantool/can-viewer/releases)
 
 Fully open source — your ⭐ keeps development going!
@@ -21,19 +21,33 @@ Fully open source — your ⭐ keeps development going!
 
 ## Overview
 
-can-viewer is a high-performance automotive bus analysis tool built in Rust. It integrates BLF log parsing, DBC/LDF signal library management, and a [GPUI](https://gpui.rs/)-powered GPU-accelerated desktop UI.
+`can-viewer` is a high-performance automotive bus analysis tool built in Rust. It parses Vector BLF log files, decodes signals against DBC / LDF databases, and renders interactive waveform plots in a [GPUI](https://gpui.rs/)-accelerated desktop UI. Built for engineers who need to inspect large recordings without waiting on slow Java-based tools.
 
+A typical session: drop a `.blf` recording onto the window, activate a DBC database for the matching channel, browse the decoded log, then plot selected signals to scrub through time. Multiple recordings can be loaded side-by-side on a single merged timeline.
+
+---
+
+## Features
+
+**Performance**
 - 🚀 **Rust native** — zero-copy parsing, fast startup
-- ⚡ **Parallel BLF loading** — zlib decompress runs across CPU cores via rayon; 9 MB / 860 K-object files load in ~280 ms
-- 🖥️ **GPU-accelerated UI** — built on GPUI, smooth rendering
-- 📊 **Interactive waveform plot** — zoom, pan, hover to inspect
-- 📚 **Signal library management** — multi-version DBC/LDF libraries, one-click activation, auto-load
-- 🎯 **Signal sets** — save named collections of channel+message+signal combinations on a library, then batch-apply them to the plot sidebar for quick replay
-- 🔗 **LAN sharing** — share signal libraries within your local network via HTTP
+- ⚡ **Parallel BLF loading** — zlib decompress runs across CPU cores via rayon; a 9 MB / 860 K-object file loads in ~280 ms warm
+- 🖥️ **GPU-accelerated UI** — built on GPUI, smooth rendering even with hundreds of thousands of rows
+
+**Bus & databases**
 - 🔌 **Multi-bus support** — CAN / CAN FD / LIN / FlexRay / Ethernet
-- 🖱️ **Drag-and-drop loading** — drop `.blf` files (or a folder) onto the window; macOS Dock-icon drop also supported
-- 📁 **Multi-file merged timeline** — load multiple BLF files in parallel; messages are sorted by absolute timestamp (`measurement_start_time + object_time_stamp`), so files recorded at different times line up correctly
-- ⚠️ **Parse-error surfacing** — failed parses show a warning in the status bar; the Loaded Files popover lists per-file errors with `❌`
+- 📚 **Multi-version signal libraries** — keep multiple DBC / LDF versions per channel; one-click activation, auto-load on startup
+- 🎯 **Signal sets** — save named channel+message+signal combinations on a library, then batch-apply them to the plot sidebar for fast replay across recordings
+
+**Log viewing**
+- 📊 **Interactive waveform plot** — zoom, pan, hover to inspect, live plot on selection, no-data placeholders for signals absent from the log
+- 🔍 **ID / channel filters** — narrow the log view by message ID or bus channel
+- ⚠️ **Parse-error surfacing** — failed parses show ⚠️ in the status bar; the Loaded Files popover lists per-file errors with `❌`
+
+**Multi-file & UX**
+- 📁 **Merged timeline** — load multiple BLF files in parallel; messages sorted by absolute timestamp (`measurement_start_time + object_time_stamp`), so recordings from different sessions line up
+- 🖱️ **Drag-and-drop loading** — drop `.blf` files or a folder onto the window; macOS Dock-icon drop also supported; large files (> 1 GB) trigger a confirmation prompt
+- 🔗 **LAN sharing** — share signal libraries over HTTP within your local network, one-click import on the receiving side
 - 🌐 **Cross-platform** — Windows, macOS, Linux
 
 ---
@@ -42,17 +56,17 @@ can-viewer is a high-performance automotive bus analysis tool built in Rust. It 
 
 | Log Viewer | Signal Plot |
 |:---:|:---:|
-| ![BLF Logs Viewer](assets/blf_logs_screenshot.png) | ![Signal Plotter](assets/plot_screen.png) |
+| <img src="assets/blf_logs_screenshot.png" width="400" alt="BLF Logs Viewer" /> | <img src="assets/plot_screen.png" width="400" alt="Signal Plotter" /> |
 
 | Signal Library Management |
 |:---:|
-| ![Signal Library](assets/dbc_library.png) |
+| <img src="assets/dbc_library.png" width="600" alt="Signal Library" /> |
 
 ---
 
 ## Quick Start
 
-**Requirements:** Rust nightly, Git
+**Requirements:** Rust stable (1.85+ for edition 2024), Git
 
 ```bash
 # Linux additional dependencies
@@ -66,20 +80,29 @@ cargo run --release --bin viewer
 
 Pre-built binaries: [Releases](https://github.com/cantool/can-viewer/releases) (Windows / macOS / Linux)
 
+### Try it with demo data
+
+A small demo database and matching BLF are included in the repo root:
+
+- `demo.dbc` — 6 messages (EngineStatus, VehicleSpeed, ControlCommand, TirePressure, BrakeStatus) with mixed signal types
+- `demo.blf` — 2 minutes / 6 000 CAN frames across 120 zlib-compressed LogContainers; IDs match `demo.dbc`
+
+Drop `demo.blf` onto the window, activate `demo.dbc` on channel 1, then switch to Signal Plot to see decoded signals.
+
 ---
 
 ## Usage
 
-1. **Open log** — click File → Open BLF… (single file), or Open Multiple BLF… (append). You can also **drag-and-drop** `.blf` files onto the window — dropping always clears the current session and reloads. On macOS, dropping on the Dock icon also works.
-2. **Manage signal libraries** — switch to the Library tab, add DBC/LDF files, activate a version
-3. **Signal sets** — on a library, save named collections of channel+message+signal combinations. Open the set dropdown from the plot sidebar header to apply (batch-select), rename, or delete a set — useful for replaying the same group of signals across recordings.
-4. **Browse log** — switch to the Log tab to view decoded signal values
-5. **Plot waveforms** — switch to Signal Plot, select signals; supports zoom and hover
-6. **Manage loaded files** — when ≥ 2 files are loaded (or any file has errors), click the **📂 N files** segment in the bottom-left status bar to open the Loaded Files popover. Remove individual files with ✕, or **Remove All** to clear.
+1. **Open log** — File → Open BLF… (single, replaces) or Open Multiple BLF… (append). Drag-and-drop also works — dropping always clears the current session and reloads. On macOS, Dock-icon drop is supported too.
+2. **Manage signal libraries** — Library tab → add DBC / LDF files → activate a version for the channel.
+3. **Signal sets** — on a library, save the current channel+message+signal selection as a named set. Open the dropdown from the plot sidebar header to apply (batch-select), rename, or delete.
+4. **Browse log** — Log tab shows decoded signal values per frame.
+5. **Plot waveforms** — Signal Plot tab → expand a channel/message → select signals. Supports zoom, hover, absolute time.
+6. **Manage loaded files** — when ≥ 2 files are loaded (or any file has errors), click **📂 N files** in the bottom-left status bar to open the Loaded Files popover. Remove individual files with ✕, or **Remove All**.
 
-Drop semantics: only `.blf` is accepted (`.bin` is ignored via drag — use File menu for `.bin`); folders are expanded one level deep; total > 1 GB triggers a confirmation prompt; mid-load drops cancel the in-flight load and queue the new one.
+Drop semantics: only `.blf` is accepted via drag (use File menu for `.bin`); folders are expanded one level deep; > 1 GB total triggers a confirmation; mid-load drops cancel the in-flight load and queue the new one.
 
-Configuration is auto-saved to `multi_channel_config.json`.
+Configuration is auto-saved to `multi_channel_config.json` next to the binary.
 
 📖 **Full user guide:** [docs/USAGE.md](docs/USAGE.md) — window layout, log/plot views, library management, signal sets, LAN sharing, keyboard shortcuts, troubleshooting.
 
@@ -95,7 +118,7 @@ Configuration is auto-saved to `multi_channel_config.json`.
 - ✓ Message filtering (by ID and channel) and signal decoding
 - ✓ Signal waveform plot — zoom, hover, absolute time, live plot on selection, no-data placeholders
 - ✓ Multi-version signal library management (create / activate / share via LAN, one-click import)
-- ✓ Signal sets — save named channel+message+signal combinations on a library, batch-apply to plot
+- ✓ Signal sets — named channel+message+signal collections, batch-apply to plot
 - ✓ Multi-file loading with merged timeline (Open BLF... replaces, Open Multiple BLF... appends)
 - ✓ Drag-and-drop BLF loading (in-window + macOS Dock-icon), folder expansion, large-file guard
 - ✓ Status bar multi-file segment with ⚠️ parse-error indicator and Loaded Files popover
@@ -105,7 +128,7 @@ Configuration is auto-saved to `multi_channel_config.json`.
 
 - ○ Live streaming mode (socketcan / virtual bus)
 - ○ Export to CSV / JSON
-- ○ Diagnostic rule DSL (custom warning/error conditions)
+- ○ Diagnostic rule DSL (custom warning / error conditions)
 - ○ DBC generator from observed traffic
 - ○ Replay / re-injection (send back to bus)
 
@@ -119,13 +142,13 @@ cargo fmt --all          # Format
 cargo clippy --workspace # Lint
 ```
 
-For cross-platform builds, see [BUILD.md](BUILD.md).
+For cross-platform builds and packaging scripts, see [`scripts/`](scripts/) and the [build workflow](.github/workflows/build.yml).
 
 ---
 
 ## Contributing
 
-Fork and submit a Pull Request. Please ensure your code passes `cargo fmt` and `cargo clippy`.
+Fork and submit a Pull Request. Please ensure your code passes `cargo fmt` and `cargo clippy` before pushing.
 
 ---
 
