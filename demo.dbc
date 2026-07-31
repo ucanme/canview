@@ -1,0 +1,80 @@
+VERSION "can-viewer demo database"
+
+NS_ :
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+	BA_DEF_DEF_
+	EV_DATA_
+	ENVVAR_DATA_
+	SGTYPE_
+	SGTYPE_VAL_
+	BA_DEF_SGTYPE_
+	BA_SGTYPE_
+	SIG_TYPE_REF_
+	VAL_TABLE_
+	SIG_GROUP_
+	SIG_VALTYPE_
+	SIGTYPE_VALTYPE_
+	BO_TX_BU_
+	BA_DEF_REL_
+	BA_REL_
+	BA_DEF_DEF_REL_
+	BU_BO_REL_
+	BU_SG_REL_
+	SG_MUL_VAL_
+
+BS_:
+
+BU_: Engine Body Chassis Dashboard HMI
+
+VAL_TABLE_ VehicleMode 0 "Idle" 1 "Cruise" 2 "Sport" 3 "Reverse" ;
+
+BO_ 256 EngineStatus: 8 Engine
+ SG_ EngineRPM : 0|16@1+ (0.25,0) [0|16383.75] "rpm" Dashboard
+ SG_ EngineTemp : 16|8@1+ (1,-40) [-40|215] "degC" Dashboard
+ SG_ OilPressure : 24|8@1+ (0.1,0) [0|25.5] "bar" Dashboard
+ SG_ FuelLevel : 32|8@1+ (0.4,0) [0|102] "%" Dashboard
+ SG_ BatteryVoltage : 40|8@1+ (0.1,0) [0|25.5] "V" Dashboard
+ SG_ CheckEngine : 48|1@1+ (1,0) [0|1] "" Dashboard
+ SG_ OilWarning : 49|1@1+ (1,0) [0|1] "" Dashboard
+ SG_ TempWarning : 50|1@1+ (1,0) [0|1] "" Dashboard
+
+BO_ 257 VehicleSpeed: 8 Chassis
+ SG_ SpeedKm : 0|16@1+ (0.1,0) [0|350] "km/h" Dashboard
+ SG_ Odometer : 16|32@1+ (1,0) [0|4294967295] "km" Dashboard
+ SG_ Acceleration : 48|16@1- (0.01,0) [-327.68|327.67] "m/s2" Dashboard
+
+BO_ 512 ControlCommand: 4 HMI
+ SG_ AC_Switch : 0|1@1+ (1,0) [0|1] "" Engine
+ SG_ Headlight : 1|2@1+ (1,0) [0|3] "" Body
+ SG_ Wiper : 3|2@1+ (1,0) [0|3] "" Body
+ SG_ VehicleMode : 5|3@1+ (1,0) [0|7] "" Engine
+ SG_ SteeringAngle : 8|12@1- (0.1,-180) [-180|180] "deg" Chassis
+ SG_ BrakePressure : 20|12@1+ (0.1,0) [0|409.5] "bar" Chassis
+
+BO_ 513 TirePressure: 8 Chassis
+ SG_ FrontLeft : 0|16@1+ (0.01,0) [0|655.35] "kPa" Dashboard
+ SG_ FrontRight : 16|16@1+ (0.01,0) [0|655.35] "kPa" Dashboard
+ SG_ RearLeft : 32|16@1+ (0.01,0) [0|655.35] "kPa" Dashboard
+ SG_ RearRight : 48|16@1+ (0.01,0) [0|655.35] "kPa" Dashboard
+
+BO_ 770 BrakeStatus: 2 Chassis
+ SG_ ABS_Active : 0|1@1+ (1,0) [0|1] "" Dashboard
+ SG_ ESP_Active : 1|1@1+ (1,0) [0|1] "" Dashboard
+ SG_ BrakeApplied : 2|1@1+ (1,0) [0|1] "" Dashboard
+ SG_ BrakePressure : 3|9@1+ (0.1,0) [0|51.1] "bar" Dashboard
+
+CM_ BU_ Engine "Engine control unit";
+CM_ BU_ Chassis "Chassis domain controller";
+CM_ BU_ Dashboard "Driver display";
+CM_ BO_ 256 "Engine status broadcast 100ms";
+CM_ BO_ 257 "Vehicle motion data 50ms";
+CM_ BO_ 512 "User input from HMI";
+CM_ BO_ 513 "TPMS tire pressure 200ms";
+CM_ BO_ 770 "Brake system status 20ms";
