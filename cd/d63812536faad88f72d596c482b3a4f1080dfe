@@ -1,0 +1,41 @@
+src/view/src/domain/multi_file.rs
+  s_349fb020453866::t_7e104e1b1e3e1d 146-150,154,159,175,182-183,187
+  s_349fb020453866::t_fb0129f48accc8 153,163,166,170-171,184-186
+src/blf/Cargo.toml
+  s_349fb020453866::t_feaf8b2b0375d8 10
+  s_349fb020453866::t_340adcd1277371 8
+src/view/src/app/state.rs
+  s_349fb020453866::t_9585b2e6a25ab4 512-513
+  s_349fb020453866::t_1fbbf356145cbb 332
+  s_349fb020453866::t_abc70767c7d7a6 92
+src/blf/src/parser.rs
+  s_349fb020453866::t_244c0c54db237b 271-277,342-357,363-367,369-385,387-391,393
+  s_349fb020453866::t_b0b5ed56a130ce 339-341
+  s_349fb020453866::t_f9c7d22cb41e63 358-362
+  s_349fb020453866::t_62a217849242d6 8
+src/view/src/controllers/ui_controller.rs
+  s_349fb020453866::t_388b456df31b20 28
+src/view/src/app/impls.rs
+  s_349fb020453866::t_2b226d48f34f86 360
+  s_349fb020453866::t_b6d5d97acaf454 783
+  s_349fb020453866::t_83907be1fad650 27
+  s_349fb020453866::t_26e8150d31e87c 310
+  s_349fb020453866::t_ab22ee19a74b42 499
+  s_349fb020453866::t_c4fc8b30517192 471
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "cdd63812536faad88f72d596c482b3a4f1080dfe",
+  "prompts": {},
+  "sessions": {
+    "s_349fb020453866": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c1a9f41-2be4-4922-bf47-1a016c616bb3",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
