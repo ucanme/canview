@@ -89,7 +89,7 @@ pub struct CanViewerApp {
     pub current_view: AppView,
 
     // Data
-    pub messages: Vec<LogObject>,
+    pub messages: std::sync::Arc<[LogObject]>,
     pub dbc_channels: HashMap<u16, DbcDatabase>,
     pub ldf_channels: HashMap<u16, LdfDatabase>,
     pub app_config: AppConfig,
@@ -329,7 +329,7 @@ impl CanViewerApp {
     pub fn new_with_maximized_state_and_bounds(is_maximized: bool, saved_window_bounds: Option<Bounds<Pixels>>) -> Self {
         Self {
             current_view: AppView::LogView, // Force LogView to prevent chart/library crashes
-            messages: Vec::new(),
+            messages: std::sync::Arc::from([]),
             status_msg: gpui::SharedString::from(""),
             dbc_channels: HashMap::new(),
             ldf_channels: HashMap::new(),
@@ -509,8 +509,8 @@ impl CanViewerApp {
             state.dbc_channels.len(), state.ldf_channels.len());
         self.current_view = state.current_view;
         self.files = state.files;
-        // 兼容字段：从 merged.messages 派生 messages 快照（必须在 move 之前读取）
-        self.messages = state.merged.messages.to_vec();
+        // 兼容字段：与 merged.messages 共享同一 Arc 引用（必须在 move 之前 clone）
+        self.messages = state.merged.messages.clone();
         self.merged = state.merged;
         self.current_file_name = state.current_file_name;
         self.plot_data = state.plot_data;

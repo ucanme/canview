@@ -24,7 +24,7 @@ impl CanViewerApp {
     pub fn new() -> Self {
         let mut app = Self {
             current_view: AppView::LogView,
-            messages: Vec::new(),
+            messages: std::sync::Arc::from([]),
             status_msg: "Ready".into(),
             dbc_channels: HashMap::new(),
             ldf_channels: HashMap::new(),
@@ -307,7 +307,7 @@ impl CanViewerApp {
 
                 self.files.push(std::sync::Arc::new(segment));
                 self.rebuild_merged();
-                self.messages = self.merged.messages.to_vec();
+                self.messages = self.merged.messages.clone();
                 self.current_file_name = file_name;
                 self.library_picker_dismissed = false;
                 self.library_picker_selected_version.clear();
@@ -357,7 +357,7 @@ impl CanViewerApp {
                 let msg_count = segment.object_count;
                 self.files.push(std::sync::Arc::new(segment));
                 self.rebuild_merged();
-                self.messages = self.merged.messages.to_vec();
+                self.messages = self.merged.messages.clone();
                 // 更新 start_time 为所有文件中最早的 measurement_start_time
                 self.start_time = self.files.iter().filter_map(|f| f.start_time).min();
 
@@ -468,7 +468,7 @@ impl CanViewerApp {
     pub(crate) fn remove_file(&mut self, file_id: u32) {
         self.files.retain(|f| f.file_id != file_id);
         self.rebuild_merged();
-        self.messages = self.merged.messages.to_vec();
+        self.messages = self.merged.messages.clone();
         // 更新 start_time 为剩余文件中最早的 measurement_start_time
         self.start_time = self.files.iter().filter_map(|f| f.start_time).min();
         let total_files = self.files.len();
@@ -496,7 +496,7 @@ impl CanViewerApp {
         self.loading_progress = None;
         self.files.clear();
         self.merged = crate::domain::multi_file::MergedView::empty();
-        self.messages.clear();
+        self.messages = std::sync::Arc::from([]);
         self.plot_data = std::sync::Arc::from([]);
         self.plot_full_data = std::sync::Arc::from([]);
         self.selected_signals.clear();
@@ -780,7 +780,7 @@ impl CanViewerApp {
 
     fn new_with_state(
         current_view: AppView,
-        messages: Vec<LogObject>,
+        messages: std::sync::Arc<[LogObject]>,
         status_msg: SharedString,
         dbc_channels: HashMap<u16, DbcDatabase>,
         ldf_channels: HashMap<u16, LdfDatabase>,
