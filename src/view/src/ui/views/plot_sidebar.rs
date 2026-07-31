@@ -229,6 +229,8 @@ pub fn render_sidebar_item(item: &SidebarItem, view: Entity<CanViewerApp>) -> An
                                     }
                                     // Manual edit: clear active set binding so the dropdown reverts to "Select a set…"
                                     this.active_signal_set = None;
+                                    // Live plot: re-extract and update chart immediately on every selection change
+                                    crate::ui::views::chart_view::extract_and_update_series_data(this);
                                     cx.notify();
                                 });
                             }
@@ -560,7 +562,7 @@ pub fn render_signal_sidebar(
                         .child(format!("{}", item_count))
                 )
         )
-        .child(render_signal_set_dropdown_row(app, view.clone(), cx))
+        .child(render_signal_set_dropdown_trigger(app, view.clone(), cx))
         .child(
             // Search Box
             div()
@@ -657,37 +659,9 @@ pub fn render_signal_sidebar(
                             )
                     )
                     .child(
-                        // Plot button
+                        // Save as signal set button (flex-1 to fill the space previously held by the Plot button)
                         div()
                             .flex_1()
-                            .px_3()
-                            .py_1p5()
-                            .bg(rgb(0x3b82f6))
-                            .rounded(px(4.0))
-                            .cursor_pointer()
-                            .hover(|s| s.bg(rgb(0x2563eb)))
-                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                crate::ui::views::chart_view::extract_and_update_series_data(this);
-                                cx.notify();
-                            }))
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .gap_2()
-                                    .child(
-                                        div()
-                                            .text_xs()
-                                            .font_weight(FontWeight::BOLD)
-                                            .text_color(rgb(0xffffff))
-                                            .child(format!("绘制 {} 个信号 (Plot)", selected_count))
-                                    )
-                            )
-                    )
-                    .child(
-                        // Save as signal set button (NEW)
-                        div()
                             .px_3()
                             .py_1p5()
                             .bg(rgb(0x3f3f46))
@@ -708,12 +682,19 @@ pub fn render_signal_sidebar(
                 div().into_any_element()
             }
         )
+        // Signal-sets dropdown popup — appended LAST so it paints on top of
+        // all other sidebar content. Returns None when closed; .children() handles it gracefully.
+        .children(render_signal_set_dropdown_popup(app, view.clone(), cx))
 }
 
-/// Render the signal-sets dropdown row: trigger button + popup menu.
-fn render_signal_set_dropdown_row(
+/// Render the signal-sets dropdown trigger row (the clickable bar between the
+/// header and search box). The popup itself is rendered separately by
+/// `render_signal_set_dropdown_popup` so it can be appended as the LAST child
+/// of the sidebar root — that way it paints on top of the search box, signal
+/// list, and bottom action bar instead of being stacked under them.
+fn render_signal_set_dropdown_trigger(
     app: &CanViewerApp,
-    view: Entity<CanViewerApp>,
+    _view: Entity<CanViewerApp>,
     cx: &mut Context<CanViewerApp>,
 ) -> impl IntoElement {
     let items = build_set_dropdown_items(app);
@@ -728,12 +709,9 @@ fn render_signal_set_dropdown_row(
         })
         .unwrap_or_else(|| "选择信号集…".to_string());
 
-    // Determine disabled state from the items list
     let is_disabled = matches!(items.first(), Some(SetDropdownItem::Placeholder(_)));
 
-    let view_for_items = view.clone();
-
-    let trigger = div()
+    div()
         .w_full()
         .px_4()
         .py_2()
@@ -745,10 +723,8 @@ fn render_signal_set_dropdown_row(
         .when(!is_disabled, |el| el.cursor_pointer().hover(|s| s.bg(rgb(0x1a1a1b))))
         .when(is_disabled, |el| el.opacity(0.5))
         .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
-            if !this.show_signal_set_dropdown {
-                this.show_signal_set_dropdown = true;
-                cx.notify();
-            }
+            this.show_signal_set_dropdown = !this.show_signal_set_dropdown;
+            cx.notify();
         }))
         .child(
             div()
@@ -769,128 +745,145 @@ fn render_signal_set_dropdown_row(
                 .text_xs()
                 .text_color(rgb(0x71717a))
                 .child(if is_disabled { "" } else if is_open { "▴" } else { "▾" })
-        );
+        )
+}
 
-    // Popup menu (only when open)
-    let popup = if is_open && !is_disabled {
-        let mut children: Vec<AnyElement> = Vec::new();
-        for item in items.iter() {
-            let view = view_for_items.clone();
-            let elem = match item {
-                SetDropdownItem::Placeholder(msg) => div()
+/// Render the signal-sets dropdown popup overlay. Must be appended as the
+/// LAST child of the sidebar root so it paints on top of all other sidebar
+/// content. Returns `None` when the dropdown is closed or disabled.
+fn render_signal_set_dropdown_popup(
+    app: &CanViewerApp,
+    view: Entity<CanViewerApp>,
+    cx: &mut Context<CanViewerApp>,
+) -> Option<AnyElement> {
+    if !app.show_signal_set_dropdown {
+        return None;
+    }
+    let items = build_set_dropdown_items(app);
+    if matches!(items.first(), Some(SetDropdownItem::Placeholder(_))) {
+        return None;
+    }
+
+    let mut children: Vec<AnyElement> = Vec::new();
+    for item in items.iter() {
+        let view = view.clone();
+        let elem = match item {
+            SetDropdownItem::Placeholder(msg) => div()
+                .px_4().py_2()
+                .text_xs().text_color(rgb(0x52525b))
+                .child(msg.clone())
+                .into_any_element(),
+            SetDropdownItem::Set { name, count } => {
+                let name = name.clone();
+                let count = *count;
+                let name_for_closure = name.clone();
+                let name_for_delete = name.clone();
+                div()
                     .px_4().py_2()
-                    .text_xs().text_color(rgb(0x52525b))
-                    .child(msg.clone())
-                    .into_any_element(),
-                SetDropdownItem::Set { name, count } => {
-                    let name = name.clone();
-                    let count = *count;
-                    let name_for_closure = name.clone();
-                    let name_for_delete = name.clone();
-                    div()
-                        .px_4().py_2()
-                        .cursor_pointer().hover(|s| s.bg(rgb(0x1f1f22)))
-                        .on_mouse_down(MouseButton::Left, {
-                            let view = view.clone();
-                            move |_, _, cx| {
-                                view.update(cx, |this, cx| {
-                                    let lib_id = this.app_config.active_library_id.clone().unwrap_or_default();
-                                    crate::controllers::signal_set_controller::apply_signal_set(
-                                        this, &lib_id, &name_for_closure, cx,
-                                    );
-                                    this.show_signal_set_dropdown = false;
-                                    cx.notify();
-                                });
-                            }
-                        })
-                        .flex().items_center().justify_between()
-                        .child(div().text_xs().text_color(rgb(0xd4d4d8)).child(name.clone()))
-                        .child(
-                            div()
-                                .flex()
-                                .items_center()
-                                .gap_2()
-                                .child(div().text_xs().text_color(rgb(0x71717a)).child(format!("({})", count)))
-                                .child(
-                                    // Delete button — stop propagation so the row's apply click doesn't fire
-                                    div()
-                                        .px_1()
-                                        .text_xs()
-                                        .text_color(rgb(0x71717a))
-                                        .hover(|s| s.text_color(rgb(0xef4444)))
-                                        .on_mouse_down(MouseButton::Left, {
-                                            let view = view.clone();
-                                            move |_, _, cx| {
-                                                cx.stop_propagation();
-                                                view.update(cx, |this, cx| {
-                                                    let lib_id = this.app_config.active_library_id.clone().unwrap_or_default();
-                                                    crate::controllers::signal_set_controller::delete_signal_set(
-                                                        this, &lib_id, &name_for_delete, cx,
-                                                    );
-                                                    // Keep dropdown open so user can delete multiple sets
-                                                    cx.notify();
-                                                });
-                                            }
-                                        })
-                                        .child("✕")
-                                )
-                        )
-                        .into_any_element()
-                }
-                SetDropdownItem::ClearActive => div()
-                    .px_4().py_2()
-                    .border_t_1().border_color(rgb(0x27272a))
                     .cursor_pointer().hover(|s| s.bg(rgb(0x1f1f22)))
                     .on_mouse_down(MouseButton::Left, {
                         let view = view.clone();
                         move |_, _, cx| {
                             view.update(cx, |this, cx| {
-                                crate::controllers::signal_set_controller::clear_active_signal_set(this, cx);
+                                let lib_id = this.app_config.active_library_id.clone().unwrap_or_default();
+                                crate::controllers::signal_set_controller::apply_signal_set(
+                                    this, &lib_id, &name_for_closure, cx,
+                                );
                                 this.show_signal_set_dropdown = false;
                                 cx.notify();
                             });
                         }
                     })
-                    .text_xs().text_color(rgb(0xef4444))
-                    .child("✕ 清除当前选择")
-                    .into_any_element(),
-            };
-            children.push(elem);
-        }
-        // Click-outside handler: an invisible full-screen overlay behind the popup that closes on click
-        Some(
-            div()
-                .absolute()
-                .top_0().left_0()
-                .size_full()
-                .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
-                    this.show_signal_set_dropdown = false;
-                    cx.notify();
-                }))
-                // Position the popup just below the trigger (top: ~50px from sidebar top)
-                .child(
-                    div()
-                        .absolute()
-                        .top(px(50.0))
-                        .left_0()
-                        .right_0()
-                        .bg(rgb(0x18181b))
-                        .border_1()
-                        .border_color(rgb(0x27272a))
-                        .rounded_b(px(4.0))
-                        .shadow_lg()
-                        .flex().flex_col()
-                        .children(children)
-                )
-        )
-    } else {
-        None
-    };
+                    .flex().items_center().justify_between()
+                    .child(div().text_xs().text_color(rgb(0xd4d4d8)).child(name.clone()))
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .child(div().text_xs().text_color(rgb(0x71717a)).child(format!("({})", count)))
+                            .child(
+                                // Delete button — stop_propagation so the row's apply click doesn't fire
+                                div()
+                                    .px_1()
+                                    .text_xs()
+                                    .text_color(rgb(0x71717a))
+                                    .hover(|s| s.text_color(rgb(0xef4444)))
+                                    .on_mouse_down(MouseButton::Left, {
+                                        let view = view.clone();
+                                        move |_, _, cx| {
+                                            cx.stop_propagation();
+                                            view.update(cx, |this, cx| {
+                                                let lib_id = this.app_config.active_library_id.clone().unwrap_or_default();
+                                                crate::controllers::signal_set_controller::delete_signal_set(
+                                                    this, &lib_id, &name_for_delete, cx,
+                                                );
+                                                cx.notify();
+                                            });
+                                        }
+                                    })
+                                    .child("✕")
+                            )
+                    )
+                    .into_any_element()
+            }
+            SetDropdownItem::ClearActive => div()
+                .px_4().py_2()
+                .border_t_1().border_color(rgb(0x27272a))
+                .cursor_pointer().hover(|s| s.bg(rgb(0x1f1f22)))
+                .on_mouse_down(MouseButton::Left, {
+                    let view = view.clone();
+                    move |_, _, cx| {
+                        view.update(cx, |this, cx| {
+                            crate::controllers::signal_set_controller::clear_active_signal_set(this, cx);
+                            this.show_signal_set_dropdown = false;
+                            cx.notify();
+                        });
+                    }
+                })
+                .text_xs().text_color(rgb(0xef4444))
+                .child("✕ 清除当前选择")
+                .into_any_element(),
+        };
+        children.push(elem);
+    }
 
-    div()
-        .relative()
-        .child(trigger)
-        .children(popup)
+    Some(
+        // Click-outside overlay covers the entire sidebar. Clicks on the popup
+        // itself don't close (the popup's own handlers stop propagation where
+        // needed); clicks anywhere else hit this overlay and close the dropdown.
+        div()
+            .absolute()
+            .top_0().left_0()
+            .size_full()
+            .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                this.show_signal_set_dropdown = false;
+                cx.notify();
+            }))
+            // Popup card positioned just below the trigger row. Sidebar header
+            // is ~32px (py_2 + xs text) and the trigger row is ~32px, so top=64
+            // sits the popup right below the trigger. Adjust if padding changes.
+            .child(
+                div()
+                    .absolute()
+                    .top(px(64.0))
+                    .left_0()
+                    .right_0()
+                    .bg(rgb(0x18181b))
+                    .border_1()
+                    .border_color(rgb(0x27272a))
+                    .rounded_b(px(4.0))
+                    .shadow_lg()
+                    .flex().flex_col()
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                        // Prevent clicks on the popup card from bubbling to the
+                        // click-outside overlay behind it.
+                        cx.stop_propagation();
+                    })
+                    .children(children)
+            )
+            .into_any_element()
+    )
 }
 
 /// Render the inline "save as signal set" input row (replaces the bottom bar
