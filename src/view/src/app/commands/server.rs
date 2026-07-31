@@ -2,9 +2,9 @@
 //!
 //! Command handlers for starting/stopping the sharing server and importing libraries.
 
-use crate::app::CanViewApp;
+use crate::app::CanViewerApp;
 
-impl CanViewApp {
+impl CanViewerApp {
     /// Start the sharing server
     pub fn start_share_server(&mut self) {
         if self.server_handle.is_some() {
@@ -66,7 +66,7 @@ impl CanViewApp {
         let (tx, rx) = std::sync::mpsc::channel();
 
         std::thread::Builder::new()
-            .name("canview-import".into())
+            .name("can-viewer-import".into())
             .spawn(move || {
                 let rt = tokio::runtime::Builder::new_current_thread()
                     .enable_all()

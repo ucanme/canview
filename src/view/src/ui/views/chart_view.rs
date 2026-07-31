@@ -1,4 +1,4 @@
-use crate::app::CanViewApp;
+use crate::app::CanViewerApp;
 use gpui_component::input::{Input, InputState};
 use crate::models::{DataPoint, Series};
 use blf::LogObject;
@@ -12,7 +12,7 @@ use std::sync::Arc;
 use chrono::{Timelike, Datelike};
 
 /// Render the plot view with signal charts
-pub fn render_plot_view(window: &mut Window, app: &mut CanViewApp, view: Entity<CanViewApp>, cx: &mut Context<CanViewApp>) -> impl IntoElement {
+pub fn render_plot_view(window: &mut Window, app: &mut CanViewerApp, view: Entity<CanViewerApp>, cx: &mut Context<CanViewerApp>) -> impl IntoElement {
     // Safety check: prevent crash from invalid plot state after window operations
     let series_data = app.plot_data.clone();
 
@@ -87,7 +87,7 @@ pub fn render_plot_view(window: &mut Window, app: &mut CanViewApp, view: Entity<
 }
 
 /// Render the toolbar at the top of the plot area
-fn render_toolbar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoElement {
+fn render_toolbar(app: &CanViewerApp, cx: &mut Context<CanViewerApp>) -> impl IntoElement {
     let is_zoomed = app.plot_zoom_start.is_some() || app.plot_zoom_end.is_some();
 
     div()
@@ -114,7 +114,7 @@ fn render_toolbar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoEl
                             .rounded(px(4.0))
                             .cursor_pointer()
                             .hover(|s| s.bg(rgb(0x374151)))
-                            .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this: &mut CanViewApp, _, _, cx| {
+                            .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this: &mut CanViewerApp, _, _, cx| {
                                 this.plot_zoom_start = None;
                                 this.plot_zoom_end = None;
                                 crate::ui::views::chart_view::extract_and_update_series_data(this);
@@ -131,7 +131,7 @@ fn render_toolbar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoEl
                         .rounded(px(4.0))
                         .cursor_pointer()
                         .hover(|s| s.bg(if app.show_plot_points { rgb(0x059669) } else { rgb(0x4b5563) }))
-                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this: &mut CanViewApp, _, _, cx| {
+                        .on_mouse_down(gpui::MouseButton::Left, cx.listener(|this: &mut CanViewerApp, _, _, cx| {
                             this.show_plot_points = !this.show_plot_points;
                             cx.notify();
                         }))
@@ -147,7 +147,7 @@ fn render_toolbar(app: &CanViewApp, cx: &mut Context<CanViewApp>) -> impl IntoEl
 
 
 /// Render empty state when no signals are selected
-fn render_empty_state(app: &CanViewApp) -> AnyElement {
+fn render_empty_state(app: &CanViewerApp) -> AnyElement {
     let msg_count = app.messages.len();
     let sel_count = app.selected_signals.len();
 
@@ -180,7 +180,7 @@ fn render_empty_state(app: &CanViewApp) -> AnyElement {
 }
 
 /// Render the chart canvas — legend + zoom box + hover tooltip + per-signal canvas cards.
-fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Context<CanViewApp>) -> AnyElement {
+fn render_chart_canvas(app: &CanViewerApp, series_data: Arc<[Series]>, cx: &mut Context<CanViewerApp>) -> AnyElement {
     let is_dragging = app.is_dragging_zoom;
     let drag_start = app.zoom_drag_start_x;
     let drag_current = app.zoom_drag_current_x;
@@ -244,7 +244,7 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
         // Hover tooltip is rendered in render_plot_view as a sibling of the
         // scroll container (NOT inside v_flex) — see render_hover_tooltip_overlay.
         // Global Canvas Interactions
-        .on_mouse_down(MouseButton::Left, cx.listener(move |this: &mut CanViewApp, event: &MouseDownEvent, _, cx| {
+        .on_mouse_down(MouseButton::Left, cx.listener(move |this: &mut CanViewerApp, event: &MouseDownEvent, _, cx| {
              // Check for double-click to reset zoom
              if event.click_count == 2 {
                  this.plot_zoom_start = None;
@@ -260,7 +260,7 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
              this.zoom_drag_current_x = Some(event.position.x);
              cx.notify();
         }))
-        .on_mouse_move(cx.listener(move |this: &mut CanViewApp, event: &MouseMoveEvent, window, cx| {
+        .on_mouse_move(cx.listener(move |this: &mut CanViewerApp, event: &MouseMoveEvent, window, cx| {
             // Handle Zoom Dragging
             if this.is_dragging_zoom {
                 this.zoom_drag_current_x = Some(event.position.x);
@@ -319,7 +319,7 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
                  cx.notify();
             }
         }))
-        .on_mouse_up(MouseButton::Left, cx.listener(move |this: &mut CanViewApp, event: &MouseUpEvent, window, cx| {
+        .on_mouse_up(MouseButton::Left, cx.listener(move |this: &mut CanViewerApp, event: &MouseUpEvent, window, cx| {
             if !this.is_dragging_zoom { return; }
             
             if let Some(start_x) = this.zoom_drag_start_x {
@@ -377,7 +377,7 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
             cx.notify();
         }))
         // Mouse wheel zoom
-        .on_scroll_wheel(cx.listener(move |this: &mut CanViewApp, event: &ScrollWheelEvent, window, cx| {
+        .on_scroll_wheel(cx.listener(move |this: &mut CanViewerApp, event: &ScrollWheelEvent, window, cx| {
             // Stop event propagation to prevent parent container from scrolling
             cx.stop_propagation();
 
@@ -558,34 +558,21 @@ fn render_chart_canvas(app: &CanViewApp, series_data: Arc<[Series]>, cx: &mut Co
         .into_any_element()
 }
 
-/// Helper to format time as relative (seconds) or absolute (based on file start time)
-fn format_time_relative_or_absolute(time: f64, start_time: Option<chrono::NaiveDateTime>) -> String {
-    if let Some(st) = start_time {
-        use chrono::{Timelike, Datelike};
-        // Convert start_time to total seconds since midnight
-        let start_hour = st.hour() as f64;
-        let start_min = st.minute() as f64;
-        let start_sec = st.second() as f64;
-        let start_nano = st.nanosecond() as f64;
-        let start_total_seconds = start_hour * 3600.0 + start_min * 60.0 + start_sec + start_nano / 1_000_000_000.0;
-        
-        // Calculate absolute time for this point
-        let abs_seconds = start_total_seconds + time;
-        
-        // Handle day overflow (wrap at 24 hours) - purely for display
-        let display_seconds = abs_seconds % 86400.0;
-        
-        let hours = (display_seconds / 3600.0).floor() as u32;
-        let remaining = display_seconds % 3600.0;
-        let minutes = (remaining / 60.0).floor() as u32;
-        let seconds = remaining % 60.0;
-        
-        format!("{:04}-{:02}-{:02} {:02}:{:02}:{:06.3}", 
-            st.year(), st.month(), st.day(), 
-            hours, minutes, seconds)
-    } else {
-        format!("Time: {:.3}s", time)
-    }
+/// Helper to format time as absolute `YYYY-MM-DD HH:MM:SS.ffffff` (microsecond
+/// precision, matching the log view's `%H:%M:%S%.6f`).
+///
+/// `time` is **Unix epoch seconds** (abs_ns / 1e9). The MergedView rewrites
+/// every LogObject's `object_time_stamp` to absolute Unix nanoseconds during
+/// multi-file merge (see `domain/multi_file.rs:160`), so we don't add
+/// `start_time` here — `time` already is the wall-clock instant.
+///
+/// `start_time` is kept in the signature only for backward compatibility with
+/// callers that still thread it through; it's not used.
+fn format_time_relative_or_absolute(time: f64, _start_time: Option<chrono::NaiveDateTime>) -> String {
+    use chrono::{TimeZone, Utc};
+    let ns = (time * 1_000_000_000.0) as i64;
+    let dt = Utc.timestamp_nanos(ns);
+    dt.naive_utc().format("%Y-%m-%d %H:%M:%S%.6f").to_string()
 }
 
 /// Render the hover tooltip as an overlay sibling of the scroll container.
@@ -595,7 +582,7 @@ fn format_time_relative_or_absolute(time: f64, start_time: Option<chrono::NaiveD
 ///
 /// If hover state is None, returns an empty div (no tooltip shown).
 fn render_hover_tooltip_overlay(
-    app: &CanViewApp,
+    app: &CanViewerApp,
     series_data: &[Series],
     sidebar_width: Pixels,
 ) -> impl IntoElement {
@@ -908,14 +895,14 @@ fn render_single_chart(
                                         window.paint_path(path, stroke_color);
                                     }
                                 }
-                                // 时间标签：X 轴上省略年月日，用 HH:MM:SS.mmm（11 字符）；
-                                // 完整 YYYY-MM-DD HH:MM:SS.mmm 在悬停 tooltip 里显示。
+                                // 时间标签：X 轴上省略年月日，用 HH:MM:SS.ffffff（与 log view 同精度）；
+                                // 完整 YYYY-MM-DD HH:MM:SS.ffffff 在悬停 tooltip 里显示。
                                 let t = layout.min_t + layout.t_range * ratio as f64;
                                 let full_label = format_time_relative_or_absolute(t, start_time_for_paint);
                                 let label_text = if full_label.starts_with("Time: ") {
                                     full_label
                                 } else {
-                                    // 截取 HH:MM:SS.mmm（跳过 "YYYY-MM-DD " 的 11 字符）
+                                    // 截取 HH:MM:SS.ffffff（跳过 "YYYY-MM-DD " 的 11 字符）
                                     full_label.get(11..).unwrap_or(&full_label).to_string()
                                 };
                                 x_labels.push(
@@ -1129,7 +1116,7 @@ fn render_legend(series_data: &[Series]) -> impl IntoElement {
 
 /// Filter existing plot data by zoom range
 /// This is used when messages is empty but plot_data has already been extracted
-fn filter_series_data_by_zoom(app: &CanViewApp) -> Arc<[Series]> {
+fn filter_series_data_by_zoom(app: &CanViewerApp) -> Arc<[Series]> {
     eprintln!("🔍 Filtering existing plot data by zoom range...");
 
     let has_zoom = app.plot_zoom_start.is_some() || app.plot_zoom_end.is_some();
@@ -1172,7 +1159,7 @@ fn filter_series_data_by_zoom(app: &CanViewApp) -> Arc<[Series]> {
 }
 
 /// Extract series data from application state - SAFE VERSION
-pub fn extract_series_data(app: &CanViewApp) -> Arc<[Series]> {
+pub fn extract_series_data(app: &CanViewerApp) -> Arc<[Series]> {
     eprintln!("🔍 Starting data extraction...");
 
     // If messages is empty but we have plot_data, filter the existing plot_data
@@ -1282,22 +1269,14 @@ pub fn extract_series_data(app: &CanViewApp) -> Arc<[Series]> {
                 }
             }
 
-            // Convert timestamp to seconds based on object_flags
-            // TimeTenMics (0x01) = 10 microseconds per tick
-            // TimeOneNans (0x02) = 1 nanosecond per tick
-            let time = if flags & 0x01 != 0 {
-                // 10 microseconds per tick
-                if collected == 0 {
-                    eprintln!("    🕐 Using 10 microsecond timestamp (flags: 0x{:08X})", flags);
-                }
-                timestamp as f64 / 100_000.0
-            } else {
-                // Default to nanoseconds (most common)
-                if collected == 0 {
-                    eprintln!("    🕐 Using nanosecond timestamp (flags: 0x{:08X})", flags);
-                }
-                timestamp as f64 / 1_000_000_000.0
-            };
+            // Convert timestamp to seconds. After MergedView::from_segments,
+            // object_time_stamp is always absolute Unix nanoseconds (abs_ns),
+            // regardless of the original object_flags. The flags-based
+            // conversion (TimeTenMics / TimeOneNans) is done at merge time.
+            let time = timestamp as f64 / 1_000_000_000.0;
+            if collected == 0 {
+                eprintln!("    🕐 Using absolute Unix nanosecond timestamp");
+            }
 
             
             // Apply zoom filter if active
@@ -1407,62 +1386,12 @@ pub fn extract_series_data(app: &CanViewApp) -> Arc<[Series]> {
             p.index = i;
         }
 
-        // Pre-calculate time labels (absolute or relative)
-        let mut time_labels = Vec::with_capacity(points.len());
-        
-        if let Some(start_time) = app.start_time {
-            // Calculate precision based on time range
-            let mut min_t = points[0].time;
-            let mut max_t = points[0].time;
-            for p in points.iter().skip(1) {
-                if p.time < min_t { min_t = p.time; }
-                if p.time > max_t { max_t = p.time; }
-            }
-            let range = (max_t - min_t).abs();
-            let precision = if range < 0.01 { 4 }
-                           else if range < 0.1 { 3 }
-                           else if range < 1.0 { 2 }
-                           else { 1 };
-            
-            // Convert start_time to total seconds since midnight
-            let start_hour = start_time.hour() as f64;
-            let start_min = start_time.minute() as f64;
-            let start_sec = start_time.second() as f64;
-            let start_nano = start_time.nanosecond() as f64;
-            let start_total_seconds = start_hour * 3600.0 + start_min * 60.0 + start_sec + start_nano / 1_000_000_000.0;
-            
-            // Extract date components
-            let year = start_time.year();
-            let month = start_time.month();
-            let day = start_time.day();
-            
-            // Convert each point to absolute time using pure math
-            for point in points.iter() {
-                let abs_seconds = start_total_seconds + point.time;
-                
-                // Handle day overflow (wrap at 24 hours)
-                let abs_seconds = abs_seconds % 86400.0;
-                
-                let hours = (abs_seconds / 3600.0).floor() as u32;
-                let remaining = abs_seconds % 3600.0;
-                let minutes = (remaining / 60.0).floor() as u32;
-                let seconds = remaining % 60.0;
-                
-                let label = match precision {
-                    4 => format!("{:04}-{:02}-{:02} {:02}:{:02}:{:06.4}", year, month, day, hours, minutes, seconds),
-                    3 => format!("{:04}-{:02}-{:02} {:02}:{:02}:{:06.3}", year, month, day, hours, minutes, seconds),
-                    2 => format!("{:04}-{:02}-{:02} {:02}:{:02}:{:05.2}", year, month, day, hours, minutes, seconds),
-                    1 => format!("{:04}-{:02}-{:02} {:02}:{:02}:{:04.1}", year, month, day, hours, minutes, seconds),
-                    _ => format!("{:04}-{:02}-{:02} {:02}:{:02}:{:02}", year, month, day, hours, minutes, seconds.floor() as u32),
-                };
-                time_labels.push(label);
-            }
-        } else {
-            // Use relative time
-            for point in points.iter() {
-                time_labels.push(format!("{:.2}s", point.time));
-            }
-        }
+        // time_labels field is now unused by render (the X axis draws via
+        // format_time_relative_or_absolute directly). Leave it empty to avoid
+        // building misleading strings; apply_zoom_to_full_data handles the
+        // empty case via unwrap_or_default().
+        let time_labels: Vec<String> = Vec::new();
+        let _ = app.start_time; // silence unused warning
 
         eprintln!("    ✅ Final point count: {}", points.len());
 
@@ -1481,7 +1410,7 @@ pub fn extract_series_data(app: &CanViewApp) -> Arc<[Series]> {
 
 /// Fast zoom filter: slice plot_full_data by zoom range without re-decoding messages.
 /// This is called every time zoom changes; it's O(points), not O(messages).
-pub fn apply_zoom_to_full_data(app: &mut CanViewApp) {
+pub fn apply_zoom_to_full_data(app: &mut CanViewerApp) {
     if app.plot_full_data.is_empty() {
         // plot_full_data hasn't been populated yet.
         // Do NOT call extract_and_update_series_data here — that would cause
@@ -1554,7 +1483,7 @@ pub fn apply_zoom_to_full_data(app: &mut CanViewApp) {
 
 /// Wrapper that extracts series data and updates the full time range in app state.
 /// Call this instead of extract_series_data directly.
-pub fn extract_and_update_series_data(app: &mut CanViewApp) {
+pub fn extract_and_update_series_data(app: &mut CanViewerApp) {
     // Always decode ALL data (ignoring zoom range) into plot_full_data
     let saved_start = app.plot_zoom_start.take();
     let saved_end = app.plot_zoom_end.take();

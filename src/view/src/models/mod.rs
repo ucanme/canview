@@ -1,4 +1,4 @@
-//! Data models for the CanView application
+//! Data models for the can-viewer application
 
 pub mod chart;
 pub mod library;

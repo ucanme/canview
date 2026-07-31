@@ -1,7 +1,7 @@
 //! Enhanced Text Input Component with Cursor, Selection, and Better UX
 //!
 //! This component is inspired by gpui-component's input implementation but
-//! maintains a simpler API for easier use in the canview project.
+//! maintains a simpler API for easier use in the can-viewer project.
 //!
 //! Key improvements over the basic text_input:
 //! - Visible blinking cursor

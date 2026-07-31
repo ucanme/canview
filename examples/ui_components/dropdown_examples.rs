@@ -5,10 +5,10 @@
 
 use gpui::{prelude::*, *};
 use crate::ui::components::dropdown::{Dropdown, DropdownItem, simple_dropdown};
-use crate::app::{AppView, CanViewApp};
+use crate::app::{AppView, CanViewerApp};
 
 /// Example 1: Simple dropdown with string items
-pub fn example_simple_dropdown(cx: &mut Context<CanViewApp>) -> impl IntoElement {
+pub fn example_simple_dropdown(cx: &mut Context<CanViewerApp>) -> impl IntoElement {
     let items = vec![
         DropdownItem::new("Option 1", "1"),
         DropdownItem::new("Option 2", "2"),
@@ -21,7 +21,7 @@ pub fn example_simple_dropdown(cx: &mut Context<CanViewApp>) -> impl IntoElement
 }
 
 /// Example 2: Dropdown with custom items
-pub fn example_custom_dropdown(cx: &mut Context<CanViewApp>) -> impl IntoElement {
+pub fn example_custom_dropdown(cx: &mut Context<CanViewerApp>) -> impl IntoElement {
     let items = vec![
         DropdownItem::new("🔵 CAN Channel", "can"),
         DropdownItem::new("🟨 LIN Channel", "lin"),
@@ -38,7 +38,7 @@ pub fn example_custom_dropdown(cx: &mut Context<CanViewApp>) -> impl IntoElement
 ///
 /// This shows how to replace the complex ID filter dropdown code
 /// with the new Dropdown component
-pub fn example_id_filter_replacement(cx: &mut Context<CanViewApp>) -> impl IntoElement {
+pub fn example_id_filter_replacement(cx: &mut Context<CanViewerApp>) -> impl IntoElement {
     let view = cx.entity().clone();
 
     // Extract unique IDs from messages
@@ -77,7 +77,7 @@ pub fn example_id_filter_replacement(cx: &mut Context<CanViewApp>) -> impl IntoE
 }
 
 /// Example 4: Replace channel filter dropdown
-pub fn example_channel_filter_replacement(cx: &mut Context<CanViewApp>) -> impl IntoElement {
+pub fn example_channel_filter_replacement(cx: &mut Context<CanViewerApp>) -> impl IntoElement {
     let view = cx.entity().clone();
 
     // Extract unique channels
@@ -106,7 +106,7 @@ pub fn example_channel_filter_replacement(cx: &mut Context<CanViewApp>) -> impl 
 }
 
 /// Example 5: Dropdown with async selection
-pub fn example_dropdown_with_selection(cx: &mut Context<CanViewApp>) -> impl IntoElement {
+pub fn example_dropdown_with_selection(cx: &mut Context<CanViewerApp>) -> impl IntoElement {
     let view = cx.entity().clone();
 
     let items = vec![

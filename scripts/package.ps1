@@ -1,4 +1,4 @@
-# CANVIEW 打包脚本
+# can-viewer 打包脚本
 # 创建一个包含可执行文件、配置文件和文档的完整发行包
 
 param(
@@ -7,7 +7,7 @@ param(
 )
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "CANVIEW 打包脚本 v$Version" -ForegroundColor Cyan
+Write-Host "can-viewer 打包脚本 v$Version" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -23,7 +23,7 @@ Write-Host ""
 
 # 2. 创建发布目录结构
 Write-Host "📁 步骤 2: 创建发布目录..." -ForegroundColor Green
-$PackageName = "CANVIEW-v$Version"
+$PackageName = "can-viewer-v$Version"
 $PackageDir = Join-Path $OutputDir $PackageName
 
 # 清理旧的发布目录
@@ -45,8 +45,8 @@ Write-Host ""
 
 # 3. 复制可执行文件
 Write-Host "📋 步骤 3: 复制可执行文件..." -ForegroundColor Green
-Copy-Item -Path ".\target\release\view.exe" -Destination "$PackageDir\bin\canview.exe"
-Write-Host "✅ 可执行文件已复制到 bin\canview.exe" -ForegroundColor Green
+Copy-Item -Path ".\target\release\view.exe" -Destination "$PackageDir\bin\can-viewer.exe"
+Write-Host "✅ 可执行文件已复制到 bin\can-viewer.exe" -ForegroundColor Green
 Write-Host ""
 
 # 4. 复制配置文件
@@ -149,10 +149,10 @@ Write-Host "📋 步骤 8: 创建启动脚本..." -ForegroundColor Green
 
 $launchScript = @"
 @echo off
-REM CANVIEW 启动脚本
-echo Starting CANVIEW...
+REM can-viewer 启动脚本
+echo Starting can-viewer...
 cd /d "%~dp0"
-bin\canview.exe
+bin\can-viewer.exe
 pause
 "@
 $launchScript | Out-File -FilePath "$PackageDir\start.bat" -Encoding ASCII
@@ -164,14 +164,14 @@ Write-Host ""
 Write-Host "📋 步骤 9: 创建发布说明..." -ForegroundColor Green
 
 $releaseReadme = @"
-# CANVIEW v$Version
+# can-viewer v$Version
 
 ## 目录结构
 
 ```
-CANVIEW-v$Version/
+can-viewer-v$Version/
 ├── bin/              # 可执行文件
-│   └── canview.exe   # 主程序
+│   └── can-viewer.exe   # 主程序
 ├── config/           # 配置文件目录
 │   ├── signal_library/        # 信号库本地存储
 │   │   └── README.txt         # 存储说明
@@ -191,7 +191,7 @@ CANVIEW-v$Version/
 ## 快速开始
 
 1. 双击 `start.bat` 启动程序
-2. 或者直接运行 `bin\canview.exe`
+2. 或者直接运行 `bin\can-viewer.exe`
 
 ## 配置文件
 

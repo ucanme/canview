@@ -3,9 +3,9 @@
 //! This test verifies that the application properly handles text input
 //! through input methods (Chinese, Japanese, Korean, etc.)
 
-use canview::library::LibraryManager;
-use canview::models::SignalLibrary;
-use canview::ChannelType;
+use can_viewer::library::LibraryManager;
+use can_viewer::models::SignalLibrary;
+use can_viewer::ChannelType;
 
 #[cfg(test)]
 mod ime_input_tests {

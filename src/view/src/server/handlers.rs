@@ -45,7 +45,7 @@ pub async fn health() -> Json<HealthResponse> {
     Json(HealthResponse {
         status: "ok",
         version: env!("CARGO_PKG_VERSION"),
-        app: "CANVIEW",
+        app: "can-viewer",
     })
 }
 

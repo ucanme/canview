@@ -52,11 +52,11 @@
 - 手动触发（workflow_dispatch）
 
 **产物**：
-- `canview-macos-aarch64.tar.gz`
-- `canview-macos-x86_64.tar.gz`
-- `canview-macos-universal.tar.gz`
-- `canview-linux-x86_64.tar.gz`
-- `canview-windows-x86_64.zip`
+- `can-viewer-macos-aarch64.tar.gz`
+- `can-viewer-macos-x86_64.tar.gz`
+- `can-viewer-macos-universal.tar.gz`
+- `can-viewer-linux-x86_64.tar.gz`
+- `can-viewer-windows-x86_64.zip`
 
 ---
 
@@ -153,7 +153,7 @@ git push origin v1.0.0
 ### 3. 下载产物
 
 用户可以从 Releases 页面下载对应平台的二进制文件：
-- https://github.com/<your-username>/canview/releases
+- https://github.com/<your-username>/can-viewer/releases
 
 ---
 
@@ -177,9 +177,9 @@ cargo build --release -p view --target aarch64-apple-darwin
 cargo build --release -p view --target x86_64-apple-darwin
 
 # Universal
-lipo -create -output canview-universal \
-  target/aarch64-apple-darwin/release/view \
-  target/x86_64-apple-darwin/release/view
+lipo -create -output can-viewer-universal \
+  target/aarch64-apple-darwin/release/viewer \
+  target/x86_64-apple-darwin/release/viewer
 ```
 
 ### Windows

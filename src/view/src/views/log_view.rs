@@ -3,7 +3,7 @@
 //! This module contains all functionality related to rendering the log view,
 //! including message list, filtering, headers, and scroll handling.
 
-use crate::app::CanViewApp;
+use crate::app::CanViewerApp;
 use crate::rendering::calculate_column_widths;
 use blf::LogObject;
 use gpui::{prelude::*, *};
@@ -21,14 +21,14 @@ use std::rc::Rc;
 /// - Custom scrollbar
 ///
 /// # Arguments
-/// * `view` - The CanViewApp entity for state access and updates
+/// * `view` - The CanViewerApp entity for state access and updates
 ///
 /// # Returns
 /// An element that can be rendered in the UI
 ///
 /// NOTE: This is a simplified version. Full implementation requires access to App context
 /// for reading entity state. This will be integrated into impls.rs render method.
-pub fn render_log_view(_view: Entity<CanViewApp>) -> impl IntoElement {
+pub fn render_log_view(_view: Entity<CanViewerApp>) -> impl IntoElement {
     // TODO: Integrate full log view rendering
     // This requires access to App context to read entity state properly
     div()
@@ -89,8 +89,8 @@ fn apply_message_filters(
 #[allow(dead_code)]
 fn _handle_log_view_key_down(
     _event: &gpui::KeyEvent,
-    _view: &Entity<CanViewApp>,
-    _cx: &mut Context<CanViewApp>,
+    _view: &Entity<CanViewerApp>,
+    _cx: &mut Context<CanViewerApp>,
 ) {
     // TODO: Re-enable after fixing KeyEvent type
     let _keystroke_str = format!("{}", _event.keystroke);
@@ -142,7 +142,7 @@ fn _handle_log_view_key_down(
 
 /// Render the log view header with column labels
 fn render_log_header(
-    view: Entity<CanViewApp>,
+    view: Entity<CanViewerApp>,
     time_width: Pixels,
     ch_width: Pixels,
     type_width: Pixels,

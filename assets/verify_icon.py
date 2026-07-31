@@ -13,7 +13,7 @@ from pathlib import Path
 # 配置
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_DIR = SCRIPT_DIR.parent
-ICO_FILE = SCRIPT_DIR / "ico" / "canview.ico"
+ICO_FILE = SCRIPT_DIR / "ico" / "can-viewer.ico"
 EXE_FILE = PROJECT_DIR / "target" / "release" / "view.exe"
 PNG_DIR = SCRIPT_DIR / "png"
 

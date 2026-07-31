@@ -1,6 +1,6 @@
 //! HTTP server for signal library sharing
 //!
-//! Provides HTTP API to share and import signal libraries between CANVIEW instances.
+//! Provides HTTP API to share and import signal libraries between can-viewer instances.
 
 mod handlers;
 mod routes;
@@ -96,7 +96,7 @@ pub fn start_server(
 
     // Spawn server on a dedicated thread with its own tokio runtime
     std::thread::Builder::new()
-        .name("canview-server".into())
+        .name("can-viewer-server".into())
         .spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
@@ -110,12 +110,12 @@ pub fn start_server(
                 let listener = tokio::net::TcpListener::from_std(std_listener)
                     .expect("Failed to convert std listener to tokio listener");
 
-                log::info!("CANVIEW server started on {}", addr);
+                log::info!("can-viewer server started on {}", addr);
 
                 axum::serve(listener, app)
                     .with_graceful_shutdown(async {
                         let _ = shutdown_rx.await;
-                        log::info!("CANVIEW server shutting down");
+                        log::info!("can-viewer server shutting down");
                     })
                     .await
                     .expect("Server error");
@@ -132,7 +132,7 @@ pub fn start_server(
     })
 }
 
-/// Import libraries from a remote CANVIEW server URL
+/// Import libraries from a remote can-viewer server URL
 pub async fn import_from_url(
     url: &str,
     existing_libraries: &[crate::models::SignalLibrary],

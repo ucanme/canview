@@ -309,7 +309,7 @@ pub struct ConfigManager {
 impl ConfigManager {
     /// Create a new configuration manager
     pub fn new(config_dir: PathBuf) -> Self {
-        let config_file = config_dir.join("canview_config.json");
+        let config_file = config_dir.join("can-viewer_config.json");
 
         Self {
             config_dir,

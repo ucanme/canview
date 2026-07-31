@@ -1,10 +1,10 @@
-# CANVIEW Logo Resources
+# can-viewer Logo Resources
 
-This directory contains the logo and icon assets for the CANVIEW application.
+This directory contains the logo and icon assets for the can-viewer application.
 
 ## 🎨 Logo Design
 
-CANVIEW features a modern **oscilloscope-style** logo representing CAN/LIN bus signal analysis.
+can-viewer features a modern **oscilloscope-style** logo representing CAN/LIN bus signal analysis.
 
 ### Design Characteristics
 - **Theme**: Oscilloscope screen with signal waveforms
@@ -48,7 +48,7 @@ Pre-rendered PNG files for various uses:
 - **logo_512.png** (5,602 bytes)
 
 ### Windows Icon
-**Location**: `ico/canview.ico` (14 KB)
+**Location**: `ico/can-viewer.ico` (14 KB)
 
 Contains all sizes (16-256 pixels) for Windows executable icons.
 
@@ -84,17 +84,17 @@ The Windows executable will have the icon embedded.
 ### In Documentation
 
 ```markdown
-![CANVIEW Logo](svg/logo.svg)
+![can-viewer Logo](svg/logo.svg)
 ```
 
 ### In HTML/Web
 
 ```html
 <!-- Standard size -->
-<img src="svg/logo.svg" alt="CANVIEW Logo" width="200">
+<img src="svg/logo.svg" alt="can-viewer Logo" width="200">
 
 <!-- Specific size -->
-<img src="svg/logo-256x256.svg" alt="CANVIEW Icon" width="256">
+<img src="svg/logo-256x256.svg" alt="can-viewer Icon" width="256">
 ```
 
 ### In README Files
@@ -102,7 +102,7 @@ The Windows executable will have the icon embedded.
 ```markdown
 <div align="center">
 
-![CANVIEW Logo](svg/logo.svg)
+![can-viewer Logo](svg/logo.svg)
 
 *Modern CAN/LIN Bus Data Analyzer*
 
@@ -134,9 +134,9 @@ Contains: 16×16, 32×32, 48×48, 64×64, 128×128, 256×256
 To create ICNS (mac only):
 ```bash
 # Use iconutil
-mkdir -p canview.iconset
-cp png/logo_*.png canview.iconset/
-iconutil -c icns canview.iconset
+mkdir -p can-viewer.iconset
+cp png/logo_*.png can-viewer.iconset/
+iconutil -c icns can-viewer.iconset
 ```
 
 ### Linux PNG

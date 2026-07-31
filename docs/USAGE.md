@@ -1,6 +1,6 @@
-# CANVIEW User Guide
+# can-viewer User Guide
 
-A practical manual for using CANVIEW — the BLF log viewer, signal plotter, and DBC/LDF library manager.
+A practical manual for using can-viewer — the BLF log viewer, signal plotter, and DBC/LDF library manager.
 
 > **Other languages:** [中文使用文档](USAGE_zh.md)
 
@@ -284,7 +284,7 @@ Triggered by clicking the file segment when clickable. See [Loading BLF Files](#
 
 ## Keyboard Shortcuts
 
-CANVIEW has no global hotkey registry. Shortcuts are per-view.
+can-viewer has no global hotkey registry. Shortcuts are per-view.
 
 ### Log view
 
@@ -338,7 +338,7 @@ Contents:
 
 ### Library files on disk
 
-DBC/LDF files are copied into `<config_dir>/libraries/<lib>/<version>/<channel>/` when you add a channel. On macOS the config dir is `~/Library/Application Support/canview`; on Linux it's `~/.config/canview`; on Windows it's `%APPDATA%/canview`.
+DBC/LDF files are copied into `<config_dir>/libraries/<lib>/<version>/<channel>/` when you add a channel. On macOS the config dir is `~/Library/Application Support/can-viewer`; on Linux it's `~/.config/can-viewer`; on Windows it's `%APPDATA%/can-viewer`.
 
 ### In-memory only (not persisted)
 

@@ -22,7 +22,7 @@ pub fn render_library_management_view(
     focused_input: &Option<String>,
     _library_cursor_pos: usize, // No longer needed - handled by EnhancedTextInput
     _version_cursor_pos: usize, // No longer needed - handled by EnhancedTextInput
-    cx: &mut Context<crate::CanViewApp>,
+    cx: &mut Context<crate::CanViewerApp>,
 ) -> impl IntoElement {
     div()
         .flex_1()
@@ -64,7 +64,7 @@ fn render_left_column_enhanced(
     show_new_library_input: bool,
     new_library_name: &str,
     focused_input: &Option<String>,
-    cx: &mut Context<crate::CanViewApp>,
+    cx: &mut Context<crate::CanViewerApp>,
 ) -> impl IntoElement {
     let is_focused = focused_input.as_ref() == Some(&"new_library_input".to_string());
     let view = cx.entity().clone();
@@ -194,7 +194,7 @@ fn render_middle_column_enhanced(
     show_add_version_input: bool,
     new_version_name: &str,
     focused_input: &Option<String>,
-    cx: &mut Context<crate::CanViewApp>,
+    cx: &mut Context<crate::CanViewerApp>,
 ) -> impl IntoElement {
     let is_focused = focused_input.as_ref() == Some(&"new_version_input".to_string());
     let view = cx.entity().clone();
@@ -536,7 +536,7 @@ fn render_library_item(
 }
 
 /// 渲染添加库按钮（保持不变）
-fn render_add_library_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoElement {
+fn render_add_library_button(cx: &mut Context<crate::CanViewerApp>) -> impl IntoElement {
     div()
         .w_full()
         .px_3()
@@ -570,7 +570,7 @@ fn render_add_library_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoEl
 }
 
 /// 渲染添加版本按钮（保持不变）
-fn render_add_version_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoElement {
+fn render_add_version_button(cx: &mut Context<crate::CanViewerApp>) -> impl IntoElement {
     div()
         .w_full()
         .px_3()

@@ -2,12 +2,12 @@
 //!
 //! Handles business logic for library and version management.
 
-use crate::app::CanViewApp;
+use crate::app::CanViewerApp;
 use crate::ChannelType;
 use gpui::Context;
 
 /// Create a new library
-pub fn create_library(app: &mut CanViewApp, cx: &mut Context<CanViewApp>) {
+pub fn create_library(app: &mut CanViewerApp, cx: &mut Context<CanViewerApp>) {
     if app.new_library_name.trim().is_empty() {
         app.status_msg = "Library name cannot be empty".into();
         cx.notify();
@@ -41,7 +41,7 @@ pub fn create_library(app: &mut CanViewApp, cx: &mut Context<CanViewApp>) {
 }
 
 /// Delete a library by ID
-pub fn delete_library(app: &mut CanViewApp, library_id: &str, cx: &mut Context<CanViewApp>) {
+pub fn delete_library(app: &mut CanViewerApp, library_id: &str, cx: &mut Context<CanViewerApp>) {
     match app
         .library_manager
         .delete_library(library_id, &app.app_config.mappings)
@@ -51,6 +51,20 @@ pub fn delete_library(app: &mut CanViewApp, library_id: &str, cx: &mut Context<C
             if app.selected_library_id.as_ref() == Some(&library_id.to_string()) {
                 app.selected_library_id = None;
             }
+
+            // Drop signal sets owned by the deleted library
+            if app.signal_set_store.sets_by_library.remove(library_id).is_some() {
+                let _ = crate::library::save_signal_set_store(
+                    &app.signal_set_store,
+                    app.config_file_path.as_deref(),
+                );
+            }
+            if let Some((lid, _)) = &app.active_signal_set {
+                if lid == library_id {
+                    app.active_signal_set = None;
+                }
+            }
+
             cx.notify();
         }
         Err(e) => {
@@ -61,7 +75,7 @@ pub fn delete_library(app: &mut CanViewApp, library_id: &str, cx: &mut Context<C
 }
 
 /// Add a version to a library
-pub fn add_library_version(app: &mut CanViewApp, cx: &mut Context<CanViewApp>) {
+pub fn add_library_version(app: &mut CanViewerApp, cx: &mut Context<CanViewerApp>) {
     let library_id = match &app.selected_library_id {
         Some(id) => id.clone(),
         None => {
@@ -132,10 +146,10 @@ pub fn add_library_version(app: &mut CanViewApp, cx: &mut Context<CanViewApp>) {
 
 /// Delete a version from a library
 pub fn delete_library_version(
-    app: &mut CanViewApp,
+    app: &mut CanViewerApp,
     library_id: &str,
     version_name: &str,
-    cx: &mut Context<CanViewApp>,
+    cx: &mut Context<CanViewerApp>,
 ) {
     match app.library_manager.remove_version(
         library_id,
@@ -155,10 +169,10 @@ pub fn delete_library_version(
 
 /// Load a library version into channels
 pub fn load_library_version(
-    app: &mut CanViewApp,
+    app: &mut CanViewerApp,
     library_id: &str,
     version_name: &str,
-    cx: &mut Context<CanViewApp>,
+    cx: &mut Context<CanViewerApp>,
 ) {
     let _ = internal_load_library_version(app, 1, library_id, version_name);
     cx.notify();
@@ -166,10 +180,10 @@ pub fn load_library_version(
 
 /// Apply a library version to channel mappings
 pub fn apply_version_to_mappings(
-    app: &mut CanViewApp,
+    app: &mut CanViewerApp,
     library_id: &str,
     version_name: &str,
-    cx: &mut Context<CanViewApp>,
+    cx: &mut Context<CanViewerApp>,
 ) {
     eprintln!(
         "🖱️ Applying version {} of {} to mappings",
@@ -230,13 +244,16 @@ pub fn apply_version_to_mappings(
     // Save config
     crate::controllers::config_controller::save_config(app, cx);
 
+    // Active library/version changed — old signal set no longer applies
+    app.active_signal_set = None;
+
     app.status_msg = format!("✅ Applied version {} to {} channels", version_name, count).into();
     cx.notify();
 }
 
 /// Internal method to load a library version without GPUI context
 pub fn internal_load_library_version(
-    app: &mut CanViewApp,
+    app: &mut CanViewerApp,
     default_channel_id: u16,
     library_id: &str,
     version_name: &str,

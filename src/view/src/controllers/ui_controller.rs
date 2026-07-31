@@ -2,7 +2,7 @@
 //!
 //! Handles UI rendering logic and view composition.
 
-use crate::app::{CanViewApp, LibraryDialogType};
+use crate::app::{CanViewerApp, LibraryDialogType};
 use crate::models::ChannelMapping;
 use crate::views::log_view::render_message_row_static_with_widths;
 use blf::LogObject;
@@ -23,7 +23,7 @@ pub enum FilterType {
 // ========== Message Filtering ==========
 
 /// Apply message filters based on current filter state
-pub fn apply_message_filters(app: &CanViewApp) -> Vec<LogObject> {
+pub fn apply_message_filters(app: &CanViewerApp) -> Vec<LogObject> {
     match (app.id_filter, app.channel_filter) {
         (None, None) => app.messages.clone(),
         (Some(filter_id), None) => app
@@ -65,8 +65,8 @@ pub fn apply_message_filters(app: &CanViewApp) -> Vec<LogObject> {
 
 /// Render log view header with column labels and filter controls
 pub fn render_log_header(
-    app: &CanViewApp,
-    view: Entity<CanViewApp>,
+    app: &CanViewerApp,
+    view: Entity<CanViewerApp>,
     time_width: gpui::Pixels,
     ch_width: gpui::Pixels,
     type_width: gpui::Pixels,
@@ -205,7 +205,7 @@ pub fn render_log_header(
             eprintln!("Rendering channel filter dropdown in header container");
             parent.child({
                 use crate::app::FilterType;
-                CanViewApp::render_filter_dropdown(
+                CanViewerApp::render_filter_dropdown(
                     app,
                     view_clone,
                     FilterType::ChannelFilter(channel_list),
@@ -217,8 +217,8 @@ pub fn render_log_header(
 
 /// Render channel column with filter control
 pub fn render_header_channel_column(
-    app: &CanViewApp,
-    view: Entity<CanViewApp>,
+    app: &CanViewerApp,
+    view: Entity<CanViewerApp>,
     ch_width: gpui::Pixels,
 ) -> Div {
     div()
@@ -272,8 +272,8 @@ pub fn render_header_channel_column(
 
 /// Render ID column with display mode toggle and filter control
 pub fn render_header_id_column(
-    app: &CanViewApp,
-    view: Entity<CanViewApp>,
+    app: &CanViewerApp,
+    view: Entity<CanViewerApp>,
     id_width: gpui::Pixels,
     id_filter: Option<u32>,
     id_display_decimal: bool,
@@ -367,8 +367,8 @@ pub fn render_header_id_column(
 
 /// Render message list with placeholder or uniform_list
 pub fn render_message_list(
-    app: &CanViewApp,
-    view: Entity<CanViewApp>,
+    app: &CanViewerApp,
+    view: Entity<CanViewerApp>,
     filtered_messages: Vec<LogObject>,
     time_width: gpui::Pixels,
     ch_width: gpui::Pixels,
@@ -480,8 +480,8 @@ pub fn render_message_list(
 
 /// Render overlay and filter dropdowns
 pub fn render_overlays_and_dropdowns(
-    app: &CanViewApp,
-    view: Entity<CanViewApp>,
+    app: &CanViewerApp,
+    view: Entity<CanViewerApp>,
     time_width: gpui::Pixels,
     ch_width: gpui::Pixels,
     type_width: gpui::Pixels,
@@ -568,16 +568,16 @@ pub fn render_overlays_and_dropdowns(
 
 /// Render ID filter dropdown
 fn render_id_filter_dropdown(
-    app: &CanViewApp,
-    view: Entity<CanViewApp>,
+    app: &CanViewerApp,
+    view: Entity<CanViewerApp>,
     id_list: Vec<u32>,
     filter_left: f32,
 ) -> Div {
     eprintln!("render_id_filter_dropdown: id_list has {} items", id_list.len());
 
-    // Use the old proven implementation from CanViewApp
+    // Use the old proven implementation from CanViewerApp
     use crate::app::FilterType;
-    CanViewApp::render_filter_dropdown(
+    CanViewerApp::render_filter_dropdown(
         app,
         view,
         FilterType::IdFilter(id_list),
@@ -587,16 +587,16 @@ fn render_id_filter_dropdown(
 
 /// Render channel filter dropdown
 fn render_channel_filter_dropdown(
-    app: &CanViewApp,
-    view: Entity<CanViewApp>,
+    app: &CanViewerApp,
+    view: Entity<CanViewerApp>,
     channel_list: Vec<u16>,
     filter_left: f32,
 ) -> Div {
     eprintln!("render_channel_filter_dropdown: channel_list has {} items", channel_list.len());
 
-    // Use the old proven implementation from CanViewApp
+    // Use the old proven implementation from CanViewerApp
     use crate::app::FilterType;
-    CanViewApp::render_filter_dropdown(
+    CanViewerApp::render_filter_dropdown(
         app,
         view,
         FilterType::ChannelFilter(channel_list),
@@ -692,14 +692,14 @@ pub fn render_system_status_section(
 // ========== UI Interaction Functions ==========
 
 /// Show library dialog
-pub fn show_library_dialog(app: &mut CanViewApp, dialog_type: LibraryDialogType, cx: &mut Context<CanViewApp>) {
+pub fn show_library_dialog(app: &mut CanViewerApp, dialog_type: LibraryDialogType, cx: &mut Context<CanViewerApp>) {
     app.library_dialog_type = dialog_type;
     app.show_library_dialog = true;
     cx.notify();
 }
 
 /// Hide library dialog
-pub fn hide_library_dialog(app: &mut CanViewApp, cx: &mut Context<CanViewApp>) {
+pub fn hide_library_dialog(app: &mut CanViewerApp, cx: &mut Context<CanViewerApp>) {
     app.show_library_dialog = false;
     app.new_library_name.clear();
     app.new_version_name.clear();
@@ -707,7 +707,7 @@ pub fn hide_library_dialog(app: &mut CanViewApp, cx: &mut Context<CanViewApp>) {
 }
 
 /// Quick import database
-pub fn quick_import_database(app: &mut CanViewApp, cx: &mut Context<CanViewApp>) {
+pub fn quick_import_database(app: &mut CanViewerApp, cx: &mut Context<CanViewerApp>) {
     // TODO: Implement file dialog for quick import
     app.status_msg = "Quick import - file dialog not yet implemented".into();
     eprintln!("⚠️  Quick import: file dialog not yet implemented");
@@ -715,13 +715,13 @@ pub fn quick_import_database(app: &mut CanViewApp, cx: &mut Context<CanViewApp>)
 }
 
 /// Show channel input for adding a new channel (inline)
-pub fn show_add_channel_dialog(app: &mut CanViewApp, cx: &mut Context<CanViewApp>) {
+pub fn show_add_channel_dialog(app: &mut CanViewerApp, cx: &mut Context<CanViewerApp>) {
     app.show_add_channel_input = true;
     cx.notify();
 }
 
 /// Hide channel input and clear values
-pub fn hide_add_channel_input(app: &mut CanViewApp, cx: &mut Context<CanViewApp>) {
+pub fn hide_add_channel_input(app: &mut CanViewerApp, cx: &mut Context<CanViewerApp>) {
     app.show_add_channel_input = false;
     app.new_channel_id.clear();
     app.new_channel_name.clear();
@@ -731,7 +731,7 @@ pub fn hide_add_channel_input(app: &mut CanViewApp, cx: &mut Context<CanViewApp>
 }
 
 /// Save channel configuration
-pub fn save_channel_config(app: &mut CanViewApp, cx: &mut Context<CanViewApp>) {
+pub fn save_channel_config(app: &mut CanViewerApp, cx: &mut Context<CanViewerApp>) {
     // Validate channel ID
     let channel_id = match app.new_channel_id.trim().parse::<u16>() {
         Ok(id) => id,
@@ -787,7 +787,7 @@ pub fn save_channel_config(app: &mut CanViewApp, cx: &mut Context<CanViewApp>) {
 }
 
 /// Delete a channel
-pub fn delete_channel(app: &mut CanViewApp, channel_id: u16, cx: &mut Context<CanViewApp>) {
+pub fn delete_channel(app: &mut CanViewerApp, channel_id: u16, cx: &mut Context<CanViewerApp>) {
     // Find and remove the channel
     if let Some(pos) = app
         .app_config
@@ -804,7 +804,7 @@ pub fn delete_channel(app: &mut CanViewApp, channel_id: u16, cx: &mut Context<Ca
 }
 
 /// Cancel channel configuration
-pub fn cancel_channel_config(app: &mut CanViewApp, cx: &mut Context<CanViewApp>) {
+pub fn cancel_channel_config(app: &mut CanViewerApp, cx: &mut Context<CanViewerApp>) {
     hide_add_channel_input(app, cx);
     app.status_msg = "Channel configuration cancelled".into();
     cx.notify();

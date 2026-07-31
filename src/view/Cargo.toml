@@ -1,5 +1,5 @@
 [package]
-name = "view"
+name = "viewer"
 version = "0.1.0"
 edition = "2024"
 
@@ -40,7 +40,7 @@ rfd = { version = "0.14", default-features = false, features = ["tokio", "xdg-po
 winres = "0.1"
 
 [[bin]]
-name = "view"
+name = "viewer"
 path = "src/main.rs"
 
 # Windows 配置：隐藏控制台窗口
@@ -49,6 +49,6 @@ strip = true  # 减小文件大小
 
 # Windows 特定配置
 [package.metadata.winres]
-OriginalFilename = "canview.exe"
-ProductName = "CANVIEW"
+OriginalFilename = "can-viewer.exe"
+ProductName = "can-viewer"
 FileDescription = "CAN/LIN Bus Analysis Tool"

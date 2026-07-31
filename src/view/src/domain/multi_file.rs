@@ -56,7 +56,7 @@ impl MergedView {
 impl FileSegment {
     /// 从 BlfResult 构造 FileSegment
     ///
-    /// file_id 由调用方（CanViewApp）从全局 AtomicU32 计数器获取并传入。
+    /// file_id 由调用方（CanViewerApp）从全局 AtomicU32 计数器获取并传入。
     /// start_time 从 file_stats.measurement_start_time 转换为 NaiveDateTime。
     /// time_min/time_max 通过遍历 messages 计算绝对时间（秒）。
     pub fn from_blf_result(result: BlfResult, file_id: u32, path: PathBuf) -> Self {
@@ -93,7 +93,7 @@ impl FileSegment {
             let mut min_ns = i64::MAX;
             let mut max_ns = i64::MIN;
             for msg in messages.iter() {
-                let abs_ns = start_ns + msg.timestamp() as i64;
+                let abs_ns = start_ns + msg.timestamp_nanos() as i64;
                 if abs_ns < min_ns {
                     min_ns = abs_ns;
                 }
@@ -150,7 +150,9 @@ impl MergedView {
         let mut entries: Vec<(f64, i64, u32, usize, u32, LogObject)> = Vec::new();
         for (seg_idx, seg) in segments.iter().enumerate() {
             for (msg_idx, msg) in seg.messages.iter().enumerate() {
-                let abs_ns = start_ns[seg_idx] + msg.timestamp() as i64;
+                // 按每条消息的 object_flags 把 raw timestamp 转成 ns 再加 start_ns。
+                // BLF spec: 0x1=TimeTenMics (10µs/tick → ×10000ns), 0x2=TimeOneNans (1ns/tick)
+                let abs_ns = start_ns[seg_idx] + msg.timestamp_nanos() as i64;
                 let abs_sec = abs_ns as f64 / 1_000_000_000.0;
                 let mut cloned = msg.clone();
                 // 把每条消息的 timestamp 重写为全局绝对纳秒,这样后续

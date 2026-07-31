@@ -7,7 +7,7 @@ use gpui::{Context, IntoElement};
 use crate::library_view;
 use crate::library::LibraryManager;
 use crate::models::ChannelMapping;
-use crate::CanViewApp;
+use crate::CanViewerApp;
 
 /// Render the configuration view
 ///
@@ -38,7 +38,7 @@ pub fn render_config_view(
     show_version_input: bool,
     new_version_name: String,
     version_cursor_position: usize,
-    cx: &mut Context<CanViewApp>,
+    cx: &mut Context<CanViewerApp>,
 ) -> impl IntoElement {
     library_view::render_library_management_view(
         library_manager,

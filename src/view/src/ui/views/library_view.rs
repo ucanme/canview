@@ -1,6 +1,6 @@
 //! Library management UI components
 
-use crate::CanViewApp;
+use crate::CanViewerApp;
 use crate::models::SignalLibrary;
 use gpui::prelude::*;
 use gpui::*;
@@ -11,7 +11,7 @@ pub fn render_library_list(
     libraries: &[SignalLibrary],
     selected_id: &Option<String>,
     mappings: &[crate::models::ChannelMapping],
-    cx: &mut Context<CanViewApp>,
+    cx: &mut Context<CanViewerApp>,
 ) -> impl IntoElement {
     if libraries.is_empty() {
         return div()
@@ -116,7 +116,7 @@ pub fn render_library_list(
 pub fn render_version_details(
     library: &SignalLibrary,
     mappings: &[crate::models::ChannelMapping],
-    cx: &mut Context<CanViewApp>,
+    cx: &mut Context<CanViewerApp>,
 ) -> impl IntoElement {
     let versions = &library.versions;
 
@@ -258,7 +258,7 @@ pub fn render_library_dialog(
     dialog_type: LibraryDialogType,
     library_name_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     version_name_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
-    cx: &mut Context<CanViewApp>,
+    cx: &mut Context<CanViewerApp>,
 ) -> impl IntoElement {
     if !show {
         return div();
@@ -444,7 +444,7 @@ pub enum LibraryDialogType {
 }
 
 /// Create library form
-fn render_create_library_form(_cx: &mut Context<CanViewApp>) -> impl IntoElement {
+fn render_create_library_form(_cx: &mut Context<CanViewerApp>) -> impl IntoElement {
     div()
         .flex()
         .flex_col()
@@ -529,7 +529,7 @@ fn render_create_library_form(_cx: &mut Context<CanViewApp>) -> impl IntoElement
 }
 
 /// Add version form
-fn render_add_version_form(_cx: &mut Context<CanViewApp>) -> impl IntoElement {
+fn render_add_version_form(_cx: &mut Context<CanViewerApp>) -> impl IntoElement {
     div()
         .flex()
         .flex_col()

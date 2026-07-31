@@ -237,7 +237,7 @@ def create_ico_file():
             return False
 
         # 保存为ICO
-        ico_path = ICO_DIR / "canview.ico"
+        ico_path = ICO_DIR / "can-viewer.ico"
         ico_images[0].save(
             ico_path,
             format="ICO",
@@ -276,7 +276,7 @@ def main():
     print("=" * 70)
     print(f"\n📁 生成的文件:")
     print(f"   PNG: {PNG_DIR}/")
-    print(f"   ICO: {ICO_DIR}/canview.ico")
+    print(f"   ICO: {ICO_DIR}/can-viewer.ico")
     print(f"\n🚀 下一步:")
     print(f"   cd ..")
     print(f"   cargo build --release")

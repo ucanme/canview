@@ -13,34 +13,34 @@ pip install Pillow cairosvg
 
 #### Windows (CMD)
 ```cmd
-cd C:\Users\Administrator\RustroverProjects\canview\assets
+cd C:\Users\Administrator\RustroverProjects\can-viewer\assets
 update_icons.bat
 ```
 
 #### macOS/Linux (Bash)
 ```bash
-cd /path/to/canview/assets
+cd /path/to/can-viewer/assets
 chmod +x update_icons.sh
 ./update_icons.sh
 ```
 
 #### Python (跨平台)
 ```bash
-cd /path/to/canview/assets
+cd /path/to/can-viewer/assets
 python3 update_icons.py
 ```
 
 **脚本会自动生成：**
 - ✅ `png/logo_16.png` ~ `png/logo_512.png` (7个尺寸)
-- ✅ `ico/canview.ico` (Windows 图标)
-- ✅ `canview.icns` (仅 macOS)
+- ✅ `ico/can-viewer.ico` (Windows 图标)
+- ✅ `can-viewer.icns` (仅 macOS)
 
 ---
 
 ### 步骤 2: 编译应用
 
 ```bash
-cd C:\Users\Administrator\RustroverProjects\canview
+cd C:\Users\Administrator\RustroverProjects\can-viewer
 cargo build --release
 ```
 
@@ -55,16 +55,16 @@ cargo build --release
 #### macOS
 ```bash
 # 创建 .app 包（如果还没有）
-mkdir -p CanView.app/Contents/{MacOS,Resources}
-cp target/release/view CanView.app/Contents/MacOS/
-cp assets/canview.icns CanView.app/Contents/Resources/
+mkdir -p can-viewer.app/Contents/{MacOS,Resources}
+cp target/release/view can-viewer.app/Contents/MacOS/
+cp assets/can-viewer.icns can-viewer.app/Contents/Resources/
 ```
 
 #### Linux
 ```bash
 # 安装桌面图标
 mkdir -p ~/.local/share/icons/hicolor/256x256/apps
-cp assets/png/logo_256.png ~/.local/share/icons/hicolor/256x256/apps/canview.png
+cp assets/png/logo_256.png ~/.local/share/icons/hicolor/256x256/apps/can-viewer.png
 ```
 
 ---
@@ -93,7 +93,7 @@ assets/svg/
 #[cfg(target_os = "windows")]
 fn main() {
     let mut res = winres::WindowsResource::new();
-    res.set_icon("../../assets/ico/canview.ico");
+    res.set_icon("../../assets/ico/can-viewer.ico");
     res.compile().expect("Failed to compile resources");
 }
 ```
@@ -141,7 +141,7 @@ ie4uinit.exe -show
 ## ✅ 检查清单
 
 - [ ] 运行转换脚本生成 PNG/ICO/ICNS 文件
-- [ ] 检查 `assets/ico/canview.ico` 是否生成
+- [ ] 检查 `assets/ico/can-viewer.ico` 是否生成
 - [ ] 检查 `assets/png/` 目录下的 PNG 文件
 - [ ] 运行 `cargo build --release`
 - [ ] 验证 EXE/App 图标已更新
@@ -150,7 +150,7 @@ ie4uinit.exe -show
 
 ## 🎉 完成！
 
-现在你的 CANVIEW 应用已经使用新的示波器风格 Logo 了！
+现在你的 can-viewer 应用已经使用新的示波器风格 Logo 了！
 
 **Logo 特点：**
 - 🎨 示波器屏幕设计

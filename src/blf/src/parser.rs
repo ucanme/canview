@@ -175,6 +175,54 @@ impl LogObject {
         }
     }
 
+    /// Returns the `object_flags` of the log object (BLF spec: 0x1=TimeTenMics,
+    /// 0x2=TimeOneNans). For object types that don't have an ObjectHeader
+    /// (FlexRay, Ethernet, Most, AppTrigger, EventComment, GlobalMarker, Unhandled),
+    /// returns 0x2 (TimeOneNans) as a safe default — these types already store
+    /// an absolute-nanosecond timestamp in their `timestamp` field (per
+    /// `timestamp()` impl above).
+    pub fn flags(&self) -> u32 {
+        match self {
+            LogObject::CanMessage(msg) => msg.header.object_flags,
+            LogObject::CanMessage2(msg) => msg.header.object_flags,
+            LogObject::CanErrorFrame(msg) => msg.header.object_flags,
+            LogObject::CanFdMessage(msg) => msg.header.object_flags,
+            LogObject::CanFdMessage64(msg) => msg.header.object_flags,
+            LogObject::CanOverloadFrame(msg) => msg.header.object_flags,
+            LogObject::CanDriverStatistic(msg) => msg.header.object_flags,
+            LogObject::CanDriverError(msg) => msg.header.object_flags,
+            LogObject::LinMessage(msg) => msg.header.object_flags,
+            LogObject::LinMessage2(msg) => msg.header.object_flags,
+            LogObject::LinCrcError(msg) => msg.header.object_flags,
+            LogObject::LinDlcInfo(msg) => msg.header.object_flags,
+            LogObject::LinReceiveError(msg) => msg.header.object_flags,
+            LogObject::LinSendError(msg) => msg.header.object_flags,
+            LogObject::LinSlaveTimeout(msg) => msg.header.object_flags,
+            LogObject::LinSchedulerModeChange(msg) => msg.header.object_flags,
+            LogObject::LinSyncError(msg) => msg.header.object_flags,
+            LogObject::LinBaudrateEvent(msg) => msg.header.object_flags,
+            LogObject::LinSleepModeEvent(msg) => msg.header.object_flags,
+            LogObject::LinWakeupEvent(msg) => msg.header.object_flags,
+            _ => 0x2, // FlexRay/Ethernet/Most/etc. store abs_ns already
+        }
+    }
+
+    /// Returns the timestamp converted to **nanoseconds** based on
+    /// `object_flags` (per BLF spec):
+    /// - `TimeTenMics` (0x1): raw ticks × 10µs = ticks × 10000 ns
+    /// - `TimeOneNans` (0x2) or default: raw ticks = ns
+    pub fn timestamp_nanos(&self) -> u64 {
+        let raw = self.timestamp();
+        let flags = self.flags();
+        if flags & 0x1 != 0 {
+            // TimeTenMics: 10µs per tick → × 10000 ns
+            raw.saturating_mul(10_000)
+        } else {
+            // TimeOneNans (default): 1ns per tick
+            raw
+        }
+    }
+
     /// Returns the channel ID of the log object (if applicable)
     pub fn channel(&self) -> Option<u16> {
         match self {

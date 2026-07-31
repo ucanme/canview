@@ -1,11 +1,11 @@
-; CANVIEW 安装程序脚本
+; can-viewer 安装程序脚本
 ; 使用 Inno Setup 编译此脚本以创建安装程序
 
-#define MyAppName "CANVIEW"
+#define MyAppName "can-viewer"
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "Your Company"
-#define MyAppURL "https://github.com/yourusername/canview"
-#define MyAppExeName "canview.exe"
+#define MyAppURL "https://github.com/cantool/can-viewer"
+#define MyAppExeName "can-viewer.exe"
 
 [Setup]
 ; 基本信息
@@ -21,8 +21,8 @@ DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 LicenseFile=LICENSE.txt
 OutputDir=installer-output
-OutputBaseFilename=CANVIEW-Setup-v{#MyAppVersion}
-SetupIconFile=assets\ico\canview.ico
+OutputBaseFilename=can-viewer-Setup-v{#MyAppVersion}
+SetupIconFile=assets\ico\can-viewer.ico
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern

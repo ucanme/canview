@@ -103,7 +103,7 @@ def create_ico_file():
                 ico_images.append(img)
 
         # Save as ICO
-        ico_path = ICO_DIR / "canview.ico"
+        ico_path = ICO_DIR / "can-viewer.ico"
         ico_images[0].save(
             ico_path,
             format="ICO",
@@ -125,7 +125,7 @@ def create_icns_file():
 
     print("\n🔄 Creating ICNS file for macOS...")
 
-    iconset_dir = SCRIPT_DIR / "canview.iconset"
+    iconset_dir = SCRIPT_DIR / "can-viewer.iconset"
     iconset_dir.mkdir(exist_ok=True)
 
     # Create iconset structure
@@ -156,7 +156,7 @@ def create_icns_file():
         )
 
         if result.returncode == 0:
-            print("✅ ICNS file created: canview.icns")
+            print("✅ ICNS file created: can-viewer.icns")
             # Clean up iconset
             import shutil
 
@@ -204,9 +204,9 @@ def main():
     print("=" * 50)
     print(f"\n📁 Output files:")
     print(f"   PNG: {PNG_DIR}/")
-    print(f"   ICO: {ICO_DIR}/canview.ico")
+    print(f"   ICO: {ICO_DIR}/can-viewer.ico")
     if sys.platform == "darwin":
-        print(f"   ICNS: canview.icns")
+        print(f"   ICNS: can-viewer.icns")
 
     print(f"\n📝 Source logo: {LOGO_SVG}")
     print(f"\n🚀 Next steps:")

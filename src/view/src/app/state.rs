@@ -41,7 +41,10 @@ pub struct RuntimeState {
     pub active_library_id: Option<String>,
     pub active_version_name: Option<String>,
     pub expanded_channels: std::collections::HashSet<u16>,
-    pub expanded_messages: std::collections::HashSet<(u16, u32)>,
+    pub expanded_messages: std::collections::HashSet<(u16, u32)>, // (ch_id, msg_id)
+    // Signal set session state
+    pub signal_set_store: crate::library::signal_sets::SignalSetStore,
+    pub active_signal_set: Option<(String, String)>,
 }
 
 use blf::LogObject;
@@ -81,7 +84,7 @@ pub struct ScrollbarDragState {
 }
 
 /// Main application state
-pub struct CanViewApp {
+pub struct CanViewerApp {
     // View state
     pub current_view: AppView,
 
@@ -256,6 +259,21 @@ pub struct CanViewApp {
     // consumed by render() which has window access.
     pub pending_add_channel_focus: Option<PendingAddChannelFocus>,
 
+    // Signal sets — named collections of (ch, msg_id, signal) per library
+    pub signal_set_store: crate::library::signal_sets::SignalSetStore,
+    /// Currently active set as (library_id, set_name); cleared on library switch / manual edit
+    pub active_signal_set: Option<(String, String)>,
+    /// Inline input buffer when saving the current selection as a set
+    pub pending_signal_set_name: Option<String>,
+    /// Whether the inline "save as set" input row is currently shown
+    pub show_save_set_input: bool,
+    /// Whether the signal-sets dropdown menu is currently open
+    pub show_signal_set_dropdown: bool,
+    /// Inline-input entity for the "save as signal set" name field.
+    /// Lazily created on first show (see render_signal_set_dropdown_row
+    /// initialization in impls_rendering.rs render loop).
+    pub signal_set_name_input: Option<gpui::Entity<gpui_component::input::InputState>>,
+
     // Server state
     pub server_handle: Option<crate::server::ServerHandle>,
     pub show_share_dialog: bool,
@@ -296,18 +314,18 @@ pub enum LibraryDialogType {
     QuickImport,
 }
 
-impl CanViewApp {
-    /// Create a new CanViewApp instance with default state
+impl CanViewerApp {
+    /// Create a new CanViewerApp instance with default state
     pub fn new_state() -> Self {
         Self::new_with_maximized_state(false)
     }
 
-    /// Create a new CanViewApp instance with specified maximize state
+    /// Create a new CanViewerApp instance with specified maximize state
     pub fn new_with_maximized_state(is_maximized: bool) -> Self {
         Self::new_with_maximized_state_and_bounds(is_maximized, None)
     }
 
-    /// Create a new CanViewApp instance with maximize state and saved bounds
+    /// Create a new CanViewerApp instance with maximize state and saved bounds
     pub fn new_with_maximized_state_and_bounds(is_maximized: bool, saved_window_bounds: Option<Bounds<Pixels>>) -> Self {
         Self {
             current_view: AppView::LogView, // Force LogView to prevent chart/library crashes
@@ -426,6 +444,13 @@ impl CanViewApp {
             expanded_channels: std::collections::HashSet::new(),
             expanded_messages: std::collections::HashSet::new(),
             pending_add_channel_focus: None,
+            // Signal sets
+            signal_set_store: crate::library::signal_sets::load_signal_set_store(None),
+            active_signal_set: None,
+            pending_signal_set_name: None,
+            show_save_set_input: false,
+            show_signal_set_dropdown: false,
+            signal_set_name_input: None,
             // Server state
             server_handle: None,
             show_share_dialog: false,
@@ -467,6 +492,8 @@ impl CanViewApp {
             active_version_name: self.active_version_name.clone(),
             expanded_channels: self.expanded_channels.clone(),
             expanded_messages: self.expanded_messages.clone(),
+            signal_set_store: self.signal_set_store.clone(),
+            active_signal_set: self.active_signal_set.clone(),
         }
     }
 
@@ -503,6 +530,8 @@ impl CanViewApp {
         self.active_version_name = state.active_version_name;
         self.expanded_channels = state.expanded_channels;
         self.expanded_messages = state.expanded_messages;
+        self.signal_set_store = state.signal_set_store;
+        self.active_signal_set = state.active_signal_set;
         eprintln!("✅ State restored. Now have: {:?} view, {} files, {} messages, {} plot series",
             self.current_view, self.files.len(), self.messages.len(), self.plot_data.len());
     }

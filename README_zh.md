@@ -1,15 +1,15 @@
 <div align="center">
 
-# CANVIEW
+# can-viewer
 
-![CANVIEW Logo](assets/svg/logo-256x256.svg)
+![can-viewer Logo](assets/svg/logo-256x256.svg)
 
 **开源跨平台 CAN/LIN 总线数据分析工具**
 
-[![Build](https://img.shields.io/github/actions/workflow/status/ucanme/canview/build.yml?branch=main&style=flat-square)](https://github.com/ucanme/canview/actions)
+[![Build](https://img.shields.io/github/actions/workflow/status/cantool/can-viewer/build.yml?branch=main&style=flat-square)](https://github.com/cantool/can-viewer/actions)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE.txt)
 [![Rust](https://img.shields.io/badge/rust-nightly-orange?style=flat-square)](https://www.rust-lang.org/)
-[![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-lightgrey?style=flat-square)](https://github.com/ucanme/canview/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%20|%20macOS%20|%20Linux-lightgrey?style=flat-square)](https://github.com/cantool/can-viewer/releases)
 
 完全开源，你的 ⭐ 是我持续开发的动力！
 
@@ -21,7 +21,7 @@
 
 ## 简介
 
-CANVIEW 是用 Rust 构建的汽车总线数据分析工具，集成 BLF 日志解析、DBC/LDF 信号库管理和 [GPUI](https://gpui.rs/) GPU 加速界面。
+can-viewer 是用 Rust 构建的汽车总线数据分析工具，集成 BLF 日志解析、DBC/LDF 信号库管理和 [GPUI](https://gpui.rs/) GPU 加速界面。
 
 - 🚀 **Rust 原生** — 零拷贝解析，启动快
 - 🖥️ **GPU 加速 UI** — 基于 GPUI，渲染流畅
@@ -57,12 +57,12 @@ CANVIEW 是用 Rust 构建的汽车总线数据分析工具，集成 BLF 日志�
 sudo apt-get install libxkbcommon-dev libx11-dev libegl1-mesa-dev
 
 # 构建运行
-git clone https://github.com/ucanme/canview.git
-cd canview
-cargo run --release --bin view
+git clone https://github.com/cantool/can-viewer.git
+cd can-viewer
+cargo run --release --bin viewer
 \`\`\`
 
-预编译包：[Releases](https://github.com/ucanme/canview/releases)（Windows / macOS / Linux）
+预编译包：[Releases](https://github.com/cantool/can-viewer/releases)（Windows / macOS / Linux）
 
 ---
 
@@ -74,7 +74,7 @@ cargo run --release --bin view
 4. **绘制波形** — 切换到 Signal Plot，选择信号，支持缩放和悬停查看
 5. **管理已加载文件** — 当加载 ≥ 2 个文件(或任意文件有解析错误)时,点击左下角状态栏的 **📂 N files** 段打开 Loaded Files 浮框。每行 ✕ 可单独移除,或 **Remove All** 全部清空。
 
-拖拽规则:仅接受 `.blf`(拖拽路径不接受 `.bin`,需要 `.bin` 走 File 菜单);文件夹展开一层;总大小 > 1 GB 弹确认对话框;加载中再拖新文件会取消当前加载并排队新文件。
+拖拽规则:仅接受 `.blf`，文件夹展开一层;总大小 > 1 GB 弹确认对话框;加载中再拖新文件会取消当前加载并排队新文件。
 
 配置自动保存至 `multi_channel_config.json`。
 
@@ -119,7 +119,7 @@ cargo clippy --workspace # 静态检查
 
 ## 许可证
 
-[MIT License](LICENSE.txt) © 2026 CANVIEW
+[MIT License](LICENSE.txt) © 2026 can-viewer
 
 ---
 
@@ -127,6 +127,6 @@ cargo clippy --workspace # 静态检查
 
 **使用 Rust 用 ❤️ 构建**
 
-[Issues](https://github.com/ucanme/canview/issues) · [Discussions](https://github.com/ucanme/canview/discussions) · admin@ucan.me
+[Issues](https://github.com/cantool/can-viewer/issues) · [Discussions](https://github.com/cantool/can-viewer/discussions) · admin@ucan.me
 
 </div>

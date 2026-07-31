@@ -3,7 +3,7 @@
 //! Renders the bottom status bar with file info (left) and server/library
 //! status (right). Single 24px row.
 
-use crate::app::{AppView, CanViewApp};
+use crate::app::{AppView, CanViewerApp};
 use crate::ui::theme::colors;
 use crate::ui::theme::radius;
 use crate::ui::theme::spacing;
@@ -60,7 +60,7 @@ pub fn format_bytes(n: u64) -> String {
 /// ⚠️ 放在 label(文件名 / N files)后面,与文件名/计数整体一起点击 ——
 /// files popover 内已显示每文件的 ❌/✅ 状态图标和错误列表,左侧 ⚠️
 /// 仅作"有文件解析失败"的总提示。
-fn render_file_segment(app: &CanViewApp, view: Entity<CanViewApp>) -> impl IntoElement {
+fn render_file_segment(app: &CanViewerApp, view: Entity<CanViewerApp>) -> impl IntoElement {
     let files_count = app.files.len();
     // 多文件加载不会填充 `blf_parse_errors`(那是单文件加载路径专用),
     // 所以这里同时检查任意 segment 是否有错误。
@@ -115,7 +115,7 @@ fn render_separator() -> impl IntoElement {
 /// Render the BLF bytes-progress segment: "521.0KB / 521.0KB (100.0%)".
 /// Returns None when no file is loaded (blf_bytes_total == 0) so the
 /// caller can skip rendering via .when_some().
-fn render_blf_progress_segment(app: &CanViewApp) -> Option<impl IntoElement> {
+fn render_blf_progress_segment(app: &CanViewerApp) -> Option<impl IntoElement> {
     if app.blf_bytes_total == 0 {
         return None;
     }
@@ -137,7 +137,7 @@ fn render_blf_progress_segment(app: &CanViewApp) -> Option<impl IntoElement> {
 }
 
 /// Render the server status segment (right side, segment 1).
-fn render_server_segment(app: &CanViewApp, view: Entity<CanViewApp>) -> impl IntoElement {
+fn render_server_segment(app: &CanViewerApp, view: Entity<CanViewerApp>) -> impl IntoElement {
     let running = app.server_handle.is_some();
     let url = app.share_url().map(|s| s.to_string()).unwrap_or_default();
     let view_for_click = view.clone();
@@ -185,7 +185,7 @@ fn render_server_segment(app: &CanViewApp, view: Entity<CanViewApp>) -> impl Int
 }
 
 /// Render the library badge segment (right side, segment 3).
-fn render_lib_badge_segment(app: &CanViewApp) -> impl IntoElement {
+fn render_lib_badge_segment(app: &CanViewerApp) -> impl IntoElement {
     if let (Some(lib_id), Some(ver)) = (&app.active_library_id, &app.active_version_name) {
         let lib_name = app
             .library_manager
@@ -210,7 +210,7 @@ fn render_lib_badge_segment(app: &CanViewApp) -> impl IntoElement {
 /// 解析错误入口已迁移到左侧 `render_file_segment`(那里会显示 ⚠️ 并打开
 /// files popover,后者已展示每文件的错误详情)。本段不再追加错误入口,
 /// 函数签名也不需要 view。
-fn render_status_msg_segment(app: &CanViewApp) -> Option<impl IntoElement> {
+fn render_status_msg_segment(app: &CanViewerApp) -> Option<impl IntoElement> {
     if app.status_msg.is_empty() {
         return None;
     }
@@ -230,7 +230,7 @@ fn render_status_msg_segment(app: &CanViewApp) -> Option<impl IntoElement> {
 /// Render the BLF errors popover as a standalone element (sibling of the
 /// status bar) so it isn't clipped by the status_msg segment's truncate().
 /// Returns None when no errors or when the popover is closed.
-fn render_blf_errors_popover(app: &CanViewApp, view: Entity<CanViewApp>) -> Option<impl IntoElement> {
+fn render_blf_errors_popover(app: &CanViewerApp, view: Entity<CanViewerApp>) -> Option<impl IntoElement> {
     if app.blf_parse_errors.is_empty() || !app.show_blf_errors_popover {
         return None;
     }
@@ -328,7 +328,7 @@ fn render_blf_errors_popover(app: &CanViewApp, view: Entity<CanViewApp>) -> Opti
 /// 仅在 `loading_progress` 显示“正在加载且未取消”时返回 `Some`。点击设置
 /// `is_cancelled = true`,使后续 `apply_blf_result_append_one` 早退,从而
 /// 中止未完成文件的追加。已完成的 segment 保留在 `files` 列表中。
-fn render_cancel_button_segment(app: &CanViewApp, view: Entity<CanViewApp>) -> Option<impl IntoElement> {
+fn render_cancel_button_segment(app: &CanViewerApp, view: Entity<CanViewerApp>) -> Option<impl IntoElement> {
     let is_loading = app
         .loading_progress
         .as_ref()
@@ -370,7 +370,7 @@ fn render_cancel_button_segment(app: &CanViewApp, view: Entity<CanViewApp>) -> O
 /// 但永远返回 `None`,便于未来需要时快速恢复右侧入口。调用方
 /// (`render_status_bar` 中的 `.when_some(render_files_button_segment(...))`)
 /// 会自动跳过 None 分支。
-fn render_files_button_segment(_app: &CanViewApp, _view: Entity<CanViewApp>) -> Option<Div> {
+fn render_files_button_segment(_app: &CanViewerApp, _view: Entity<CanViewerApp>) -> Option<Div> {
     None
 }
 
@@ -380,7 +380,7 @@ fn render_files_button_segment(_app: &CanViewApp, _view: Entity<CanViewApp>) -> 
 /// 处理外部点击关闭；实际内容容器锚定到右下角，避免被 status_msg 段的
 /// `truncate()` 裁切。仅当 `show_files_popover && !files.is_empty()` 时
 /// 返回 `Some`；当文件在 popover 打开期间被全部移除时，popover 自动消失。
-fn render_files_popover(app: &CanViewApp, view: Entity<CanViewApp>) -> Option<impl IntoElement> {
+fn render_files_popover(app: &CanViewerApp, view: Entity<CanViewerApp>) -> Option<impl IntoElement> {
     if !app.show_files_popover || app.files.is_empty() {
         return None;
     }
@@ -687,7 +687,7 @@ fn render_view_name_segment(view_val: AppView) -> impl IntoElement {
 /// that data view. When the app is in Library/Config view, both buttons are
 /// rendered but neither is active — clicking either switches back to data
 /// view (this is the "return to msg list" path).
-fn render_data_view_toggle(app: &CanViewApp, view: Entity<CanViewApp>) -> impl IntoElement {
+fn render_data_view_toggle(app: &CanViewerApp, view: Entity<CanViewerApp>) -> impl IntoElement {
     let current = app.current_view;
     let log_active = current == AppView::LogView;
     let plot_active = current == AppView::PlotView;
@@ -772,7 +772,7 @@ fn render_data_view_toggle(app: &CanViewApp, view: Entity<CanViewApp>) -> impl I
 }
 
 /// Render the StatusBar.
-pub fn render_status_bar(app: &CanViewApp, view: Entity<CanViewApp>) -> impl IntoElement {
+pub fn render_status_bar(app: &CanViewerApp, view: Entity<CanViewerApp>) -> impl IntoElement {
     let current_view = app.current_view;
 
     div()
@@ -848,7 +848,7 @@ pub fn render_status_bar(app: &CanViewApp, view: Entity<CanViewApp>) -> impl Int
 /// Render the popovers that belong to the status bar (blf_errors + files)
 /// as a sibling of the status bar, not as a child. This avoids the status
 /// bar's border_t_1 stacking context clipping the popover's top edge.
-pub fn render_status_bar_popovers(app: &CanViewApp, view: Entity<CanViewApp>) -> impl IntoElement {
+pub fn render_status_bar_popovers(app: &CanViewerApp, view: Entity<CanViewerApp>) -> impl IntoElement {
     div()
         .when_some(render_blf_errors_popover(app, view.clone()), |el, popover| {
             el.child(popover)

@@ -1,16 +1,16 @@
 #!/bin/bash
-# CANVIEW Linux 打包脚本
+# can-viewer Linux 打包脚本
 # 创建 .deb, .rpm 和 .tar.gz 安装包
 
 set -e
 
 VERSION="${1:-1.0.0}"
-APP_NAME="canview"
+APP_NAME="can-viewer"
 OUTPUT_DIR="./release-package"
 ARCH="amd64"  # 或 x86_64
 
 echo "========================================"
-echo "CANVIEW Linux 打包脚本 v$VERSION"
+echo "can-viewer Linux 打包脚本 v$VERSION"
 echo "========================================"
 echo ""
 
@@ -46,7 +46,7 @@ echo ""
 
 # 3. 复制可执行文件
 echo "📋 步骤 3: 复制文件..."
-cp "./target/release/view" "$PACKAGE_DIR/usr/bin/$APP_NAME"
+cp "./target/release/viewer" "$PACKAGE_DIR/usr/bin/$APP_NAME"
 chmod +x "$PACKAGE_DIR/usr/bin/$APP_NAME"
 
 # 4. 复制资源文件
@@ -66,8 +66,8 @@ if [ -f "BUILD.md" ]; then
 fi
 
 # 复制图标
-if [ -f "assets/ico/canview.png" ]; then
-    cp "assets/ico/canview.png" "$PACKAGE_DIR/usr/share/icons/hicolor/256x256/apps/$APP_NAME.png"
+if [ -f "assets/ico/can-viewer.png" ]; then
+    cp "assets/ico/can-viewer.png" "$PACKAGE_DIR/usr/share/icons/hicolor/256x256/apps/$APP_NAME.png"
 elif [ -f "assets/png/icon_256.png" ]; then
     cp "assets/png/icon_256.png" "$PACKAGE_DIR/usr/share/icons/hicolor/256x256/apps/$APP_NAME.png"
 fi
@@ -103,7 +103,7 @@ signal_library/
 
 - 当您在软件中添加信号库和版本时，数据库文件会自动复制到此目录
 - 配置文件中保存的是此目录下的路径，确保软件可移植性
-- Linux 用户配置位置: ~/.config/canview/
+- Linux 用户配置位置: ~/.config/can-viewer/
 
 ---
 更新时间: $(date '+%Y-%m-%d %H:%M:%S')
@@ -118,7 +118,7 @@ cat > "$PACKAGE_DIR/usr/share/applications/$APP_NAME.desktop" << EOF
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=CANVIEW
+Name=can-viewer
 Comment=CAN/LIN Bus Analysis Tool
 Exec=/usr/bin/$APP_NAME
 Icon=$APP_NAME
@@ -146,16 +146,16 @@ Version: $VERSION
 Section: utils
 Priority: optional
 Architecture: $ARCH
-Maintainer: CANVIEW Team <support@canview.com>
+Maintainer: can-viewer Team <support@can-viewer.com>
 Description: CAN/LIN Bus Analysis Tool
- CANVIEW is a professional tool for analyzing CAN and LIN bus data.
+ can-viewer is a professional tool for analyzing CAN and LIN bus data.
  Features:
   - BLF file parsing and viewing
   - DBC/LDF database support
   - Multi-channel configuration
   - Signal decoding and display
   - Chart analysis
-Homepage: https://github.com/yourusername/canview
+Homepage: https://github.com/cantool/can-viewer
 EOF
 
 # 创建 postinst 脚本
@@ -164,8 +164,8 @@ cat > "$DEB_DIR/DEBIAN/postinst" << 'EOF'
 set -e
 
 # 创建用户配置目录
-mkdir -p /etc/canview
-chmod 755 /etc/canview
+mkdir -p /etc/can-viewer
+chmod 755 /etc/can-viewer
 
 # 更新桌面数据库
 if command -v update-desktop-database &> /dev/null; then
@@ -177,8 +177,8 @@ if command -v gtk-update-icon-cache &> /dev/null; then
     gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor
 fi
 
-echo "CANVIEW 安装完成！"
-echo "运行命令: canview"
+echo "can-viewer 安装完成！"
+echo "运行命令: can-viewer"
 EOF
 
 chmod 755 "$DEB_DIR/DEBIAN/postinst"
@@ -187,7 +187,7 @@ chmod 755 "$DEB_DIR/DEBIAN/postinst"
 cat > "$DEB_DIR/DEBIAN/prerm" << 'EOF'
 #!/bin/bash
 set -e
-echo "正在卸载 CANVIEW..."
+echo "正在卸载 can-viewer..."
 EOF
 
 chmod 755 "$DEB_DIR/DEBIAN/prerm"
@@ -218,14 +218,14 @@ Release:        1%{?dist}
 Summary:        CAN/LIN Bus Analysis Tool
 
 License:        MIT
-URL:            https://github.com/yourusername/canview
+URL:            https://github.com/cantool/can-viewer
 Source0:        %{name}-%{version}.tar.gz
 
 BuildArch:      x86_64
 Requires:       gtk3
 
 %description
-CANVIEW is a professional tool for analyzing CAN and LIN bus data.
+can-viewer is a professional tool for analyzing CAN and LIN bus data.
 
 %prep
 %setup -q -c
@@ -246,7 +246,7 @@ update-desktop-database &> /dev/null || :
 gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor &> /dev/null || :
 
 %changelog
-* $(date '+%a %b %d %Y') CANVIEW Team <support@canview.com> - $VERSION-1
+* $(date '+%a %b %d %Y') can-viewer Team <support@can-viewer.com> - $VERSION-1
 - Initial release
 EOF
 
@@ -289,7 +289,7 @@ SELF=$(readlink -f "$0")
 HERE=${SELF%/*}
 export PATH="${HERE}/usr/bin:${PATH}"
 export LD_LIBRARY_PATH="${HERE}/usr/lib:${LD_LIBRARY_PATH}"
-exec "${HERE}/usr/bin/canview" "$@"
+exec "${HERE}/usr/bin/can-viewer" "$@"
 APPRUN_EOF
     chmod +x "$APPDIR/AppRun"
     

@@ -1,4 +1,4 @@
-# 🔧 CANVIEW 图标显示修复指南
+# 🔧 can-viewer 图标显示修复指南
 
 **问题**: 编译后Logo没有更新  
 **原因**: Windows图标缓存问题  
@@ -28,7 +28,7 @@
 
 #### 方法A: 使用自动脚本
 ```cmd
-cd C:\Users\Administrator\RustroverProjects\canview\assets
+cd C:\Users\Administrator\RustroverProjects\can-viewer\assets
 refresh_icon_cache.bat
 ```
 
@@ -73,7 +73,7 @@ start explorer.exe
 #### 步骤1: 创建桌面快捷方式
 ```cmd
 # 复制EXE到桌面
-copy "C:\Users\Administrator\RustroverProjects\canview\target\release\view.exe" "%USERPROFILE%\Desktop\"
+copy "C:\Users\Administrator\RustroverProjects\can-viewer\target\release\view.exe" "%USERPROFILE%\Desktop\"
 ```
 
 #### 步骤2: 查看快捷方式图标
@@ -87,7 +87,7 @@ copy "C:\Users\Administrator\RustroverProjects\canview\target\release\view.exe" 
 
 #### 步骤1: 右键点击EXE文件
 ```
-C:\Users\Administrator\RustroverProjects\canview\target\release\view.exe
+C:\Users\Administrator\RustroverProjects\can-viewer\target\release\view.exe
 ```
 
 #### 步骤2: 打开属性
@@ -99,7 +99,7 @@ C:\Users\Administrator\RustroverProjects\canview\target\release\view.exe
 - 应该能在列表中看到新的示波器风格图标
 - 点击浏览，手动选择：
   ```
-  C:\Users\Administrator\RustroverProjects\canview\assets\ico\canview.ico
+  C:\Users\Administrator\RustroverProjects\can-viewer\assets\ico\can-viewer.ico
   ```
 
 ---
@@ -120,7 +120,7 @@ shutdown /r /t 0
 ## ✅ 验证图标是否更新
 
 ### 验证方法1: 文件资源管理器
-1. 打开文件夹: `C:\Users\Administrator\RustroverProjects\canview\target\release\`
+1. 打开文件夹: `C:\Users\Administrator\RustroverProjects\can-viewer\target\release\`
 2. 找到 `view.exe`
 3. 按 `F5` 刷新
 4. 查看文件图标
@@ -139,7 +139,7 @@ shutdown /r /t 0
 ```powershell
 # 查看EXE中的图标资源
 Add-Type -AssemblyName System.Drawing
-$exe = "C:\Users\Administrator\RustroverProjects\canview\target\release\view.exe"
+$exe = "C:\Users\Administrator\RustroverProjects\can-viewer\target\release\view.exe"
 $icon = [System.Drawing.Icon]::ExtractAssociatedIcon($exe)
 $icon.ToBitmap().Save("$env:USERPROFILE\Desktop\view_icon.png")
 ```
@@ -164,19 +164,19 @@ $icon.ToBitmap().Save("$env:USERPROFILE\Desktop\view_icon.png")
 
 ### 检查1: 验证ICO文件
 ```cmd
-dir "C:\Users\Administrator\RustroverProjects\canview\assets\ico\canview.ico"
+dir "C:\Users\Administrator\RustroverProjects\can-viewer\assets\ico\can-viewer.ico"
 ```
 应该显示: `14,346 bytes` 或类似大小
 
 ### 检查2: 验证EXE文件时间
 ```cmd
-dir "C:\Users\Administrator\RustroverProjects\canview\target\release\view.exe" | findstr "view.exe"
+dir "C:\Users\Administrator\RustroverProjects\can-viewer\target\release\view.exe" | findstr "view.exe"
 ```
 修改时间应该**晚于** ICO文件的修改时间
 
 ### 检查3: 运行验证工具
 ```cmd
-cd C:\Users\Administrator\RustroverProjects\canview\assets
+cd C:\Users\Administrator\RustroverProjects\can-viewer\assets
 python verify_icon.py
 ```
 
@@ -265,11 +265,11 @@ copy "target\release\view.exe" "%USERPROFILE%\Desktop\"
 
 3. **检查是否有多个view.exe**
    ```cmd
-   where /r "C:\Users\Administrator\RustroverProjects\canview" view.exe
+   where /r "C:\Users\Administrator\RustroverProjects\can-viewer" view.exe
    ```
 
 4. **确认你查看的是正确的EXE文件**
-   - 正确路径: `C:\Users\Administrator\RustroverProjects\canview\target\release\view.exe`
+   - 正确路径: `C:\Users\Administrator\RustroverProjects\can-viewer\target\release\view.exe`
    - 修改时间应该是今天（2026年2月7日 19:35之后）
 
 5. **查看系统事件日志**
@@ -304,7 +304,7 @@ Windows会将图标缓存在以下位置：
 当前配置（已验证正确）：
 ```rust
 let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-let icon_path = manifest_dir.join("../../assets/ico/canview.ico");
+let icon_path = manifest_dir.join("../../assets/ico/can-viewer.ico");
 res.set_icon(icon_path.to_str().expect("Invalid icon path"));
 ```
 

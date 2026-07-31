@@ -1,5 +1,5 @@
 #!/bin/bash
-# CANVIEW 跨平台打包脚本 (Linux/macOS)
+# can-viewer 跨平台打包脚本 (Linux/macOS)
 
 set -e
 
@@ -7,7 +7,7 @@ VERSION="${1:-1.0.0}"
 OUTPUT_DIR="${2:-./release-package}"
 
 echo "========================================"
-echo "CANVIEW 打包脚本 v$VERSION"
+echo "can-viewer 打包脚本 v$VERSION"
 echo "平台: $(uname -s)"
 echo "========================================"
 echo ""
@@ -27,7 +27,7 @@ echo ""
 
 # 创建发布目录
 echo "📁 步骤 2: 创建发布目录..."
-PACKAGE_NAME="CANVIEW-v${VERSION}-${PLATFORM}"
+PACKAGE_NAME="can-viewer-v${VERSION}-${PLATFORM}"
 PACKAGE_DIR="${OUTPUT_DIR}/${PACKAGE_NAME}"
 
 rm -rf "$PACKAGE_DIR"
@@ -39,11 +39,11 @@ echo ""
 # 复制可执行文件
 echo "📋 步骤 3: 复制可执行文件..."
 if [ "$PLATFORM" = "macos" ]; then
-    cp ./target/release/view "$PACKAGE_DIR/bin/canview"
+    cp ./target/release/viewer "$PACKAGE_DIR/bin/can-viewer"
 else
-    cp ./target/release/view "$PACKAGE_DIR/bin/canview"
+    cp ./target/release/viewer "$PACKAGE_DIR/bin/can-viewer"
 fi
-chmod +x "$PACKAGE_DIR/bin/canview"
+chmod +x "$PACKAGE_DIR/bin/can-viewer"
 echo "✅ 可执行文件已复制"
 echo ""
 
@@ -94,7 +94,7 @@ echo "📋 步骤 8: 创建启动脚本..."
 cat > "$PACKAGE_DIR/start.sh" << 'EOF'
 #!/bin/bash
 cd "$(dirname "$0")"
-./bin/canview
+./bin/can-viewer
 EOF
 chmod +x "$PACKAGE_DIR/start.sh"
 echo "✅ 启动脚本已创建"
@@ -103,7 +103,7 @@ echo ""
 # 创建 README
 echo "📋 步骤 9: 创建发布说明..."
 cat > "$PACKAGE_DIR/README.txt" << EOF
-CANVIEW v${VERSION} - ${PLATFORM}
+can-viewer v${VERSION} - ${PLATFORM}
 
 目录结构:
   bin/        - 可执行文件
@@ -114,7 +114,7 @@ CANVIEW v${VERSION} - ${PLATFORM}
 
 快速开始:
   运行: ./start.sh
-  或: ./bin/canview
+  或: ./bin/can-viewer
 
 配置文件位置:
   1. ./multi_channel_config.json (优先)

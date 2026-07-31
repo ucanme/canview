@@ -28,7 +28,7 @@ assets/
 │   ├── logo-256x256.svg      # 256×256 尺寸
 │   └── logo-512x512.svg      # 512×512 尺寸
 ├── ico/
-│   └── canview.ico           # Windows 图标 (自动生成)
+│   └── can-viewer.ico           # Windows 图标 (自动生成)
 ├── png/
 │   ├── logo_16.png           # PNG 格式 (自动生成)
 │   ├── logo_32.png
@@ -78,20 +78,20 @@ pip install Pillow cairosvg
 
 #### Windows (CMD)
 ```cmd
-cd C:\Users\Administrator\RustroverProjects\canview\assets
+cd C:\Users\Administrator\RustroverProjects\can-viewer\assets
 update_icons.bat
 ```
 
 #### macOS/Linux (Bash)
 ```bash
-cd /path/to/canview/assets
+cd /path/to/can-viewer/assets
 chmod +x update_icons.sh
 ./update_icons.sh
 ```
 
 #### Python (跨平台)
 ```bash
-cd /path/to/canview/assets
+cd /path/to/can-viewer/assets
 python3 update_icons.py
 ```
 
@@ -143,7 +143,7 @@ Windows 用户会在 `target/release/view.exe` 看到新的图标。
 操作：
 1. 上传多个 PNG 文件（256, 128, 64, 48, 32, 16）
 2. 生成 ICO 文件
-3. 下载并保存为 `assets/ico/canview.ico`
+3. 下载并保存为 `assets/ico/can-viewer.ico`
 
 ### 步骤 3: PNG 转 ICNS（macOS）
 
@@ -153,7 +153,7 @@ Windows 用户会在 `target/release/view.exe` 看到新的图标。
 操作：
 1. 上传 `assets/svg/logo.svg`
 2. 生成 ICNS 文件
-3. 下载并保存为 `assets/canview.icns`
+3. 下载并保存为 `assets/can-viewer.icns`
 
 ---
 
@@ -167,7 +167,7 @@ Windows 用户会在 `target/release/view.exe` 看到新的图标。
 #[cfg(target_os = "windows")]
 fn main() {
     let mut res = winres::WindowsResource::new();
-    res.set_icon("../../assets/ico/canview.ico");
+    res.set_icon("../../assets/ico/can-viewer.ico");
     res.compile().expect("Failed to compile resources");
 }
 ```
@@ -185,10 +185,10 @@ cargo build --release
 
 **创建 .app 包**:
 ```bash
-mkdir -p CanView.app/Contents/{MacOS,Resources}
+mkdir -p can-viewer.app/Contents/{MacOS,Resources}
 
 # 创建 Info.plist
-cat > CanView.app/Contents/Info.plist << 'EOF'
+cat > can-viewer.app/Contents/Info.plist << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" 
     "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -197,11 +197,11 @@ cat > CanView.app/Contents/Info.plist << 'EOF'
     <key>CFBundleExecutable</key>
     <string>view</string>
     <key>CFBundleIconFile</key>
-    <string>canview</string>
+    <string>can-viewer</string>
     <key>CFBundleIdentifier</key>
-    <string>com.canview.app</string>
+    <string>com.can-viewer.app</string>
     <key>CFBundleName</key>
-    <string>CANVIEW</string>
+    <string>can-viewer</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
 </dict>
@@ -209,8 +209,8 @@ cat > CanView.app/Contents/Info.plist << 'EOF'
 EOF
 
 # 复制文件
-cp target/release/view CanView.app/Contents/MacOS/
-cp assets/canview.icns CanView.app/Contents/Resources/
+cp target/release/view can-viewer.app/Contents/MacOS/
+cp assets/can-viewer.icns can-viewer.app/Contents/Resources/
 ```
 
 ---
@@ -221,16 +221,16 @@ cp assets/canview.icns CanView.app/Contents/Resources/
 ```bash
 # 用户级安装
 mkdir -p ~/.local/share/icons/hicolor/{256x256,512x512}/apps
-cp assets/png/logo_256.png ~/.local/share/icons/hicolor/256x256/apps/canview.png
-cp assets/png/logo_512.png ~/.local/share/icons/hicolor/512x512/apps/canview.png
+cp assets/png/logo_256.png ~/.local/share/icons/hicolor/256x256/apps/can-viewer.png
+cp assets/png/logo_512.png ~/.local/share/icons/hicolor/512x512/apps/can-viewer.png
 
 # 创建 .desktop 文件
-cat > ~/.local/share/applications/canview.desktop << 'EOF'
+cat > ~/.local/share/applications/can-viewer.desktop << 'EOF'
 [Desktop Entry]
-Name=CANVIEW
+Name=can-viewer
 Comment=CAN/LIN Bus Data Analyzer
 Exec=/path/to/target/release/view
-Icon=canview
+Icon=can-viewer
 Terminal=false
 Type=Application
 Categories=Development;Electronics;
@@ -252,12 +252,12 @@ gtk-update-icon-cache ~/.local/share/icons/hicolor -f
 3. 运行程序，查看任务栏图标
 
 ### macOS
-1. 在 Finder 中查看 `CanView.app`
+1. 在 Finder 中查看 `can-viewer.app`
 2. 检查应用图标是否更新
 3. 将应用拖到 Dock 查看效果
 
 ### Linux
-1. 在应用菜单中搜索 "CANVIEW"
+1. 在应用菜单中搜索 "can-viewer"
 2. 检查图标显示是否正确
 3. 创建桌面快捷方式验证
 

@@ -1,4 +1,4 @@
-use crate::app::CanViewApp;
+use crate::app::CanViewerApp;
 use crate::library::Database;
 use gpui::prelude::*;
 use gpui::*;
@@ -12,7 +12,7 @@ pub fn render_database_preview(
     filter_input: Option<&Entity<InputState>>,
     id_prefix: Option<&str>,
     selected_signals: &[String],
-    cx: &mut Context<CanViewApp>,
+    cx: &mut Context<CanViewerApp>,
 ) -> impl IntoElement {
     let has_selection = !selected_signals.is_empty();
     
@@ -110,7 +110,7 @@ pub fn render_database_preview(
         )
 }
 
-fn render_dbc_content(dbc: &DbcDatabase, filter_text: &str, id_prefix: Option<&str>, selected_signals: &[String], cx: &mut Context<CanViewApp>) -> impl IntoElement {
+fn render_dbc_content(dbc: &DbcDatabase, filter_text: &str, id_prefix: Option<&str>, selected_signals: &[String], cx: &mut Context<CanViewerApp>) -> impl IntoElement {
     let bus_prefix = id_prefix.unwrap_or("CAN");
     let lower_filter = filter_text.to_lowercase();
     let mut messages: Vec<_> = dbc.messages.values().collect();
@@ -243,7 +243,7 @@ fn render_dbc_content(dbc: &DbcDatabase, filter_text: &str, id_prefix: Option<&s
     div().flex().flex_col().children(elements)
 }
 
-fn render_ldf_content(ldf: &LdfDatabase, filter_text: &str, id_prefix: Option<&str>, selected_signals: &[String], cx: &mut Context<CanViewApp>) -> impl IntoElement {
+fn render_ldf_content(ldf: &LdfDatabase, filter_text: &str, id_prefix: Option<&str>, selected_signals: &[String], cx: &mut Context<CanViewerApp>) -> impl IntoElement {
     let bus_prefix = id_prefix.unwrap_or("LIN");
     let lower_filter = filter_text.to_lowercase();
     let mut frames: Vec<_> = ldf.frames.values().collect();

@@ -44,7 +44,7 @@ pub fn render_library_management_view(
     rename_library_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     renaming_version_name: Option<&str>,
     rename_version_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
-    cx: &mut Context<crate::CanViewApp>,
+    cx: &mut Context<crate::CanViewerApp>,
 ) -> impl IntoElement {
     div()
         .flex_1()
@@ -135,7 +135,7 @@ fn render_left_column(
     rename_library_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     active_library_id: Option<&str>,
     active_version_name: Option<&str>,
-    cx: &mut Context<crate::CanViewApp>,
+    cx: &mut Context<crate::CanViewerApp>,
 ) -> impl IntoElement {
     div()
         .w(px(280.0)) // 稍微窄一点，更紧凑
@@ -281,7 +281,7 @@ fn render_left_column(
 fn render_add_library_input_row(
     library_name_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     _new_library_name: &str,
-    cx: &mut Context<crate::CanViewApp>,
+    cx: &mut Context<crate::CanViewerApp>,
 ) -> impl IntoElement {
     div()
         .px_3()
@@ -322,7 +322,7 @@ fn render_library_item(
     rename_library_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     active_library_id: Option<&str>,
     active_version_name: Option<&str>,
-    cx: &mut Context<crate::CanViewApp>,
+    cx: &mut Context<crate::CanViewerApp>,
 ) -> impl IntoElement {
     let is_selected = selected_library_id.as_ref() == Some(&library.id);
     let is_used = library.is_used(mappings);
@@ -522,7 +522,7 @@ fn render_library_item(
 }
 
 /// 渲染添加库按钮 - Zed IDE 风格
-fn render_add_library_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoElement {
+fn render_add_library_button(cx: &mut Context<crate::CanViewerApp>) -> impl IntoElement {
     div()
         .id("add-lib-btn")
         .px_3()
@@ -549,7 +549,7 @@ fn render_add_library_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoEl
                     // until the input entity is dropped (when library_name_input = None)
                     cx.subscribe(
                         &input,
-                        |this: &mut crate::CanViewApp,
+                        |this: &mut crate::CanViewerApp,
                          _input_entity,
                          event: &gpui_component::input::InputEvent,
                          cx| {
@@ -626,7 +626,7 @@ fn render_middle_column(
     rename_version_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     active_library_id: Option<&str>,
     active_version_name: Option<&str>,
-    cx: &mut Context<crate::CanViewApp>,
+    cx: &mut Context<crate::CanViewerApp>,
 ) -> impl IntoElement {
     // 找到选中的库
     let selected_library = selected_library_id
@@ -727,7 +727,7 @@ fn render_version_item(
     is_active: bool,
     renaming_version_name: Option<&str>,
     rename_version_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
-    cx: &mut Context<crate::CanViewApp>,
+    cx: &mut Context<crate::CanViewerApp>,
 ) -> impl IntoElement {
     let stats = version.get_stats();
     let is_renaming = renaming_version_name == Some(version_name.as_str());
@@ -939,7 +939,7 @@ fn render_right_column(
     new_channel_type: crate::models::ChannelType, // Use the new channel type being added
     is_sharing: bool,
     copied_channel_id: Option<u16>,
-    cx: &mut Context<crate::CanViewApp>,
+    cx: &mut Context<crate::CanViewerApp>,
 ) -> impl IntoElement {
     // 找到选中的库和版本
     let selected_library = selected_library_id
@@ -1157,7 +1157,7 @@ fn render_channel_item(
     channel_db: &ChannelDatabase,
     is_sharing: bool,
     copied_channel_id: Option<u16>,
-    cx: &mut Context<crate::CanViewApp>,
+    cx: &mut Context<crate::CanViewerApp>,
 ) -> impl IntoElement {
     let path = channel_db.database_path.clone();
     let channel_name = channel_db.channel_name.clone();
@@ -1297,7 +1297,7 @@ fn render_channel_item(
         )
 }
 
-fn render_add_channel_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoElement {
+fn render_add_channel_button(cx: &mut Context<crate::CanViewerApp>) -> impl IntoElement {
     div()
         .px_3()
         .py_2()
@@ -1384,8 +1384,8 @@ fn render_add_channel_input_row_with_path(
     channel_type: crate::models::ChannelType,
     path_text: String,
     path_is_empty: bool,
-    entity_clone: Option<gpui::Entity<crate::CanViewApp>>, // Pre-cloned entity
-    cx: &mut Context<crate::CanViewApp>,
+    entity_clone: Option<gpui::Entity<crate::CanViewerApp>>, // Pre-cloned entity
+    cx: &mut Context<crate::CanViewerApp>,
 ) -> impl IntoElement {
     div()
         .px_3()
@@ -1633,7 +1633,7 @@ fn render_add_channel_input_row_with_path(
 fn render_add_version_input_row(
     version_name_input: Option<&gpui::Entity<gpui_component::input::InputState>>,
     _new_version_name: &str,
-    cx: &mut Context<crate::CanViewApp>,
+    cx: &mut Context<crate::CanViewerApp>,
 ) -> impl IntoElement {
     div()
         .px_3()
@@ -1671,7 +1671,7 @@ fn render_add_version_input_row(
 }
 
 /// 渲染添加版本按钮 - 简洁单行形式
-fn render_add_version_button(cx: &mut Context<crate::CanViewApp>) -> impl IntoElement {
+fn render_add_version_button(cx: &mut Context<crate::CanViewerApp>) -> impl IntoElement {
     div()
         .id("add-version-btn")
         .px_3()
