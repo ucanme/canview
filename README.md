@@ -24,9 +24,11 @@ Fully open source — your ⭐ keeps development going!
 can-viewer is a high-performance automotive bus analysis tool built in Rust. It integrates BLF log parsing, DBC/LDF signal library management, and a [GPUI](https://gpui.rs/)-powered GPU-accelerated desktop UI.
 
 - 🚀 **Rust native** — zero-copy parsing, fast startup
+- ⚡ **Parallel BLF loading** — zlib decompress runs across CPU cores via rayon; 9 MB / 860 K-object files load in ~280 ms
 - 🖥️ **GPU-accelerated UI** — built on GPUI, smooth rendering
 - 📊 **Interactive waveform plot** — zoom, pan, hover to inspect
 - 📚 **Signal library management** — multi-version DBC/LDF libraries, one-click activation, auto-load
+- 🎯 **Signal sets** — save named collections of channel+message+signal combinations on a library, then batch-apply them to the plot sidebar for quick replay
 - 🔗 **LAN sharing** — share signal libraries within your local network via HTTP
 - 🔌 **Multi-bus support** — CAN / CAN FD / LIN / FlexRay / Ethernet
 - 🖱️ **Drag-and-drop loading** — drop `.blf` files (or a folder) onto the window; macOS Dock-icon drop also supported
@@ -70,32 +72,42 @@ Pre-built binaries: [Releases](https://github.com/cantool/can-viewer/releases) (
 
 1. **Open log** — click File → Open BLF… (single file), or Open Multiple BLF… (append). You can also **drag-and-drop** `.blf` files onto the window — dropping always clears the current session and reloads. On macOS, dropping on the Dock icon also works.
 2. **Manage signal libraries** — switch to the Library tab, add DBC/LDF files, activate a version
-3. **Browse log** — switch to the Log tab to view decoded signal values
-4. **Plot waveforms** — switch to Signal Plot, select signals; supports zoom and hover
-5. **Manage loaded files** — when ≥ 2 files are loaded (or any file has errors), click the **📂 N files** segment in the bottom-left status bar to open the Loaded Files popover. Remove individual files with ✕, or **Remove All** to clear.
+3. **Signal sets** — on a library, save named collections of channel+message+signal combinations. Open the set dropdown from the plot sidebar header to apply (batch-select), rename, or delete a set — useful for replaying the same group of signals across recordings.
+4. **Browse log** — switch to the Log tab to view decoded signal values
+5. **Plot waveforms** — switch to Signal Plot, select signals; supports zoom and hover
+6. **Manage loaded files** — when ≥ 2 files are loaded (or any file has errors), click the **📂 N files** segment in the bottom-left status bar to open the Loaded Files popover. Remove individual files with ✕, or **Remove All** to clear.
 
 Drop semantics: only `.blf` is accepted (`.bin` is ignored via drag — use File menu for `.bin`); folders are expanded one level deep; total > 1 GB triggers a confirmation prompt; mid-load drops cancel the in-flight load and queue the new one.
 
 Configuration is auto-saved to `multi_channel_config.json`.
 
-📖 **Full user guide:** [docs/USAGE.md](docs/USAGE.md) — window layout, log/plot views, library management, LAN sharing, keyboard shortcuts, troubleshooting.
+📖 **Full user guide:** [docs/USAGE.md](docs/USAGE.md) — window layout, log/plot views, library management, signal sets, LAN sharing, keyboard shortcuts, troubleshooting.
 
 ---
 
 ## Roadmap
 
-- [x] BLF parsing core
-- [x] DBC/LDF database parsing
-- [x] GPUI desktop UI
-- [x] Message filtering and signal decoding
-- [x] Signal waveform plot (zoom, hover, absolute time)
-- [x] Multi-version signal library management (create / activate / share via LAN)
-- [x] Multi-file loading (Open BLF... replaces, Open Multiple BLF... appends) with merged timeline
+### Done
+
+- [x] BLF parsing core (CAN / CAN FD / LIN / FlexRay / Ethernet)
+- [x] DBC / LDF database parsing
+- [x] GPUI desktop UI (GPU-accelerated, cross-platform)
+- [x] Message filtering (by ID and channel) and signal decoding
+- [x] Signal waveform plot — zoom, hover, absolute time, live plot on selection, no-data placeholders
+- [x] Multi-version signal library management (create / activate / share via LAN, one-click import)
+- [x] Signal sets — save named channel+message+signal combinations on a library, batch-apply to plot
+- [x] Multi-file loading with merged timeline (Open BLF... replaces, Open Multiple BLF... appends)
 - [x] Drag-and-drop BLF loading (in-window + macOS Dock-icon), folder expansion, large-file guard
 - [x] Status bar multi-file segment with ⚠️ parse-error indicator and Loaded Files popover
-- [ ] Live streaming mode
-- [ ] Export CSV / JSON
-- [ ] Diagnostic rule DSL
+- [x] Parallel BLF loading (rayon parallel zlib decompress + index-sort merge, ~3× faster on multi-core CPUs)
+
+### Planned
+
+- [ ] Live streaming mode (socketcan / virtual bus)
+- [ ] Export to CSV / JSON
+- [ ] Diagnostic rule DSL (custom warning/error conditions)
+- [ ] DBC generator from observed traffic
+- [ ] Replay / re-injection (send back to bus)
 
 ---
 
