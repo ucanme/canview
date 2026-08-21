@@ -56,11 +56,11 @@ A typical session: drop a `.blf` recording onto the window, activate a DBC datab
 
 | Log Viewer | Signal Plot |
 |:---:|:---:|
-| <img src="assets/blf_logs_screenshot.png" width="400" alt="BLF Logs Viewer" /> | <img src="assets/plot_screen.png" width="400" alt="Signal Plotter" /> |
+| <img src="assets/blf_logs_screenshot_v2.png" width="400" alt="BLF Logs Viewer" /> | <img src="assets/plot_screen_v2.png" width="400" alt="Signal Plotter" /> |
 
 | Signal Library Management |
 |:---:|
-| <img src="assets/dbc_library.png" width="600" alt="Signal Library" /> |
+| <img src="assets/dbc_library_v2.png" width="600" alt="Signal Library" /> |
 
 ---
 

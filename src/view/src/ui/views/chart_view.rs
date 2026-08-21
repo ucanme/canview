@@ -1328,7 +1328,10 @@ pub fn extract_series_data(app: &CanViewerApp) -> Arc<[Series]> {
                 }
             } else if bus_type == "LIN" {
                 if let Some(ldf) = app.ldf_channels.get(&ch) {
-                    if let Some(frame) = ldf.frames.get(&m_id.to_string()) {
+                    // LDF frames are keyed by frame name, not by numeric ID,
+                    // so we scan for the frame whose `id` matches m_id.
+                    let frame = ldf.frames.values().find(|f| f.id == m_id);
+                    if let Some(frame) = frame {
                         // Find signal in frame mappings
                         if let Some(mapping) = frame.signals.iter().find(|s| s.signal_name == sig_name) {
                             if let Some(sig) = ldf.signals.get(&mapping.signal_name) {

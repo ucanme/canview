@@ -36,6 +36,9 @@ rfd = { version = "0.14", default-features = false, features = ["tokio"] }
 [target.'cfg(target_os = "linux")'.dependencies]
 rfd = { version = "0.14", default-features = false, features = ["tokio", "xdg-portal"] }
 
+[dev-dependencies]
+tempfile = "3.3"
+
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"
 

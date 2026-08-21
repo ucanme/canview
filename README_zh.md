@@ -56,11 +56,11 @@
 
 | 日志浏览 | 信号绘图 |
 |:---:|:---:|
-| <img src="assets/blf_logs_screenshot.png" width="400" alt="BLF 日志浏览" /> | <img src="assets/plot_screen.png" width="400" alt="信号绘图" /> |
+| <img src="assets/blf_logs_screenshot_v2.png" width="400" alt="BLF 日志浏览" /> | <img src="assets/plot_screen_v2.png" width="400" alt="信号绘图" /> |
 
 | 信号库管理 |
 |:---:|
-| <img src="assets/dbc_library.png" width="600" alt="信号库管理" /> |
+| <img src="assets/dbc_library_v2.png" width="600" alt="信号库管理" /> |
 
 ---
 
