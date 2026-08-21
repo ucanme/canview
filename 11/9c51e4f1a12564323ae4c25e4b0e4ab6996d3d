@@ -1,0 +1,23 @@
+src/view/Cargo.toml
+  s_349fb020453866::t_cf72c1d87ffc8a 39-41
+src/view/src/library/mod.rs
+  s_349fb020453866::t_502f395e746c0e 559-613
+  s_349fb020453866::t_2172829c5b06b8 422-426,428-430
+  s_349fb020453866::t_8aae8b0b65dd5b 469-484
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "119c51e4f1a12564323ae4c25e4b0e4ab6996d3d",
+  "prompts": {},
+  "sessions": {
+    "s_349fb020453866": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c1a9f41-2be4-4922-bf47-1a016c616bb3",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
