@@ -1,0 +1,19 @@
+src/view/src/ui/views/chart_view.rs
+  s_349fb020453866::t_d110a1148a819b 1331-1334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "31f3bccd8c8eac36f2e592bbb7f3cecaee74eb71",
+  "prompts": {},
+  "sessions": {
+    "s_349fb020453866": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c1a9f41-2be4-4922-bf47-1a016c616bb3",
+        "model": "glm-5.2"
+      },
+      "human_author": "ji.wu <ji.wu@nio.com>"
+    }
+  }
+}
