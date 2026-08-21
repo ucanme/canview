@@ -419,8 +419,15 @@ impl LibraryManager {
     }
 
     /// 加载数据库文件
+    ///
+    /// Channel type is auto-detected from the file extension (.dbc → CAN,
+    /// .ldf → LIN) so a library created with the wrong channel_type still
+    /// loads its database correctly. The passed `channel_type` is used only
+    /// as a fallback when the extension is ambiguous.
     pub fn load_database(&self, path: &str, channel_type: ChannelType) -> Result<Database, String> {
-        match channel_type {
+        let detected = detect_channel_type_from_path(path);
+        let effective = detected.unwrap_or(channel_type);
+        match effective {
             ChannelType::CAN => self.load_dbc(path),
             ChannelType::LIN => self.load_ldf(path),
         }
@@ -457,6 +464,22 @@ impl LibraryManager {
 pub enum Database {
     Dbc(DbcDatabase),
     Ldf(LdfDatabase),
+}
+
+/// Detect `ChannelType` from a database file's extension.
+/// Returns `Some(CAN)` for `.dbc`, `Some(LIN)` for `.ldf`, `None` for unknown.
+/// Used by `load_database` to override a library's `channel_type` when the
+/// caller passed a stale value (e.g. a LIN library created via the legacy
+/// hardcoded-CAN path).
+pub fn detect_channel_type_from_path(path: &str) -> Option<ChannelType> {
+    let lowered = path.to_lowercase();
+    if lowered.ends_with(".ldf") {
+        Some(ChannelType::LIN)
+    } else if lowered.ends_with(".dbc") {
+        Some(ChannelType::CAN)
+    } else {
+        None
+    }
 }
 
 /// 生成唯一的库ID
@@ -530,6 +553,62 @@ mod tests {
 
         assert!(result.is_ok());
         assert_eq!(manager.libraries().len(), 1);
+    }
+
+    #[test]
+    fn test_load_database_auto_detects_ldf_from_extension() {
+        // Write a minimal LDF to a temp file with .ldf extension
+        let ldf_content = r#"
+LIN_description_file = "2.1";
+Signals {
+    SysSt: 8, 0, BCM, IPC;
+}
+Frames {
+    BCM_St: 0x10, BCM, 2 {
+        SysSt, 0;
+    }
+}
+"#;
+        let dir = tempfile::tempdir().unwrap();
+        let ldf_path = dir.path().join("test.ldf");
+        std::fs::write(&ldf_path, ldf_content).unwrap();
+
+        let manager = LibraryManager::new();
+        // Caller says CAN, but file extension is .ldf — must still load as LDF.
+        let result = manager.load_database(ldf_path.to_str().unwrap(), ChannelType::CAN);
+        assert!(result.is_ok(), "load_database failed: {:?}", result.err());
+        assert!(
+            matches!(result.unwrap(), Database::Ldf(_)),
+            "expected Ldf variant when path ends with .ldf"
+        );
+    }
+
+    #[test]
+    fn test_load_database_auto_detects_dbc_from_extension() {
+        let dbc_content = r#"
+VERSION ""
+
+NS_ :
+
+BS_:
+
+BU_: DBG
+
+BO_ 256 EngineStatus: 8 DBG
+ SG_ EngineRPM : 0|16@1+ (1,0) [0|65535] "rpm" DBG
+"#;
+        let dir = tempfile::tempdir().unwrap();
+        let dbc_path = dir.path().join("test.dbc");
+        std::fs::write(&dbc_path, dbc_content).unwrap();
+
+        let manager = LibraryManager::new();
+        // Caller says LIN, but file extension is .dbc — must still load as DBC.
+        let result = manager.load_database(dbc_path.to_str().unwrap(), ChannelType::LIN);
+        assert!(result.is_ok(), "load_database failed: {:?}", result.err());
+        assert!(
+            matches!(result.unwrap(), Database::Dbc(_)),
+            "expected Dbc variant when path ends with .dbc"
+        );
     }
 
     #[test]
